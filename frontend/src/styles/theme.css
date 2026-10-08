@@ -1,0 +1,53 @@
+/*
+  BẢNG MÀU — đổi màu toàn trang chỉ cần sửa ở file này.
+  Tông chính: xanh dương (lấy từ logo Seamark), xanh nhạt và trắng.
+*/
+:root {
+  /* Xanh dương chính: nút quan trọng, tiêu đề */
+  --color-primary: #1f4fa8;
+  --color-primary-hover: #183f88;
+  --color-primary-text: #ffffff; /* chữ trên nền xanh dương */
+
+  /* Xanh nhạt: nền nút phụ, viền khi chọn, nền các khối nhẹ */
+  --color-primary-soft: #e3eefb;
+  --color-primary-soft-hover: #d2e3f8;
+
+  /* Xanh biển nhạt: điểm nhấn trang trí */
+  --color-accent: #8cc4e8;
+
+  /* Nền trang và nền thẻ */
+  --color-bg: #f3f8fe;
+  --color-bg-gradient-end: #dcebfa;
+  --color-surface: #ffffff;
+
+  /* Chữ */
+  --color-text: #1b2b4b;
+  --color-text-muted: #5a6a8a;
+
+  /* Viền */
+  --color-border: #cfdcef;
+  --color-focus: #5b9be0;
+
+  /* Báo lỗi */
+  --color-error: #c0392b;
+  --color-error-bg: #fdecea;
+
+  /* Đánh dấu "cần xem lại" khi làm bài (cam nhạt, khác hẳn màu xanh "đã làm") */
+  --color-flag: #e8a33d;
+
+  /* Cảnh báo (vàng cam nhạt) */
+  --color-warn: #96600c;
+  --color-warn-bg: #fdf4e3;
+
+  /* Báo thành công */
+  --color-success: #1e7b4f;
+  --color-success-bg: #e6f5ec;
+
+  /* Kích thước, bo góc, bóng */
+  --font-family: 'Be Vietnam Pro', 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-size-base: 18px;
+  --radius: 14px;
+  --radius-small: 10px;
+  --shadow-card: 0 6px 24px rgba(31, 79, 168, 0.08);
+  --button-height: 52px;
+}

@@ -1,0 +1,19 @@
+# Thư viện
+node_modules/
+
+# Cấu hình thật (chứa mật khẩu) - KHÔNG đẩy lên Git
+.env
+
+# Dữ liệu thật: database + file audio/ảnh upload
+data/*
+!data/.gitkeep
+
+# Build
+frontend/dist/
+dist/
+build/
+
+# Log, file tạm
+*.log
+.DS_Store
+Thumbs.db

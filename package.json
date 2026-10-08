@@ -1,0 +1,19 @@
+{
+  "name": "toeic-test",
+  "private": true,
+  "description": "Website thi thử TOEIC Listening + Reading - Seamark",
+  "scripts": {
+    "postinstall": "npm install --prefix backend && npm install --prefix frontend",
+    "dev": "concurrently -n api,web -c blue,cyan \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "build": "npm run build --prefix frontend",
+    "start": "npm start --prefix backend",
+    "seed": "npm run seed --prefix backend",
+    "test": "npm test --prefix backend",
+    "backup": "npm run backup --prefix backend",
+    "reset-password": "npm run reset-password --prefix backend --",
+    "stop-dev": "node scripts/stop-dev.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.4"
+  }
+}

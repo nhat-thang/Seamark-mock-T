@@ -1,0 +1,104 @@
+.start-page {
+  position: relative;
+  min-height: 100vh;
+  padding: 2rem 16px 3rem;
+  overflow-x: hidden;
+}
+
+/* ---------- Logo ---------- */
+.start-header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.8rem;
+}
+
+.start-logo-link {
+  display: inline-block;
+  border-radius: 22px;
+}
+
+.start-logo {
+  display: block;
+  width: 96px;
+  height: auto;
+  border-radius: 22px;
+  box-shadow: 0 8px 24px rgba(31, 79, 168, 0.22);
+}
+
+/* ---------- Nội dung chính ---------- */
+.start-main {
+  position: relative;
+  z-index: 1; /* luôn nằm trên ảnh decor */
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.start-title {
+  font-size: 1.5rem;
+  color: var(--color-primary);
+}
+
+.start-subtitle {
+  margin: 0 0 1.5rem;
+}
+
+/* ---------- Ảnh trang trí ---------- */
+.decor {
+  position: fixed;
+  z-index: 0; /* nằm sau nội dung */
+  width: 200px;
+  height: auto;
+  border-radius: 28px;
+  opacity: 0.16;
+  pointer-events: none; /* không chặn chuột/bấm */
+  user-select: none;
+}
+
+.decor-1 {
+  top: 40px;
+  left: 40px;
+  transform: rotate(-10deg);
+}
+
+.decor-2 {
+  bottom: 40px;
+  right: 40px;
+  transform: rotate(8deg);
+}
+
+/* Máy tính bảng: thu nhỏ decor */
+@media (max-width: 900px) {
+  .decor {
+    width: 120px;
+  }
+  .decor-1 {
+    top: 20px;
+    left: 16px;
+  }
+  .decor-2 {
+    bottom: 20px;
+    right: 16px;
+  }
+}
+
+/* Điện thoại: ẩn decor, thu nhỏ logo */
+@media (max-width: 600px) {
+  .decor {
+    display: none;
+  }
+  .start-page {
+    padding-top: 1.2rem;
+  }
+  .start-header {
+    margin-bottom: 1.2rem;
+  }
+  .start-logo {
+    width: 76px;
+    border-radius: 18px;
+  }
+  .start-title {
+    font-size: 1.3rem;
+  }
+}

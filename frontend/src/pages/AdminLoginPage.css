@@ -1,0 +1,51 @@
+.login-card {
+  text-align: left;
+}
+
+.login-logo {
+  display: block;
+  width: 72px;
+  margin: 0 auto 1rem;
+  border-radius: 16px;
+}
+
+.login-title {
+  text-align: center;
+  color: var(--color-primary);
+  font-size: 1.5rem;
+}
+
+.login-notice {
+  padding: 0.9rem 1.1rem;
+  border-radius: var(--radius-small);
+  background: var(--color-primary-soft);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.login-submit {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.login-help {
+  margin: 1.4rem 0 0.4rem;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.login-card > .btn-link {
+  display: block;
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* Đang đăng nhập sẵn: hỏi vào tiếp hay đổi tài khoản */
+.login-current p {
+  margin: 0 0 0.6rem;
+  text-align: center;
+}
+
+.login-current .login-submit + .login-submit {
+  margin-top: 0.6rem;
+}

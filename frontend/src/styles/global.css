@@ -1,0 +1,223 @@
+/* Kiểu dáng chung cho toàn trang. Màu lấy từ theme.css */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: var(--font-size-base);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-family);
+  line-height: 1.55;
+  color: var(--color-text);
+  background: linear-gradient(180deg, var(--color-surface) 0%, var(--color-bg) 45%, var(--color-bg-gradient-end) 100%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.3;
+  margin: 0 0 0.5em;
+}
+
+/* ---------- Nút ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--button-height);
+  padding: 0 1.6rem;
+  border: 2px solid transparent;
+  border-radius: var(--radius-small);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:focus-visible,
+.input:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Nút chính: xanh dương đậm, chữ trắng */
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+}
+.btn-primary:hover {
+  background: var(--color-primary-hover);
+}
+
+/* Nút phụ: nền trắng, viền xanh nhạt */
+.btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-primary);
+  border-color: var(--color-border);
+}
+.btn-secondary:hover {
+  background: var(--color-primary-soft);
+  border-color: var(--color-accent);
+}
+
+/* Nút dạng chữ, nhẹ nhàng */
+.btn-link {
+  min-height: auto;
+  padding: 0.25rem 0;
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 600;
+}
+
+.btn-large {
+  min-height: 64px;
+  padding: 0 2.4rem;
+  font-size: 1.2rem;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---------- Thẻ (khối nền trắng) ---------- */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 2rem;
+}
+
+@media (max-width: 600px) {
+  .card {
+    padding: 1.4rem 1.1rem;
+  }
+}
+
+/* ---------- Ô nhập ---------- */
+.field {
+  margin-bottom: 1.2rem;
+}
+
+.field label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+}
+
+.input {
+  width: 100%;
+  min-height: var(--button-height);
+  padding: 0 1rem;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 1rem;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+}
+
+.input.has-error {
+  border-color: var(--color-error);
+  background: var(--color-error-bg);
+}
+
+.field-hint {
+  margin: 0.3rem 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.field-error {
+  margin: 0.3rem 0 0;
+  font-size: 0.9rem;
+  color: var(--color-error);
+  font-weight: 600;
+}
+
+/* Khối thông báo lỗi lớn */
+.alert-error {
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius-small);
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  font-weight: 600;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+/* Ô đánh dấu kèm chữ (ví dụ "Hiện mật khẩu") */
+.checkbox-label,
+.field .checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-weight: 400;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.checkbox-label input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-primary);
+}
+
+/* Thông báo thành công */
+.alert-success {
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius-small);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+/* Nút nhỏ dùng trong bảng */
+.btn-small {
+  min-height: 40px;
+  padding: 0 1rem;
+  font-size: 0.9rem;
+}
+
+/* Nút nguy hiểm (vô hiệu hóa...) */
+.btn-danger {
+  background: var(--color-surface);
+  color: var(--color-error);
+  border-color: #efc4bf;
+}
+.btn-danger:hover {
+  background: var(--color-error-bg);
+}
+
+select.input {
+  padding-right: 0.6rem;
+}

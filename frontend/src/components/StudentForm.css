@@ -1,0 +1,17 @@
+/* Họ và Tên nằm cạnh nhau trên máy tính, xếp dọc trên điện thoại */
+.student-name-row {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 0 1rem;
+}
+
+.student-submit {
+  width: 100%;
+  margin-top: 0.4rem;
+}
+
+@media (max-width: 600px) {
+  .student-name-row {
+    grid-template-columns: 1fr;
+  }
+}

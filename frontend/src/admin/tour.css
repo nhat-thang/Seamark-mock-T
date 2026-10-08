@@ -1,0 +1,85 @@
+/* Hướng dẫn từng bước */
+
+.tour-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+.tour-blocker {
+  position: fixed;
+  inset: 0;
+}
+
+/* Vùng sáng: bóng đổ rất lớn làm tối toàn bộ phần còn lại của màn hình */
+.tour-spotlight {
+  position: fixed;
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(27, 43, 75, 0.55);
+  outline: 3px solid var(--color-accent);
+  pointer-events: none;
+  transition: top 0.2s, left 0.2s, width 0.2s, height 0.2s;
+}
+
+.tour-box {
+  position: fixed;
+  padding: 1.1rem 1.2rem 1rem;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  box-shadow: 0 12px 36px rgba(27, 43, 75, 0.35);
+}
+
+/* Mũi tên: hình tam giác vẽ bằng viền CSS, chỉ vào phần tử */
+.tour-arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+  margin-left: -12px;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+}
+
+.tour-box.is-below .tour-arrow {
+  top: -14px;
+  border-bottom: 14px solid var(--color-surface);
+}
+
+.tour-box.is-above .tour-arrow {
+  bottom: -14px;
+  border-top: 14px solid var(--color-surface);
+}
+
+.tour-step {
+  margin: 0 0 0.2rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.tour-title {
+  margin: 0 0 0.4rem;
+  font-size: 1.1rem;
+  color: var(--color-primary);
+}
+
+.tour-text {
+  margin: 0 0 1rem;
+  line-height: 1.6;
+}
+
+.tour-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.tour-nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tour-skip {
+  font-size: 0.9rem;
+}
