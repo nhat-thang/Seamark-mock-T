@@ -60,12 +60,12 @@ toeic-test/
 
 ## Chạy ở máy dev
 
-Chạy tất cả lệnh ở **thư mục gốc** `toeic-test/`:
+Cần **Node.js 24**. Chạy tất cả lệnh ở **thư mục gốc** `toeic-test/`:
 
 ```bash
 copy .env.example .env   # Linux/macOS: cp .env.example .env
-npm install              # cài thư viện cho cả backend và frontend
-npm run seed             # tạo database + tài khoản owner + 2 đề mẫu
+npm ci                   # cài thư viện cho cả backend và frontend (đúng phiên bản trong lockfile)
+npm run seed             # tạo database + tài khoản owner + 3 đề mẫu
 npm run dev              # chạy backend (cổng 3000) và frontend (http://localhost:5173) cùng lúc
 ```
 
@@ -79,6 +79,9 @@ npm run dev              # chạy backend (cổng 3000) và frontend (http://loc
 | `npm run seed` | Tạo owner + đề mẫu (chạy lại nhiều lần không bị trùng) |
 | `npm run backup` | Sao lưu database + ảnh/audio vào `BACKUP_DIR` (giữ 14 bản gần nhất) |
 | `npm run reset-password -- <tên đăng nhập> <mật khẩu mới>` | Đặt lại mật khẩu trên máy chủ (khi admin chính quên mật khẩu) |
+| `scripts\update.ps1` | Trên VPS: cập nhật lên code mới nhất từ GitHub (xem `docs/deploy-windows.md` mục 7) |
+
+Thêm thư viện cho backend / frontend: `npm install <tên> --prefix backend` (hoặc `--prefix frontend`) rồi commit cả `package-lock.json`. Thư viện cần biên dịch (native) phải có sẵn bản dựng cho Windows x64, vì máy chủ cài với `--ignore-scripts`.
 
 **Gặp "Máy chủ gặp lỗi" / "Không kết nối được máy chủ" khi chạy thử trên máy:**
 - Cổng `PORT` trong `.env` có thể đang bị chương trình khác dùng (ví dụ Docker). Đổi sang số khác (3001, 3002…).

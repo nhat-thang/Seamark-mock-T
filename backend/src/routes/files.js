@@ -18,7 +18,9 @@ function filesRouter(db, config) {
       return res.status(404).json({ error: 'Không tìm thấy file.' });
     }
     res.type(SERVE_MIME[path.extname(name).slice(1)]);
-    res.set('Cache-Control', 'private, max-age=86400');
+    // Nội dung một file không bao giờ đổi (thay file = tên ngẫu nhiên mới), nên cho trình duyệt và
+    // Cloudflare lưu đệm lâu dài: cả lớp cùng nghe audio thì Cloudflare phát giúp, VPS không bị nghẽn mạng.
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
     res.sendFile(name, { root: uploadsDir, dotfiles: 'deny' }, (err) => {
       if (err && !res.headersSent) res.status(404).json({ error: 'Không tìm thấy file.' });
     });

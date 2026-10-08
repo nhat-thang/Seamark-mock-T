@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { apiPost, apiUpload } from '../../utils/api.js';
+import { apiPost, uploadMedia } from '../../utils/api.js';
 import { fileSlots, formatSize, mediaKind, sameFile } from '../../utils/fileRefs.js';
 import DropZone from './DropZone.jsx';
 
@@ -20,15 +20,8 @@ export default function FilesTab({ examId, readOnly, content, media, setMedia, u
     setReport(null);
     setBusy(true);
     try {
-      // Gửi từng đợt 10 file cho đỡ nặng
-      const accepted = [];
-      const rejected = [];
-      for (let i = 0; i < files.length; i += 10) {
-        const r = await apiUpload(`/admin/exams/${examId}/media`, 'files', files.slice(i, i + 10));
-        accepted.push(...r.accepted);
-        rejected.push(...r.rejected);
-        setMedia(r.media);
-      }
+      // Gửi từng đợt nhỏ (không quá 90 MB / 10 file mỗi đợt) để không vượt giới hạn của Cloudflare
+      const { accepted, rejected } = await uploadMedia(examId, files, (r) => setMedia(r.media));
       setReport({ accepted, rejected });
     } catch (err) {
       if (!(err.status === 409 && handleConflict(err))) setError(err.message);

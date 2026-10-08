@@ -29,7 +29,8 @@ const config = {
   ownerUsername: process.env.OWNER_USERNAME || '',
   ownerPassword: process.env.OWNER_PASSWORD || '',
   ownerDisplayName: process.env.OWNER_DISPLAY_NAME || 'Thom Tran',
-  maxUploadMb: toInt(process.env.MAX_UPLOAD_MB, 100),
+  // Mặc định 95 MB: Cloudflare (gói Free) chặn mọi request trên 100 MB
+  maxUploadMb: toInt(process.env.MAX_UPLOAD_MB, 95),
   frontendDist: path.join(ROOT_DIR, 'frontend', 'dist'),
 };
 

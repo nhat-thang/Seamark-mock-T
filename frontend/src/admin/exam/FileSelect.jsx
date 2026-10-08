@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { apiUpload } from '../../utils/api.js';
+import { uploadMedia } from '../../utils/api.js';
 import { mediaKind, sameFile } from '../../utils/fileRefs.js';
 
 const ACCEPT = {
@@ -56,8 +56,7 @@ export function UploadButton({ examId, setMedia, handleConflict, label, kind = '
     setBusy(true);
     setError('');
     try {
-      const r = await apiUpload(`/admin/exams/${examId}/media`, 'files', files);
-      setMedia(r.media);
+      const r = await uploadMedia(examId, files, (b) => setMedia(b.media));
       if (r.accepted.length) onUploaded(r.accepted);
       if (r.rejected.length) setError(r.rejected.join(' '));
     } catch (err) {

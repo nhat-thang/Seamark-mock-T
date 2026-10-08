@@ -33,7 +33,11 @@ async function request(method, path, body, headers = {}) {
   // Nhận về thứ không phải dữ liệu của web (ví dụ trang lỗi của Cloudflare, hoặc một chương trình khác
   // đang chiếm cổng của backend khi chạy thử trên máy) -> coi như không kết nối được máy chủ
   if (!isJson) {
-    const err = new Error('Không kết nối được máy chủ của web. Vui lòng thử lại sau ít phút.');
+    const err = new Error(
+      res.status === 413
+        ? 'File gửi lên quá lớn. Mỗi file tối đa khoảng 95 MB; audio nên nén nhỏ lại (ví dụ mp3 64–96 kbps).'
+        : 'Không kết nối được máy chủ của web. Vui lòng thử lại sau ít phút.',
+    );
     err.status = res.ok ? 502 : res.status;
     throw err;
   }
@@ -60,4 +64,44 @@ export function apiUpload(path, field, files) {
   const form = new FormData();
   for (const f of files) form.append(field, f, f.name);
   return request('POST', path, form);
+}
+
+// Cloudflare (gói Free) chặn mỗi lần gửi trên 100 MB -> mỗi đợt gửi tối đa 90 MB và 10 file
+const BATCH_BYTES = 90 * 1024 * 1024;
+const BATCH_FILES = 10;
+
+/** Chia danh sách file thành từng đợt nhỏ (file lớn hơn giới hạn đi một mình, server sẽ báo lỗi rõ ràng) */
+export function uploadBatches(files) {
+  const batches = [];
+  let current = [];
+  let size = 0;
+  for (const f of files) {
+    if (current.length && (size + f.size > BATCH_BYTES || current.length >= BATCH_FILES)) {
+      batches.push(current);
+      current = [];
+      size = 0;
+    }
+    current.push(f);
+    size += f.size;
+  }
+  if (current.length) batches.push(current);
+  return batches;
+}
+
+/**
+ * Tải ảnh / audio của đề lên theo từng đợt. Trả về { accepted, rejected, media } gộp của mọi đợt.
+ * onBatch(kết quả từng đợt) để trang cập nhật danh sách file ngay sau mỗi đợt.
+ */
+export async function uploadMedia(examId, files, onBatch) {
+  const accepted = [];
+  const rejected = [];
+  let media = null;
+  for (const batch of uploadBatches(files)) {
+    const r = await apiUpload(`/admin/exams/${examId}/media`, 'files', batch);
+    accepted.push(...r.accepted);
+    rejected.push(...r.rejected);
+    media = r.media;
+    onBatch?.(r);
+  }
+  return { accepted, rejected, media };
 }
