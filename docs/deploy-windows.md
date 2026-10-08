@@ -220,7 +220,6 @@ $nssm = "C:\tools\nssm\nssm.exe"
 & $nssm install toeic-tunnel "C:\tools\cloudflared\cloudflared.exe" "tunnel --url http://localhost:3000"
 & $nssm set toeic-tunnel DisplayName "Link tam Cloudflare cho web TOEIC"
 & $nssm set toeic-tunnel Start SERVICE_AUTO_START
-& $nssm set toeic-tunnel DependOnService toeic-web
 & $nssm set toeic-tunnel ObjectName "NT AUTHORITY\LocalService" ""
 icacls C:\toeic\logs /grant "LOCAL SERVICE:(OI)(CI)M" | Out-Null
 & $nssm set toeic-tunnel AppStdout "C:\toeic\logs\tunnel.log"

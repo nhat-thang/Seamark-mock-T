@@ -43,8 +43,18 @@ if ($LASTEXITCODE -ne 0) { Fail 'Khong tai duoc code moi (git pull). Web van cha
 
 # ---- Tắt web để cài thư viện (Windows khóa các file thư viện đang được web dùng) ----
 Step '3/6 Tat web'
+# Dịch vụ khác phụ thuộc vào web (ví dụ link tạm "toeic-tunnel" cài theo hướng dẫn cũ) làm Windows từ chối tắt web
+# -> bỏ sự phụ thuộc đó (cloudflared tự kết nối lại khi web chạy lại, không cần phụ thuộc)
+foreach ($dep in (Get-Service -Name $Service).DependentServices) {
+  sc.exe config $dep.Name depend= / | Out-Null   # "depend= /" = không phụ thuộc dịch vụ nào
+}
 & $Nssm stop $Service | Out-Null
-Start-Sleep -Seconds 2
+# Chờ web tắt hẳn (tối đa 30 giây): web còn chạy thì Windows khóa file thư viện, npm ci sẽ lỗi
+for ($i = 0; $i -lt 15 -and (Get-Service -Name $Service).Status -ne 'Stopped'; $i++) { Start-Sleep -Seconds 2 }
+if ((Get-Service -Name $Service).Status -ne 'Stopped') {
+  & $Nssm start $Service | Out-Null
+  Fail 'Khong tat duoc web nen chua cai dat gi. Web van chay ban cu. Gui man hinh nay cho nguoi ho tro.'
+}
 
 $problem = $null
 Step '4/6 Cai thu vien (npm ci)'
