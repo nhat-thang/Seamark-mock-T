@@ -14,7 +14,14 @@ export default function QuestionCard({
   return (
     <div id={`q-${q.no}`} className={`question-card ${flagged ? 'is-flagged' : ''}`}>
       <div className="question-head">
-        <span className="question-no">Question {label}</span>
+        <span className="question-no">
+          Question {label}
+          {q.required && (
+            <span className="question-required" title="Câu bắt buộc">
+              {' '}*
+            </span>
+          )}
+        </span>
         {showFlag && (
           <label className="checkbox-label question-flag">
             <input type="checkbox" checked={flagged} onChange={() => onToggleFlag(q.no)} />
@@ -24,13 +31,18 @@ export default function QuestionCard({
       </div>
 
       {q.audio && <AudioPlayer key={q.audio} src={q.audio} allowSeek={allowSeek} label={`Audio question ${label}`} />}
-      {q.image && <img src={q.image} alt={`Ảnh question ${label}`} className="question-image" />}
+      {q.image && (
+        <div className={`question-image-wrap align-${q.imageAlign || 'left'}`}>
+          <img src={q.image} alt={`Ảnh question ${label}`} className="question-image" />
+        </div>
+      )}
 
       {q.question ? (
         <p className="question-text">{q.question}</p>
       ) : examType !== 'CUSTOM' && q.part === 6 ? (
         <p className="question-text muted">Chọn đáp án phù hợp cho chỗ trống ({label}) trong đoạn văn.</p>
       ) : null}
+      {q.description && <p className="question-desc">{q.description}</p>}
 
       <div className={`question-options ${hideOptionText ? 'is-compact' : ''}`} role="radiogroup" aria-label={`Question ${label}`}>
         {letters.map((letter) => (
@@ -43,7 +55,12 @@ export default function QuestionCard({
               onChange={() => onChoose(q.no, letter)}
             />
             <span className="option-letter">{letter}</span>
-            {!hideOptionText && <span className="option-text">{q.options[letter]}</span>}
+            {!hideOptionText && (
+              <span className="option-text">
+                {q.options[letter]}
+                {q.optionImages?.[letter] && <img src={q.optionImages[letter]} alt={`Ảnh lựa chọn ${letter}`} className="option-image" />}
+              </span>
+            )}
           </label>
         ))}
       </div>

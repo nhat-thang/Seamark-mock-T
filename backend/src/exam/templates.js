@@ -8,11 +8,17 @@ function toStructure(content) {
     examType: 'CUSTOM',
     shuffleQuestions: !!content.shuffleQuestions,
     parts: content.parts.map((p) => ({ name: p.name, directions: p.directions || '', audio: null })),
-    groups: content.groups.map((g) => ({ code: g.code, part: g.part, kind: 'reading', passage: '', passageImages: [], image: null, audio: null })),
+    groups: content.groups.map((g) => ({
+      code: g.code, part: g.part, kind: 'reading', blockType: g.blockType || 'text', passage: '', passageImages: [], image: null, audio: null,
+    })),
     questions: content.questions.map((q) => ({
       part: q.part,
       groupCode: q.groupCode || null,
-      // giữ số lựa chọn (A–B hay A–F), bỏ nội dung
+      // giữ loại câu, điểm, bắt buộc và số lựa chọn (A–B hay A–F), bỏ nội dung
+      type: q.type,
+      points: q.points,
+      required: !!q.required,
+      shuffleOptions: !!q.shuffleOptions,
       options: Object.fromEntries(Object.keys(q.options || { A: '', B: '', C: '', D: '' }).map((l) => [l, ''])),
     })),
   };

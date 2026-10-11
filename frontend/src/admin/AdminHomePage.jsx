@@ -1,5 +1,35 @@
 import { Link } from 'react-router-dom';
+import LineIcon from '../components/brand/LineIcon.jsx';
+import { Bubbles, DotGrid, Dolphin, Emblem, Sparkle, Waves } from '../components/brand/SeaArt.jsx';
 import { useAdmin } from './AdminLayout.jsx';
+
+// Các chức năng (mỗi thẻ bấm được cả thẻ). tone: màu ô biểu tượng
+const WORK = [
+  { to: '/admin/de-thi', icon: 'exam', tone: 'blue', title: 'Quản lý đề thi', text: 'Tạo đề, sửa thông tin đề, ghi chú nội bộ, xem trước và xuất bản đề cho học viên.' },
+  { to: '/admin/ket-qua', icon: 'chart', tone: 'sky', title: 'Kết quả làm bài', text: 'Xem điểm và bài làm của học viên, lọc theo tên, số điện thoại, đề thi, xuất Excel.' },
+  { to: '/admin/doi-mat-khau', icon: 'key', tone: 'yellow', title: 'Đổi mật khẩu', text: 'Đổi mật khẩu đăng nhập của bạn.' },
+  { to: '/admin/huong-dan', icon: 'help', tone: 'orange', title: 'Hướng dẫn sử dụng', text: 'Cách soạn đề, dán đề có sẵn, xuất bản và xem kết quả — từng bước một.' },
+];
+const OWNER = [
+  { to: '/admin/tai-khoan', icon: 'users', tone: 'navy', title: 'Tài khoản admin', text: 'Tạo tài khoản cho giáo viên, vô hiệu hóa tài khoản, đặt lại mật khẩu khi ai đó quên.' },
+  { to: '/admin/lich-su-chinh-sua', icon: 'history', tone: 'navy', title: 'Lịch sử chỉnh sửa', text: 'Xem ai đã thay đổi gì trên web (đề thi, tài liệu, tài khoản) và vào lúc nào.' },
+  { to: '/admin/lich-su-dang-nhap', icon: 'login', tone: 'navy', title: 'Lịch sử đăng nhập', text: 'Xem ai đã đăng nhập, lúc nào, từ đâu, và các lần đăng nhập sai.' },
+];
+
+function FeatureCard({ to, icon, tone, title, text }) {
+  return (
+    <Link to={to} className="admin-card">
+      <span className={`admin-card-icon tone-${tone}`}>
+        <LineIcon name={icon} size={28} />
+      </span>
+      <h3>{title}</h3>
+      <p>{text}</p>
+      <span className="admin-card-open">
+        Mở <LineIcon name="arrow" size={18} />
+      </span>
+    </Link>
+  );
+}
 
 // Trang chính: mọi admin thấy giống nhau; admin chính có thêm khu vực riêng.
 export default function AdminHomePage() {
@@ -7,29 +37,38 @@ export default function AdminHomePage() {
 
   return (
     <>
-      <h1 className="admin-title">Trang chính</h1>
-      <p className="admin-intro">
-        Chọn một chức năng bên dưới để bắt đầu. Lần đầu dùng? Đọc <Link to="/admin/huong-dan">Hướng dẫn sử dụng</Link>.
-      </p>
+      <section className="admin-welcome">
+        <Bubbles />
+        <DotGrid className="admin-welcome-dots" rows={3} cols={6} />
+        <Sparkle className="admin-welcome-spark" size={22} />
+        <Dolphin className="admin-welcome-dolphin sea-float" />
+
+        <div className="admin-welcome-text">
+          <p className="admin-welcome-hello">Trang chính</p>
+          <h1 className="admin-welcome-title">Xin chào, {admin.displayName}!</h1>
+          <p className="admin-welcome-intro">
+            Hôm nay bạn muốn làm gì? Chọn một việc bên dưới. Lần đầu dùng? Đọc{' '}
+            <Link to="/admin/huong-dan">Hướng dẫn sử dụng</Link>.
+          </p>
+          <div className="admin-welcome-actions">
+            <Link to="/admin/de-thi" className="btn btn-sun">
+              <LineIcon name="exam" size={22} />
+              Soạn / quản lý đề thi
+            </Link>
+            <Link to="/admin/ket-qua" className="btn btn-ghost-light">
+              <LineIcon name="chart" size={20} />
+              Xem kết quả
+            </Link>
+          </div>
+        </div>
+        <Emblem className="admin-welcome-emblem sea-float" alt="" />
+        <Waves className="admin-welcome-waves" colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.3)', 'rgba(255,255,255,0.5)']} />
+      </section>
 
       <section className="admin-section">
         <h2 className="admin-section-title">Công việc</h2>
         <div className="admin-cards">
-          <div className="admin-card">
-            <h3>Quản lý đề thi</h3>
-            <p>Tạo đề, sửa thông tin đề, ghi chú nội bộ, xem trước và xuất bản đề cho học viên.</p>
-            <Link to="/admin/de-thi" className="btn btn-primary btn-small">Mở</Link>
-          </div>
-          <div className="admin-card">
-            <h3>Kết quả làm bài</h3>
-            <p>Xem điểm và bài làm của học viên, lọc theo tên, số điện thoại, đề thi, xuất Excel.</p>
-            <Link to="/admin/ket-qua" className="btn btn-primary btn-small">Mở</Link>
-          </div>
-          <div className="admin-card">
-            <h3>Đổi mật khẩu</h3>
-            <p>Đổi mật khẩu đăng nhập của bạn.</p>
-            <Link to="/admin/doi-mat-khau" className="btn btn-secondary btn-small">Mở</Link>
-          </div>
+          {WORK.map((c) => <FeatureCard key={c.to} {...c} />)}
         </div>
       </section>
 
@@ -37,21 +76,7 @@ export default function AdminHomePage() {
         <section className="admin-section">
           <h2 className="admin-section-title">Dành riêng cho admin chính</h2>
           <div className="admin-cards">
-            <div className="admin-card">
-              <h3>Tài khoản admin</h3>
-              <p>Tạo tài khoản cho giáo viên, vô hiệu hóa tài khoản, đặt lại mật khẩu khi ai đó quên.</p>
-              <Link to="/admin/tai-khoan" className="btn btn-primary btn-small">Mở</Link>
-            </div>
-            <div className="admin-card">
-              <h3>Lịch sử chỉnh sửa</h3>
-              <p>Xem ai đã thay đổi gì trên web (đề thi, tài liệu, tài khoản) và vào lúc nào.</p>
-              <Link to="/admin/lich-su-chinh-sua" className="btn btn-primary btn-small">Mở</Link>
-            </div>
-            <div className="admin-card">
-              <h3>Lịch sử đăng nhập</h3>
-              <p>Xem ai đã đăng nhập, lúc nào, từ đâu, và các lần đăng nhập sai.</p>
-              <Link to="/admin/lich-su-dang-nhap" className="btn btn-primary btn-small">Mở</Link>
-            </div>
+            {OWNER.map((c) => <FeatureCard key={c.to} {...c} />)}
           </div>
         </section>
       )}

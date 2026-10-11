@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiGet, apiPost } from '../utils/api.js';
 import { saveAttemptToken } from '../utils/attemptStorage.js';
+import { ArrowIcon } from './brand/SiteHeader.jsx';
 import './ExamList.css';
 
 // Danh sách đề đã xuất bản, lấy từ GET /api/exams
@@ -78,10 +79,16 @@ export default function ExamList({ student }) {
       <ul className="exam-list">
         {exams.map((exam) => (
           <li key={exam.id} className="exam-item">
+            <span className="exam-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24">
+                <path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm8 0v4h4M9 12h6M9 16h6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
             <div className="exam-info">
               <h2 className="exam-title">{exam.title}</h2>
               <p className="exam-meta">
-                {exam.questionCount} câu · {exam.durationMinutes} phút
+                <span className="exam-chip">{exam.questionCount} câu</span>
+                <span className="exam-chip">{exam.durationMinutes} phút</span>
               </p>
             </div>
             <button
@@ -91,6 +98,7 @@ export default function ExamList({ student }) {
               onClick={() => handleStart(exam)}
             >
               {startingId === exam.id ? 'Đang mở…' : 'Làm bài'}
+              {startingId !== exam.id && <ArrowIcon />}
             </button>
           </li>
         ))}

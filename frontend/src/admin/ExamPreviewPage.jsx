@@ -97,6 +97,7 @@ function Preview({ exam, content }) {
             </span>
           </div>
 
+          {pageIndex === 0 && content.description && <p className="exam-description card">{content.description}</p>}
           {page.firstOfPart && <PartIntro content={content} part={page.part} />}
           <ListeningAudio content={content} part={page.part} allowSeek={exam.allowSeekAudio} />
 

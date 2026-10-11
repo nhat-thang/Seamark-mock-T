@@ -1,0 +1,269 @@
+/* Hình trang trí chủ đề biển cả (SeaArt.jsx) + thanh đầu trang của học viên (SiteHeader.jsx) */
+
+.sea-waves,
+.sea-bubbles,
+.sea-sparkle,
+.sea-dots,
+.sea-stripes,
+.sea-dolphin,
+.sea-lifebuoy {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ---------- Sóng ---------- */
+.sea-waves {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 110px;
+  overflow: hidden;
+}
+.sea-wave {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 200%;
+  height: 100%;
+  animation: sea-drift 22s linear infinite;
+}
+.sea-wave-1 {
+  height: 100%;
+  animation-duration: 30s;
+  animation-direction: reverse;
+}
+.sea-wave-2 {
+  height: 80%;
+  animation-duration: 22s;
+}
+.sea-wave-3 {
+  height: 58%;
+  animation-duration: 16s;
+}
+@keyframes sea-drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ---------- Bong bóng ---------- */
+.sea-bubbles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.sea-bubbles span {
+  position: absolute;
+  bottom: -30px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.05) 60%);
+  animation: sea-rise 11s ease-in infinite;
+  opacity: 0;
+}
+@keyframes sea-rise {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  50% {
+    transform: translateY(-45vh) translateX(10px);
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-90vh) translateX(-6px);
+    opacity: 0;
+  }
+}
+
+/* ---------- Sao lấp lánh ---------- */
+.sea-sparkle {
+  animation: sea-twinkle 3.2s ease-in-out infinite;
+}
+@keyframes sea-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.75) rotate(20deg);
+  }
+}
+
+/* ---------- Cá heo nhấp nhô ---------- */
+.sea-dolphin {
+  display: block;
+}
+.sea-float {
+  animation: sea-float 6s ease-in-out infinite;
+}
+@keyframes sea-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(2deg);
+  }
+}
+
+.sea-emblem {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* ---------- Thanh đầu trang (trang học viên) ---------- */
+.site-header {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem clamp(16px, 4vw, 48px);
+}
+.site-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 12px;
+}
+.site-brand:focus-visible {
+  outline: 3px solid var(--brand-yellow);
+  outline-offset: 4px;
+}
+.site-brand-logo {
+  width: 52px;
+  height: 52px;
+  padding: 5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(10, 30, 90, 0.3);
+  object-fit: contain;
+}
+.site-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.site-brand-name {
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.site-brand-sub {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+/* Nút sáng trên nền xanh (ví dụ "Đăng nhập admin") */
+.btn-ghost-light {
+  min-height: 44px;
+  padding: 0 1.1rem;
+  gap: 0.5rem;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.55);
+  font-size: 0.92rem;
+  backdrop-filter: blur(4px);
+}
+.btn-ghost-light:hover {
+  background: rgba(255, 255, 255, 0.24);
+  border-color: #fff;
+}
+.btn-ghost-light:focus-visible {
+  outline-color: var(--brand-yellow);
+}
+
+/* Nút vàng nổi bật (như dải vàng trong banner) */
+.btn-sun {
+  gap: 0.6rem;
+  background: var(--brand-yellow);
+  color: var(--brand-navy);
+  border-color: var(--brand-yellow);
+  box-shadow: 0 10px 24px rgba(255, 170, 0, 0.35), inset 0 -3px 0 rgba(0, 0, 0, 0.08);
+}
+.btn-sun:hover {
+  background: var(--brand-yellow-hover);
+  border-color: var(--brand-yellow-hover);
+}
+.btn-sun:focus-visible {
+  outline-color: #fff;
+}
+.btn-sun svg {
+  transition: transform 0.2s;
+}
+.btn-sun:hover svg {
+  transform: translateX(4px);
+}
+
+@media (max-width: 600px) {
+  .site-brand-logo {
+    width: 42px;
+    height: 42px;
+  }
+  .site-brand-name {
+    font-size: 0.95rem;
+  }
+  .site-brand-sub {
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
+  }
+}
+
+/* Điện thoại nhỏ: thu gọn logo để nút bên phải không bị tràn */
+@media (max-width: 400px) {
+  .site-header {
+    gap: 0.5rem;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .site-brand {
+    gap: 0.45rem;
+  }
+  .site-brand-logo {
+    width: 36px;
+    height: 36px;
+    padding: 3px;
+  }
+  .site-brand-name {
+    font-size: 0.85rem;
+  }
+  .site-brand-sub {
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+  }
+}
+
+/* Người dùng tắt chuyển động trong hệ điều hành: dừng mọi hiệu ứng */
+@media (prefers-reduced-motion: reduce) {
+  .sea-wave,
+  .sea-bubbles span,
+  .sea-sparkle,
+  .sea-float {
+    animation: none !important;
+  }
+  .sea-bubbles span {
+    opacity: 0.5;
+    bottom: 20%;
+  }
+}

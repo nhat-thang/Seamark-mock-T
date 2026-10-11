@@ -164,7 +164,21 @@ function ExamEditor({ examId, initial }) {
   }
 
   // ---------- Lưu ----------
+  // Chỉ gửi một lần lưu tại một thời điểm: hai lần lưu cùng lúc mang cùng số version -> server báo xung đột (409)
+  const inflight = useRef(null);
   const save = useCallback(async () => {
+    while (inflight.current) await inflight.current.catch(() => {});
+    const p = saveNow();
+    inflight.current = p;
+    try {
+      return await p;
+    } finally {
+      inflight.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [examId]);
+
+  async function saveNow() {
     clearTimeout(saveTimer.current);
     if (!dirty.current || modeRef.current !== 'edit') return true;
     const snapshot = latest.current;
@@ -202,8 +216,7 @@ function ExamEditor({ examId, initial }) {
       saveTimer.current = setTimeout(save, RETRY_DELAY_MS);
       return false;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [examId]);
+  }
 
   /** Ghi nhận thay đổi: lưu tạm trên máy ngay, lên server sau 2 giây (hoặc ngay nếu immediate) */
   function applyChange({ settings: s, content: c }, { src = 'editor', sourceName = '', immediate = false } = {}) {

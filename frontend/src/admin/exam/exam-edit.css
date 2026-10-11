@@ -616,3 +616,247 @@
   padding: 0 0.5rem;
   text-align: center;
 }
+
+/* ===== Dán đề có sẵn (PasteImport.jsx) ===== */
+.outline-paste {
+  width: 100%;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.outline-paste.is-current {
+  background: var(--color-primary-soft-hover);
+  border-color: var(--color-primary);
+}
+
+/* Đánh dấu "cần xem lại" sau khi dán đề */
+.review-bar,
+.review-box {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--color-flag);
+  border-radius: var(--radius-small);
+  background: var(--color-warn-bg);
+  color: var(--color-warn);
+}
+
+.review-bar p,
+.review-box p {
+  margin: 0.25rem 0;
+}
+
+.review-box {
+  margin-bottom: 1rem;
+}
+
+.review-badge {
+  color: var(--color-warn);
+  font-weight: 600;
+  font-size: 0.85em;
+}
+
+.paste-steps {
+  margin: 0 0 0.5rem;
+  padding-left: 1.4rem;
+  line-height: 1.6;
+}
+
+.paste kbd {
+  padding: 0 0.35rem;
+  border: 1px solid var(--color-border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--color-surface);
+  font-family: inherit;
+  font-size: 0.85em;
+}
+
+.paste-text {
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.paste-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.paste-tag {
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.tag-image,
+.tag-warn {
+  background: var(--color-warn-bg);
+  color: var(--color-warn);
+}
+
+.tag-ai {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.paste-ai {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-small);
+  background: var(--color-primary-soft);
+}
+
+.paste-ai progress {
+  flex: 1;
+  min-width: 120px;
+  height: 10px;
+  accent-color: var(--color-primary);
+}
+
+.paste-ai-usage {
+  margin-left: auto;
+}
+
+.text-success {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.paste-filter {
+  margin-bottom: 0.5rem;
+}
+
+.paste-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.paste-item {
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-surface);
+}
+
+.paste-item.needs-review {
+  border-color: var(--color-flag);
+  border-left-width: 4px;
+}
+
+.paste-item.is-excluded {
+  opacity: 0.5;
+}
+
+.paste-q {
+  margin: 0.4rem 0;
+  white-space: pre-wrap;
+}
+
+.paste-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.35rem;
+  margin: 0.4rem 0;
+}
+
+.paste-option {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-start;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.paste-option:hover {
+  border-color: var(--color-focus);
+}
+
+.paste-option.is-answer {
+  border-color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.paste-option.is-answer.by-ai {
+  border-color: var(--color-primary);
+  border-style: dashed;
+  background: var(--color-primary-soft);
+}
+
+.paste-flags {
+  margin: 0.3rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.92rem;
+}
+
+.paste-flags li {
+  margin-top: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+}
+
+.flag-error {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+.flag-warn,
+.flag-image {
+  background: var(--color-warn-bg);
+  color: var(--color-warn);
+}
+
+.flag-ai {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.paste-passage,
+.paste-ignored {
+  padding: 0.5rem 0.75rem;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-small);
+  background: var(--color-bg);
+}
+
+.paste-passage summary,
+.paste-ignored summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.paste-passage pre,
+.paste-ignored pre {
+  max-height: 260px;
+  overflow: auto;
+  margin: 0.5rem 0 0;
+  font-family: inherit;
+  white-space: pre-wrap;
+}
+
+.paste-ignored {
+  margin-top: 0.75rem;
+}
+
+.paste-apply {
+  position: sticky;
+  bottom: 0;
+  margin-top: 0.75rem;
+  padding: 0.75rem 0;
+  background: var(--color-surface);
+}

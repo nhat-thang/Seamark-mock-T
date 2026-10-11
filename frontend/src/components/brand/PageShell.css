@@ -1,0 +1,163 @@
+/* Khung trang học viên (PageShell.jsx) */
+.shell {
+  min-height: 100vh;
+  background: #f3f8fe;
+  overflow-x: hidden;
+}
+
+.shell-top {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  padding-bottom: 150px;
+  background:
+    radial-gradient(circle at 85% 20%, rgba(120, 180, 255, 0.45), transparent 40%),
+    linear-gradient(160deg, #2a6be0 0%, var(--brand-blue) 50%, var(--brand-blue-deep) 100%);
+}
+.shell-dots {
+  position: absolute;
+  top: 90px;
+  right: 6%;
+  color: rgba(255, 255, 255, 0.4);
+}
+.shell-spark {
+  position: absolute;
+  color: #fff;
+}
+.shell-spark-1 {
+  top: 110px;
+  left: 8%;
+}
+.shell-spark-2 {
+  top: 170px;
+  right: 22%;
+  color: var(--brand-yellow);
+  animation-delay: 1s;
+}
+.shell-dolphin {
+  position: absolute;
+  left: 6%;
+  bottom: 70px;
+  width: 110px;
+  color: rgba(255, 255, 255, 0.85);
+  --dolphin-eye: var(--brand-blue);
+}
+
+.shell-heading {
+  position: relative;
+  z-index: 2;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0.6rem 16px 0;
+  text-align: center;
+}
+.shell-title {
+  margin: 0 0 0.3rem;
+  font-weight: 800;
+  font-size: clamp(1.6rem, 4vw, 2.3rem);
+  text-shadow: 0 4px 18px rgba(10, 30, 100, 0.3);
+}
+.shell-subtitle {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+/* Thanh các bước: 1 Thông tin -> 2 Chọn đề -> 3 Làm bài */
+.shell-steps {
+  list-style: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 1.3rem 0 0;
+  padding: 0;
+}
+.shell-steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+.shell-steps li + li::before {
+  content: '';
+  width: 34px;
+  height: 2px;
+  margin-right: 0.4rem;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.4);
+}
+.shell-step-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+.shell-steps li.is-current {
+  color: #fff;
+}
+.shell-steps li.is-current .shell-step-no {
+  background: var(--brand-yellow);
+  border-color: var(--brand-yellow);
+  color: var(--brand-navy);
+  box-shadow: 0 0 0 5px rgba(255, 198, 46, 0.3);
+}
+.shell-steps li.is-done {
+  color: #fff;
+}
+.shell-steps li.is-done .shell-step-no {
+  background: #fff;
+  border-color: #fff;
+  color: var(--brand-blue);
+}
+
+/* Nội dung: thẻ trắng nổi lên trên mép sóng */
+.shell-main {
+  position: relative;
+  z-index: 3;
+  max-width: 640px;
+  margin: -120px auto 0;
+  padding: 0 16px 3rem;
+}
+.shell-main.is-narrow {
+  max-width: 480px;
+}
+.shell-main.is-wide {
+  max-width: 920px;
+}
+.shell-main > .card,
+.shell-main > * > .card {
+  border: none;
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(20, 60, 150, 0.16);
+}
+
+@media (max-width: 600px) {
+  .shell-top {
+    padding-bottom: 120px;
+  }
+  .shell-main {
+    margin-top: -95px;
+  }
+  .shell-steps li {
+    font-size: 0.75rem;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .shell-steps li + li::before {
+    display: none;
+  }
+  .shell-steps {
+    gap: 1.2rem;
+  }
+  .shell-dolphin,
+  .shell-dots {
+    display: none;
+  }
+}

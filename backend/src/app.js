@@ -12,6 +12,7 @@ const adminExamsRouter = require('./routes/adminExams');
 const filesRouter = require('./routes/files');
 const resultsRouter = require('./routes/results');
 const templatesRouter = require('./routes/templates');
+const aiRouter = require('./routes/ai');
 const { requireAdmin, requireOwner } = require('./auth/middleware');
 
 /**
@@ -45,6 +46,7 @@ function createApp({ db, config }) {
   admin.use('/exams', adminExamsRouter(db, config));
   admin.use('/results', resultsRouter(db));
   admin.use('/templates', templatesRouter(db));
+  admin.use('/ai', aiRouter(db, config));
   // Tải file Excel mẫu (docs/mau-de-toeic.xlsx)
   admin.get('/excel-template', (req, res) => {
     res.download(path.join(config.rootDir, 'docs', 'mau-de-toeic.xlsx'), 'mau-de-toeic.xlsx', (err) => {

@@ -56,7 +56,7 @@ test('Kiểm tra trước xuất bản: thiếu đáp án, lựa chọn trống,
   assert.ok(errors.includes('Question 1 chưa có đáp án.'));
   assert.ok(errors.includes('Question 2 chưa có nội dung lựa chọn C.'));
   assert.ok(errors.some((e) => e.startsWith('Question 7 chưa có nội dung')));
-  assert.ok(errors.includes('Nhóm N1 chưa có đoạn văn (chữ, ảnh hoặc audio).'));
+  assert.ok(errors.includes('Khối N1 chưa có nội dung (chữ, ảnh hoặc audio).'));
 });
 
 test('Xáo trộn: chỉ xáo trong từng phần, câu cùng nhóm luôn liền nhau theo thứ tự gốc', () => {

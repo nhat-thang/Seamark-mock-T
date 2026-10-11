@@ -4,33 +4,77 @@
   min-height: 100vh;
 }
 
-/* ---------- Thanh trên cùng ---------- */
+/* ---------- Thanh trên cùng (màu thương hiệu, logo cá heo) ---------- */
 .admin-topbar {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.8rem 1.5rem;
-  padding: 0.8rem 2rem;
-  background: var(--color-primary);
-  color: var(--color-primary-text);
+  padding: 0.75rem 2rem;
+  color: #fff;
+  background:
+    radial-gradient(circle at 80% -40%, rgba(120, 180, 255, 0.55), transparent 45%),
+    linear-gradient(120deg, var(--brand-blue-deep) 0%, var(--brand-blue) 55%, #2a6be0 100%);
+  border-bottom: 3px solid var(--brand-yellow);
+}
+.admin-topbar-spark {
+  position: absolute;
+  color: rgba(255, 255, 255, 0.7);
+}
+.admin-topbar-spark-1 {
+  top: 10px;
+  left: 42%;
+}
+.admin-topbar-spark-2 {
+  bottom: 10px;
+  left: 56%;
+  color: var(--brand-yellow);
+  animation-delay: 1.2s;
 }
 
 .admin-brand {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-  font-weight: 600;
-  font-size: 1.1rem;
+  gap: 0.75rem;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 12px;
 }
-
+.admin-brand:focus-visible {
+  outline: 3px solid var(--brand-yellow);
+  outline-offset: 4px;
+}
 .admin-brand-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 48px;
+  height: 48px;
+  padding: 4px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(10, 30, 90, 0.3);
+}
+.admin-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.admin-brand-name {
+  font-weight: 800;
+  font-size: 1.2rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.admin-brand-sub {
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0.85;
 }
 
 .admin-user {
+  position: relative;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -39,11 +83,12 @@
 
 .admin-role {
   margin-left: 0.6rem;
-  padding: 0.15rem 0.6rem;
+  padding: 0.15rem 0.7rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--brand-yellow);
+  color: var(--brand-navy);
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 800;
 }
 
 /* ---------- Menu ---------- */
@@ -51,18 +96,28 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.6rem 2rem;
-  background: var(--color-surface);
+  gap: 0.2rem;
+  padding: 0.5rem 1.5rem;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(6px);
   border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 4px 16px rgba(31, 79, 168, 0.06);
 }
 
 .admin-nav a {
-  padding: 0.55rem 1rem;
-  border-radius: var(--radius-small);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.95rem;
+  border-radius: 999px;
   color: var(--color-text);
   text-decoration: none;
   font-weight: 600;
+  transition: background-color 0.15s, color 0.15s;
+}
+.admin-nav a svg {
+  color: var(--brand-sky);
 }
 
 .admin-nav a:hover {
@@ -71,15 +126,18 @@
 
 /* Mục đang mở */
 .admin-nav a.active {
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
-  box-shadow: inset 0 -3px 0 var(--color-primary);
+  background: var(--brand-blue);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(31, 88, 204, 0.3);
+}
+.admin-nav a.active svg {
+  color: var(--brand-yellow);
 }
 
 .admin-nav-divider {
   width: 1px;
   height: 28px;
-  margin: 0 0.5rem;
+  margin: 0 0.3rem;
   background: var(--color-border);
 }
 
@@ -91,8 +149,22 @@
 }
 
 .admin-title {
+  position: relative;
   font-size: 1.6rem;
-  color: var(--color-primary);
+  font-weight: 800;
+  color: var(--brand-navy);
+  padding-bottom: 0.35rem;
+}
+/* Gạch vàng ngắn dưới tiêu đề trang */
+.admin-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 56px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--brand-yellow), var(--brand-orange));
 }
 
 .admin-intro {
@@ -106,30 +178,161 @@
 
 .admin-section-title {
   font-size: 1.2rem;
+  color: var(--brand-navy);
 }
 
-/* Lưới thẻ chức năng ở trang chính */
+/* ---------- Trang chính: khối chào (nền xanh biển, logo cá heo) ---------- */
+.admin-welcome {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  padding: 2rem 2.4rem 3.2rem;
+  border-radius: 24px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 85% 30%, rgba(120, 180, 255, 0.5), transparent 45%),
+    linear-gradient(150deg, #2a6be0 0%, var(--brand-blue) 50%, var(--brand-blue-deep) 100%);
+  box-shadow: 0 18px 40px rgba(31, 88, 204, 0.25);
+}
+.admin-welcome-text {
+  position: relative;
+  z-index: 2;
+  max-width: 640px;
+}
+.admin-welcome-hello {
+  display: inline-block;
+  margin: 0 0 0.6rem;
+  padding: 0.2rem 0.8rem;
+  border-radius: 999px;
+  background: var(--brand-yellow);
+  color: var(--brand-navy);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.admin-welcome-title {
+  margin: 0 0 0.4rem;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 800;
+}
+.admin-welcome-intro {
+  margin: 0 0 1.3rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+.admin-welcome-intro a {
+  color: var(--brand-yellow);
+  font-weight: 700;
+}
+.admin-welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+.admin-welcome-actions .btn {
+  gap: 0.5rem;
+  border-radius: 999px;
+}
+.admin-welcome-emblem {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  width: 200px;
+  padding: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 16px 36px rgba(8, 30, 100, 0.3);
+}
+.admin-welcome-dots {
+  position: absolute;
+  right: 260px;
+  top: 22px;
+  color: rgba(255, 255, 255, 0.4);
+}
+.admin-welcome-spark {
+  position: absolute;
+  right: 40px;
+  top: 18px;
+  color: var(--brand-yellow);
+}
+.admin-welcome-dolphin {
+  position: absolute;
+  right: 250px;
+  bottom: 34px;
+  width: 80px;
+  color: rgba(255, 255, 255, 0.75);
+  --dolphin-eye: var(--brand-blue);
+}
+.admin-welcome-waves {
+  height: 60px;
+}
+
+/* Lưới thẻ chức năng ở trang chính (bấm được cả thẻ) */
 .admin-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 1rem;
 }
 
 .admin-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   padding: 1.4rem;
   border: 1px solid var(--color-border);
-  border-top: 4px solid var(--color-accent);
-  border-radius: var(--radius);
+  border-radius: 20px;
   background: var(--color-surface);
   box-shadow: var(--shadow-card);
+  color: var(--color-text);
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.admin-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--brand-sky);
+  box-shadow: 0 16px 34px rgba(31, 88, 204, 0.14);
+}
+.admin-card:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.admin-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 0.3rem;
+  border-radius: 16px;
+  color: #fff;
+}
+.tone-blue {
+  background: linear-gradient(140deg, #3b7bea, var(--brand-blue-deep));
+}
+.tone-sky {
+  background: linear-gradient(140deg, #7cc0ea, var(--brand-sky));
+}
+.tone-yellow {
+  background: linear-gradient(140deg, #ffd766, var(--brand-yellow-hover));
+  color: var(--brand-navy);
+}
+.tone-orange {
+  background: linear-gradient(140deg, #ff9466, var(--brand-orange));
+}
+.tone-navy {
+  background: linear-gradient(140deg, var(--brand-sea), var(--brand-navy));
 }
 
 .admin-card h3 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.12rem;
+  color: var(--brand-navy);
 }
 
 .admin-card p {
@@ -138,9 +341,38 @@
   flex: 1;
 }
 
+.admin-card-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  align-self: flex-start;
+  margin-top: 0.6rem;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: 700;
+  transition: background-color 0.15s, color 0.15s;
+}
+.admin-card:hover .admin-card-open {
+  background: var(--brand-blue);
+  color: #fff;
+}
+
 .admin-card .btn {
   align-self: flex-start;
   margin-top: 0.5rem;
+}
+
+@media (max-width: 800px) {
+  .admin-welcome {
+    padding: 1.6rem 1.3rem 3rem;
+  }
+  .admin-welcome-emblem,
+  .admin-welcome-dolphin,
+  .admin-welcome-dots {
+    display: none;
+  }
 }
 
 .admin-card-soon {

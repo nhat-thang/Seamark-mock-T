@@ -142,6 +142,14 @@ BACKUP_DIR=C:\toeic-backup
 
 > Đường dẫn viết thẳng, **không** đặt trong dấu nháy kép. Mật khẩu không chứa dấu cách, `#` và dấu nháy. `MAX_UPLOAD_MB` không đặt quá 95 (Cloudflare gói Free chặn request trên 100 MB). Lưu file bằng Notepad với bảng mã **UTF-8**.
 
+**AI kiểm tra đề dán vào (không bắt buộc):** tạo API key Gemini miễn phí ở https://aistudio.google.com/apikey (nên dùng tài khoản Google của trung tâm, mỗi máy một key riêng), rồi thêm vào `.env`:
+
+```ini
+AI_API_KEY=<key vừa tạo>
+```
+
+Thêm / đổi key sau khi web đã chạy: sửa `.env` rồi `& C:\tools\nssm\nssm.exe restart toeic-web`. Không có key thì "Dán đề" vẫn tự tách đề, chỉ bỏ bước AI.
+
 Chỉ cho `webapp` và Administrators đọc file `.env` (file chứa mật khẩu):
 
 ```powershell
@@ -336,6 +344,7 @@ Script tự làm: sao lưu → `git pull` → tắt web → `npm ci` → build g
 | Đọc nhật ký thấy chữ tiếng Việt lỗi dấu | Thêm `-Encoding UTF8`: `Get-Content C:\toeic\logs\toeic-web.log -Tail 30 -Encoding UTF8`. |
 | Dịch vụ không chạy (`SERVICE_STOPPED`, `SERVICE_PAUSED`) | Xem `C:\toeic\logs\toeic-web.log`. `logon failure`: xem ghi chú ở mục 4. Hay gặp: `SESSION_SECRET` chưa đặt / quá ngắn; cổng 3000 bị chương trình khác dùng (`netstat -ano \| findstr :3000`); `webapp` không có quyền ghi `C:\toeic\data`. |
 | Trang web báo lỗi 502 / 1033 của Cloudflare | Dịch vụ `toeic-web` hoặc `cloudflared` đang tắt. Kiểm tra `Get-Service cloudflared` và `nssm status toeic-web`. |
+| "Dán đề" báo "API key của AI không đúng" / "Không tìm thấy mẫu AI" / "hết lượt" | Kiểm tra `AI_API_KEY` (và `AI_MODEL` nếu có) trong `.env`, rồi restart `toeic-web`. Hết lượt của gói miễn phí thì chờ sang ngày (giờ Mỹ) hoặc tăng gói ở Google AI Studio. |
 | Link `trycloudflare.com` không vào được nữa | Máy / dịch vụ đã khởi động lại nên link đổi tên. Lấy link mới bằng lệnh ở mục 5.1. |
 | Tải ảnh/audio lên báo "Yêu cầu không hợp lệ" | Chưa đặt **HTTP Host Header** ở bước 5.3. |
 | Đăng nhập xong vẫn bị đẩy ra | Đang vào bằng `http://` thay vì `https://` (cookie đăng nhập chỉ gửi qua HTTPS ở production). Bật Always Use HTTPS. |

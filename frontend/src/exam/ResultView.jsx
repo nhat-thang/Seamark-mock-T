@@ -4,20 +4,16 @@ import { formatDateTime } from '../utils/format.js';
 import { partName } from '../utils/parts.js';
 import PassageText from '../components/PassageText.jsx';
 import { GroupImages } from './PageMedia.jsx';
+import PageShell from '../components/brand/PageShell.jsx';
 
 // Trang kết quả sau khi nộp bài
 export default function ResultView({ view }) {
   const r = view.result;
 
   return (
-    <div className="result-page">
-      <header className="result-header">
-        <img src="/images/logo-seamark.png" alt="Seamark" className="result-logo" />
-      </header>
-
-      <main className="result-main">
+    <PageShell title="Kết quả bài làm" subtitle="Bạn đã hoàn thành bài thi. Cùng xem kết quả nhé!" wide>
+      <div className="result-main">
         <section className="card result-summary">
-          <h1 className="result-title">Kết quả bài làm</h1>
           <p className="result-meta">
             <strong>{view.examTitle}</strong>
             <br />
@@ -57,8 +53,8 @@ export default function ResultView({ view }) {
         </section>
 
         {r.showAnswers && r.details && <AnswerReview content={r.content} details={r.details} />}
-      </main>
-    </div>
+      </div>
+    </PageShell>
   );
 }
 

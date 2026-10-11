@@ -11,3 +11,8 @@
   max-width: 460px;
   text-align: center;
 }
+
+.notfound-emblem {
+  width: 160px;
+  margin: 0 auto 0.6rem;
+}

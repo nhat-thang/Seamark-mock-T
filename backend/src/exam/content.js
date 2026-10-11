@@ -76,10 +76,12 @@ function toStudentContent(content, order = null) {
   const c = withFileUrls(content); // tên file -> đường dẫn /api/files/...
   return {
     examType: c.examType || 'TOEIC_LR',
+    ...(c.description ? { description: c.description } : {}),
     audio: c.audio,
     parts: partsOf(c),
     groups: c.groups,
-    questions: orderedQuestions(c, order).map(({ answer, explanation, ...rest }) => rest), // eslint-disable-line no-unused-vars
+    // Bỏ đáp án (kể cả đáp án chấp nhận của câu trả lời ngắn), giải thích và đánh dấu nội bộ của giáo viên (review)
+    questions: orderedQuestions(c, order).map(({ answer, acceptedAnswers, othersWrong, explanation, review, ...rest }) => rest), // eslint-disable-line no-unused-vars
   };
 }
 

@@ -29,6 +29,9 @@ function listFileRefs(content) {
   for (const q of content?.questions || []) {
     if (q.image) refs.push({ name: q.image, where: `Ảnh câu ${q.no}`, kind: 'image' });
     if (q.audio) refs.push({ name: q.audio, where: `Audio câu ${q.no}`, kind: 'audio' });
+    for (const [l, img] of Object.entries(q.optionImages || {})) {
+      if (img) refs.push({ name: img, where: `Ảnh lựa chọn ${l} câu ${q.no}`, kind: 'image' });
+    }
   }
   return refs;
 }
@@ -67,7 +70,12 @@ function withFileUrls(content, files = content?.files || {}) {
       image: url(g.image),
       audio: url(g.audio),
     })),
-    questions: (content.questions || []).map((q) => ({ ...q, image: url(q.image), audio: url(q.audio) })),
+    questions: (content.questions || []).map((q) => ({
+      ...q,
+      image: url(q.image),
+      audio: url(q.audio),
+      ...(q.optionImages ? { optionImages: Object.fromEntries(Object.entries(q.optionImages).map(([l, n]) => [l, url(n)])) } : {}),
+    })),
   };
 }
 

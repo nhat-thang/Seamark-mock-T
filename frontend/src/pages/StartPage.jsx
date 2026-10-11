@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import StudentForm from '../components/StudentForm.jsx';
 import ExamList from '../components/ExamList.jsx';
+import PageShell from '../components/brand/PageShell.jsx';
 import { loadStudent, saveStudent } from '../utils/studentStorage.js';
 import './StartPage.css';
 
@@ -18,40 +18,27 @@ export default function StartPage() {
     setStep('exams');
   }
 
+  if (step === 'form') {
+    return (
+      <PageShell title="Thông tin học viên" subtitle="Vui lòng nhập thông tin trước khi chọn đề thi." step={1} narrow>
+        <div className="card">
+          <StudentForm initialValues={student} onSubmit={handleSubmit} />
+        </div>
+      </PageShell>
+    );
+  }
+
   return (
-    <div className="start-page">
-      {/* Ảnh trang trí: nằm phía sau nội dung, không bấm được, ẩn trên điện thoại */}
-      <img src="/images/decor-1.png" alt="" aria-hidden="true" className="decor decor-1" />
-      <img src="/images/decor-2.png" alt="" aria-hidden="true" className="decor decor-2" />
-
-      <header className="start-header">
-        <Link to="/" className="start-logo-link" aria-label="Về trang chủ">
-          <img src="/images/logo-seamark.png" alt="Seamark" className="start-logo" />
-        </Link>
-      </header>
-
-      <main className="start-main">
-        {step === 'form' ? (
-          <div className="card">
-            <h1 className="start-title">Thông tin học viên</h1>
-            <p className="muted start-subtitle">Vui lòng nhập thông tin trước khi chọn đề thi.</p>
-            <StudentForm initialValues={student} onSubmit={handleSubmit} />
-          </div>
-        ) : (
-          <div className="card">
-            <h1 className="start-title">
-              Xin chào {student.lastName} {student.firstName}
-            </h1>
-            <p className="muted start-subtitle">
-              Chọn một đề để bắt đầu.{' '}
-              <button type="button" className="btn btn-link" onClick={() => setStep('form')}>
-                Sửa thông tin
-              </button>
-            </p>
-            <ExamList student={student} />
-          </div>
-        )}
-      </main>
-    </div>
+    <PageShell title={`Xin chào ${student.lastName} ${student.firstName}!`} subtitle="Chọn một đề để bắt đầu. Chúc bạn làm bài thật tốt!" step={2}>
+      <div className="card">
+        <div className="start-card-head">
+          <h2 className="start-card-title">Đề thi đang mở</h2>
+          <button type="button" className="btn btn-link" onClick={() => setStep('form')}>
+            Sửa thông tin
+          </button>
+        </div>
+        <ExamList student={student} />
+      </div>
+    </PageShell>
   );
 }

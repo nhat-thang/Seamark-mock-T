@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ArrowIcon } from './brand/SiteHeader.jsx';
 import { validateStudent } from '../utils/validation.js';
 import './StudentForm.css';
 
@@ -62,8 +63,9 @@ export default function StudentForm({ initialValues, onSubmit }) {
         placeholder="Ví dụ: 0901234567"
         hint="Gồm 10 chữ số, bắt đầu bằng số 0."
       />
-      <button type="submit" className="btn btn-primary student-submit">
-        Tiếp tục
+      <button type="submit" className="btn btn-sun student-submit">
+        Tiếp tục: chọn đề
+        <ArrowIcon />
       </button>
     </form>
   );

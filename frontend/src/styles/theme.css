@@ -43,6 +43,16 @@
   --color-success: #1e7b4f;
   --color-success-bg: #e6f5ec;
 
+  /* Màu thương hiệu Seamark (theo logo cá heo + hải đăng và banner): dùng cho trang chủ, trang học viên */
+  --brand-blue: #1f58cc; /* xanh dương hoàng gia: nền chính */
+  --brand-blue-deep: #143f9e;
+  --brand-navy: #16235f; /* chữ "YEARS" */
+  --brand-sky: #55a3d6; /* thân cá heo */
+  --brand-sea: #34508a; /* vây cá heo, vòng tròn */
+  --brand-yellow: #ffc62e; /* nút, điểm nhấn như banner */
+  --brand-yellow-hover: #ffb703;
+  --brand-orange: #f2683a; /* biểu tượng tay chỉ trong banner */
+
   /* Kích thước, bo góc, bóng */
   --font-family: 'Be Vietnam Pro', 'Segoe UI', Roboto, Arial, sans-serif;
   --font-size-base: 18px;

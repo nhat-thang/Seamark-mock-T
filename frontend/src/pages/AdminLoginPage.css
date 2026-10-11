@@ -2,19 +2,6 @@
   text-align: left;
 }
 
-.login-logo {
-  display: block;
-  width: 72px;
-  margin: 0 auto 1rem;
-  border-radius: 16px;
-}
-
-.login-title {
-  text-align: center;
-  color: var(--color-primary);
-  font-size: 1.5rem;
-}
-
 .login-notice {
   padding: 0.9rem 1.1rem;
   border-radius: var(--radius-small);

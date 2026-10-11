@@ -23,7 +23,12 @@ export function resolveContentFiles(content, media) {
       image: url(g.image),
       audio: url(g.audio),
     })),
-    questions: content.questions.map((q) => ({ ...q, image: url(q.image), audio: url(q.audio) })),
+    questions: content.questions.map((q) => ({
+      ...q,
+      image: url(q.image),
+      audio: url(q.audio),
+      ...(q.optionImages ? { optionImages: Object.fromEntries(Object.entries(q.optionImages).map(([l, n]) => [l, url(n)])) } : {}),
+    })),
   };
 }
 
@@ -119,6 +124,20 @@ function customFileSlots(content) {
     const setQ = (patch) => (c) => ({ ...c, questions: c.questions.map((x) => (x.id === q.id ? { ...x, ...patch } : x)) });
     if (q.image) slots.push({ id: `q-${q.id}-img`, label: `Ảnh câu ${q.no}`, kind: 'image', name: q.image, set: (c, name) => setQ({ image: name })(c) });
     if (q.audio) slots.push({ id: `q-${q.id}-audio`, label: `Audio câu ${q.no}`, kind: 'audio', name: q.audio, set: (c, name) => setQ({ audio: name })(c) });
+    for (const [l, img] of Object.entries(q.optionImages || {})) {
+      if (!img) continue;
+      slots.push({
+        id: `q-${q.id}-opt-${l}`, label: `Ảnh lựa chọn ${l} câu ${q.no}`, kind: 'image', name: img,
+        set: (c, name) => ({
+          ...c,
+          questions: c.questions.map((x) => {
+            if (x.id !== q.id) return x;
+            const { [l]: _old, ...rest } = x.optionImages || {}; // eslint-disable-line no-unused-vars
+            return { ...x, optionImages: name ? { ...rest, [l]: name } : rest };
+          }),
+        }),
+      });
+    }
   }
   return slots;
 }
