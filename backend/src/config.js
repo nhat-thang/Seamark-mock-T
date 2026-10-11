@@ -32,6 +32,14 @@ const config = {
   // Mặc định 95 MB: Cloudflare (gói Free) chặn mọi request trên 100 MB
   maxUploadMb: toInt(process.env.MAX_UPLOAD_MB, 95),
   frontendDist: path.join(ROOT_DIR, 'frontend', 'dist'),
+  // AI kiểm tra đề dán vào (Gemini). Không có key thì tính năng dán đề vẫn chạy, chỉ bỏ bước AI.
+  ai: {
+    apiKey: (process.env.AI_API_KEY || '').trim(),
+    // "gemini-flash-latest" luôn trỏ tới mẫu Flash mới nhất của Google (không lo bị ngừng phiên bản cũ)
+    model: (process.env.AI_MODEL || 'gemini-flash-latest').trim(),
+    // Số lần gọi AI tối đa mỗi ngày (bảo vệ hạn mức của API key)
+    dailyLimit: toInt(process.env.AI_DAILY_LIMIT, 300),
+  },
 };
 
 // SESSION_SECRET dùng để băm mã phiên đăng nhập: bắt buộc phải có, và phải đủ dài

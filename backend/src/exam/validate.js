@@ -177,23 +177,42 @@ function validateCustom(content, { uploadedFiles = null } = {}) {
 
   for (const q of questions) {
     const label = `Question ${q.no}`;
-    const letters = Object.keys(q.options || {});
-    if (letters.length < 2) errors.push(`${label} cần ít nhất 2 lựa chọn.`);
-    const empty = letters.filter((l) => !String(q.options[l] ?? '').trim());
-    if (empty.length) errors.push(`${label} chưa có nội dung lựa chọn ${empty.join(', ')}.`);
-    if (!q.answer) errors.push(`${label} chưa có đáp án.`);
-    else if (!letters.includes(q.answer)) errors.push(`${label}: đáp án "${q.answer}" không có trong các lựa chọn.`);
+    const type = q.type || 'multiple_choice';
+    if (type === 'multiple_choice' || type === 'mcq') {
+      const letters = Object.keys(q.options || {});
+      if (letters.length < 2) errors.push(`${label} cần ít nhất 2 lựa chọn.`);
+      // Lựa chọn chỉ có ảnh (không có chữ) vẫn hợp lệ
+      const empty = letters.filter((l) => !String(q.options[l] ?? '').trim() && !q.optionImages?.[l]);
+      if (empty.length) errors.push(`${label} chưa có nội dung lựa chọn ${empty.join(', ')}.`);
+      if (!q.answer) errors.push(`${label} chưa có đáp án.`);
+      else if (!letters.includes(q.answer)) errors.push(`${label}: đáp án "${q.answer}" không có trong các lựa chọn.`);
+    } else {
+      // TODO mốc B: phần làm bài + chấm câu trả lời ngắn / dài. Tới lúc đó chưa cho xuất bản.
+      const name = type === 'short_answer' ? 'Trả lời ngắn' : 'Đoạn / Trả lời dài';
+      errors.push(`${label} là câu "${name}": học viên chưa làm được loại câu này (sẽ có ở bản cập nhật tới). Tạm thời đổi sang "Trắc nghiệm" hoặc xóa question này.`);
+    }
+    if (q.shuffleOptions) {
+      errors.push(`${label} đang bật "Xáo trộn thứ tự lựa chọn": tính năng này sẽ có ở bản cập nhật tới. Tạm thời tắt ở menu ⋮ của question.`);
+    }
     // Câu phải có gì đó để hỏi: chữ, ảnh, audio, hoặc thuộc nhóm đọc hiểu
     if (!String(q.question ?? '').trim() && !q.image && !q.audio && !q.groupCode) {
       errors.push(`${label} chưa có nội dung (gõ question, hoặc thêm ảnh / audio).`);
+    }
+    // Đánh dấu khi dán đề: giáo viên phải xem lại trước khi mở cho học viên
+    if (q.review?.aiAnswer && q.answer) {
+      errors.push(`${label}: đáp án ${q.answer} do AI gợi ý, giáo viên chưa xác nhận (mở question để xác nhận hoặc sửa).`);
+    }
+    if (q.review?.needsImage && !q.image) {
+      errors.push(`${label} có thể cần ảnh (${q.review.needsImage}). Thêm ảnh, hoặc bấm "Không cần ảnh" ở question đó.`);
     }
   }
 
   for (const g of groups) {
     const n = questions.filter((q) => q.groupCode === g.code).length;
-    const hasContent = String(g.passage ?? '').trim() || (g.passageImages || []).length || g.image || g.audio;
-    if (n === 0) warnings.push(`Nhóm ${g.code} chưa có question nào.`);
-    if (!hasContent) errors.push(`Nhóm ${g.code} chưa có đoạn văn (chữ, ảnh hoặc audio).`);
+    const hasContent = String(g.passage ?? '').trim() || String(g.title ?? '').trim() || (g.passageImages || []).length || g.image || g.audio;
+    const name = g.title ? `Khối "${g.title}"` : `Khối ${g.code}`;
+    if (n === 0) warnings.push(`${name} không có question nào đi kèm nên học viên sẽ không thấy khối này.`);
+    if (!hasContent) errors.push(`${name} chưa có nội dung (chữ, ảnh hoặc audio).`);
   }
 
   checkFiles(content, uploadedFiles, errors);

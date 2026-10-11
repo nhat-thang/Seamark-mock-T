@@ -119,6 +119,51 @@ function normalizeToeic(raw) {
 
 // ---------------- Đề tự thiết kế ----------------
 
+/**
+ * Đánh dấu "cần giáo viên xem lại" của một question (tạo ra khi dán đề, xem frontend/src/utils/pasteParser.js):
+ *   aiAnswer:   đáp án do AI gợi ý, giáo viên chưa xác nhận
+ *   needsImage: lý do nghi question cần ảnh mà chưa có ảnh
+ * Chỉ lưu khi có đánh dấu; chặn xuất bản tới khi giáo viên xử lý (validate.js). Không gửi cho học viên.
+ */
+function normalizeReview(r) {
+  if (!r || typeof r !== 'object') return null;
+  const review = {};
+  if (r.aiAnswer === true) review.aiAnswer = true;
+  const needsImage = text(r.needsImage, 300).trim();
+  if (needsImage) review.needsImage = needsImage;
+  return Object.keys(review).length ? review : null;
+}
+
+// Loại câu của đề tự thiết kế. Đề cũ ghi 'mcq' (hoặc không ghi) = trắc nghiệm.
+const QUESTION_TYPES = ['multiple_choice', 'short_answer', 'paragraph'];
+const questionType = (v) => (QUESTION_TYPES.includes(v) ? v : 'multiple_choice');
+
+// Khối không phải câu hỏi (dùng lại "nhóm đọc hiểu"): khối chữ (tiêu đề + mô tả / đoạn văn), khối ảnh, khối audio
+const BLOCK_TYPES = ['text', 'image', 'audio'];
+const IMAGE_ALIGNS = ['left', 'center', 'right'];
+const MAX_POINTS = 100;
+
+/** Điểm của câu: số nguyên 0–100, mặc định 1 (đề cũ chưa có điểm = mỗi câu 1 điểm) */
+function points(v) {
+  if (v === undefined || v === null || v === '') return 1;
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.min(Math.max(Math.round(n), 0), MAX_POINTS) : 1;
+}
+
+/** Các đáp án chấp nhận được của câu trả lời ngắn: bỏ ô trống, bỏ trùng (không phân biệt hoa thường) */
+function acceptedAnswers(list) {
+  const seen = new Set();
+  const out = [];
+  for (const a of Array.isArray(list) ? list : []) {
+    const s = text(a, 300).replace(/\s+/g, ' ').trim();
+    if (s && !seen.has(s.toLowerCase())) {
+      seen.add(s.toLowerCase());
+      out.push(s);
+    }
+  }
+  return out.slice(0, 20);
+}
+
 function normalizeCustom(raw) {
   const rawParts = Array.isArray(raw.parts) ? raw.parts : [];
   if (rawParts.length === 0) throw new ContentError('Đề phải có ít nhất một phần.');
@@ -140,10 +185,14 @@ function normalizeCustom(raw) {
       code: text(g?.code, 30).trim().toUpperCase(),
       part: clampPart(g?.part),
       kind: 'reading',
+      blockType: BLOCK_TYPES.includes(g?.blockType) ? g.blockType : 'text',
+      title: text(g?.title, 300).trim(),
       passage: text(g?.passage, 30000).trim(),
       passageImages: (Array.isArray(g?.passageImages) ? g.passageImages : []).map(fileName).filter(Boolean).slice(0, 10),
       image: fileName(g?.image),
       audio: fileName(g?.audio),
+      // Khối chưa có question nào: nằm ngay sau question có id này (null = đầu part). Xem customExam.js (toItems)
+      afterId: typeof g?.afterId === 'string' && /^[a-zA-Z0-9_-]{1,24}$/.test(g.afterId) ? g.afterId : null,
     }))
     .filter((g) => g.code);
   const groupCodes = new Set(groups.map((g) => g.code));
@@ -156,18 +205,35 @@ function normalizeCustom(raw) {
     for (const l of letters) options[l] = text(q?.options?.[l], 1000).trim();
     const answer = typeof q?.answer === 'string' ? q.answer.trim().toUpperCase() : null;
     const groupCode = q?.groupCode ? text(q.groupCode, 30).trim().toUpperCase() : null;
+    const review = normalizeReview(q?.review);
+    const type = questionType(q?.type);
+    const optionImages = {};
+    for (const l of letters) {
+      const f = fileName(q?.optionImages?.[l]);
+      if (f) optionImages[l] = f;
+    }
     return {
+      ...(review ? { review } : {}),
       id: cleanId(q?.id),
       no: i + 1,
       part: clampPart(q?.part),
-      type: 'mcq',
+      type,
       groupCode: groupCode && groupCodes.has(groupCode) ? groupCode : null,
       question: text(q?.question, 3000).trim(),
+      description: text(q?.description, 1000).trim(),
+      // Câu trả lời ngắn / dài vẫn giữ các lựa chọn cũ (đổi lại thành trắc nghiệm không mất), nhưng không có đáp án chữ cái
       options,
-      answer: letters.includes(answer) ? answer : null,
+      optionImages,
+      answer: type === 'multiple_choice' && letters.includes(answer) ? answer : null,
+      acceptedAnswers: acceptedAnswers(q?.acceptedAnswers),
+      othersWrong: q?.othersWrong !== false, // trả lời ngắn: câu không khớp đáp án nào = sai (tắt = chờ chấm tay)
+      points: points(q?.points),
+      required: q?.required === true,
+      shuffleOptions: q?.shuffleOptions === true,
       image: fileName(q?.image),
+      imageAlign: IMAGE_ALIGNS.includes(q?.imageAlign) ? q.imageAlign : 'left',
       audio: fileName(q?.audio),
-      explanation: text(q?.explanation, 5000).trim(),
+      explanation: text(q?.explanation, 5000).trim(), // "phản hồi câu trả lời": hiện cho học viên sau khi nộp
     };
   });
   // Câu trong nhóm phải cùng phần với nhóm
@@ -177,6 +243,7 @@ function normalizeCustom(raw) {
   return {
     examType: 'CUSTOM',
     shuffleQuestions: raw.shuffleQuestions === true,
+    description: text(raw.description, 3000).trim(), // mô tả đề, hiện cho học viên trước khi làm
     parts,
     groups,
     questions,
@@ -204,6 +271,7 @@ function emptyContent(examType) {
     return {
       examType: 'CUSTOM',
       shuffleQuestions: false,
+      description: '',
       parts: [{ no: 1, name: 'Part 1', directions: '', audio: null }],
       groups: [],
       questions: [],
@@ -220,5 +288,5 @@ function emptyContent(examType) {
 
 module.exports = {
   normalizeContent, ContentError, KINDS, defaultKind, fileName, emptyQuestion, emptyContent, lettersForPart,
-  CUSTOM_LETTERS,
+  CUSTOM_LETTERS, QUESTION_TYPES, MAX_POINTS,
 };

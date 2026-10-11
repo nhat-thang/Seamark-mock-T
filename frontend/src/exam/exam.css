@@ -767,6 +767,40 @@
   max-height: 420px;
 }
 
+/* Mô tả đề (đề tự thiết kế), hiện ở trang đầu */
+.exam-description {
+  margin: 0 0 1rem;
+  padding: 1rem 1.2rem;
+  white-space: pre-wrap;
+}
+
+/* Đề tự thiết kế: căn lề ảnh câu hỏi, mô tả, ảnh của lựa chọn, dấu * câu bắt buộc */
+.question-image-wrap {
+  display: flex;
+}
+.question-image-wrap.align-center {
+  justify-content: center;
+}
+.question-image-wrap.align-right {
+  justify-content: flex-end;
+}
+.question-desc {
+  margin: -0.5rem 0 0.9rem;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+}
+.question-required {
+  color: var(--color-error);
+}
+.option-image {
+  display: block;
+  max-width: min(320px, 100%);
+  max-height: 240px;
+  margin-top: 0.4rem;
+  border-radius: var(--radius-small);
+}
+
 .group-images {
   display: flex;
   flex-direction: column;

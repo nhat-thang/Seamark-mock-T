@@ -1,0 +1,1007 @@
+/*
+  Trang soạn đề tự thiết kế — giao diện dạng thẻ (kiểu biểu mẫu).
+  Màu lấy từ theme.css; chỉ thêm vài màu riêng ở đây.
+*/
+.fb {
+  --fb-bg: #f0eefa; /* nền tím rất nhạt */
+  --fb-card-radius: 8px;
+  --fb-active: #2f6fdf; /* viền trái thẻ đang chọn */
+  --fb-icon: #5f6368;
+  --fb-line: #dadce0;
+  --fb-soft: #f4f5f7;
+  --fb-correct: #1e8e3e;
+  --fb-correct-bg: #e6f4ea;
+  font-size: 16px;
+  background: var(--fb-bg);
+  border-radius: var(--radius);
+  padding: 20px 16px 96px;
+  margin: 0 -4px;
+}
+
+.fb-column {
+  max-width: 770px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.fb-list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---------- Thẻ ---------- */
+.fb-card {
+  position: relative;
+  background: var(--color-surface);
+  border-radius: var(--fb-card-radius);
+  border: 1px solid var(--fb-line);
+  box-shadow: 0 1px 2px rgba(60, 64, 67, 0.15);
+  padding: 22px 24px 18px;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.fb-card.is-selected {
+  cursor: default;
+  box-shadow: 0 2px 6px rgba(60, 64, 67, 0.25);
+  border-left: 6px solid var(--fb-active);
+  padding-left: 19px;
+}
+.fb-card.is-dragging {
+  opacity: 0.45;
+}
+.fb-card.is-checked {
+  outline: 2px solid var(--color-error);
+}
+
+/* Câu thuộc khối phía trên: vạch nối bên trái */
+.fb-card.is-in-block {
+  margin-left: 28px;
+}
+.fb-card.is-in-block::before {
+  content: '';
+  position: absolute;
+  left: -18px;
+  top: -13px;
+  bottom: -13px;
+  width: 4px;
+  border-radius: 2px;
+  background: var(--color-accent);
+}
+
+.fb-title-card {
+  border-top: 10px solid var(--color-primary);
+  padding-top: 18px;
+}
+.fb-title-card.is-selected {
+  border-top-width: 10px;
+}
+
+.fb-part-tab {
+  align-self: flex-start;
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 8px 8px 0 0;
+  margin: 18px 0 -12px;
+}
+.fb-part {
+  border-top: 6px solid var(--color-primary);
+}
+.fb-part-tab + .fb-part {
+  border-top-left-radius: 0;
+}
+
+/* ---------- Tay cầm kéo thả (6 chấm ở giữa mép trên) ---------- */
+.fb-handle {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 0;
+  background: transparent;
+  color: var(--fb-icon);
+  padding: 2px 10px;
+  cursor: grab;
+  opacity: 0;
+  line-height: 0;
+  border-radius: 6px;
+}
+.fb-card:hover .fb-handle,
+.fb-card.is-selected .fb-handle,
+.fb-handle:focus-visible {
+  opacity: 0.7;
+}
+.fb-handle:focus-visible {
+  outline: 2px solid var(--color-focus);
+}
+.fb-drop-line {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--fb-active);
+  margin: -8px 0;
+}
+
+/* ---------- Chữ trong thẻ ---------- */
+.fb-form-title {
+  font-size: 30px;
+  font-weight: 500;
+  margin: 0 0 6px;
+  line-height: 1.25;
+}
+.fb-form-desc {
+  margin: 0;
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+}
+.fb-form-desc.is-empty {
+  color: #9aa0a6;
+}
+.fb-q-no {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.fb-required {
+  color: var(--color-error);
+}
+.fb-q-title {
+  margin: 0 0 10px;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+.fb-q-title.is-empty {
+  color: #9aa0a6;
+  font-style: italic;
+}
+.fb-q-desc {
+  margin: -4px 0 10px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+}
+.fb-part-title,
+.fb-block-title {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 500;
+}
+.fb-passage {
+  margin-bottom: 10px;
+  max-height: 340px;
+  overflow: auto;
+}
+.fb-hint {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+.fb-sub-label {
+  display: block;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+.fb-empty {
+  text-align: center;
+  padding: 20px;
+}
+
+/* ---------- Ô nhập kiểu gạch chân ---------- */
+.fb-text,
+.fb-form-title-input,
+.fb-part-title-input,
+.fb-block-title-input,
+.fb-opt-input,
+.fb-line-input {
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--fb-line);
+  background: transparent;
+  padding: 8px 0 6px;
+  resize: none;
+  overflow: hidden;
+  border-radius: 0;
+}
+.fb-text:focus,
+.fb-form-title-input:focus,
+.fb-part-title-input:focus,
+.fb-block-title-input:focus,
+.fb-opt-input:focus,
+.fb-line-input:focus {
+  outline: none;
+  border-bottom: 2px solid var(--fb-active);
+  padding-bottom: 5px;
+}
+.fb-form-title-input {
+  font-size: 30px;
+  margin-bottom: 8px;
+}
+.fb-part-title-input,
+.fb-block-title-input {
+  font-size: 22px;
+  margin-bottom: 6px;
+}
+.fb-form-desc-input,
+.fb-desc-input {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+.fb-boxed {
+  border: 1px solid var(--fb-line);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.fb-boxed:focus {
+  border: 2px solid var(--fb-active);
+  padding: 7px 9px;
+}
+
+/* Ô câu hỏi: nền xám nhạt, gạch chân */
+.fb-q-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.fb-q-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--fb-soft);
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid #80868b;
+  border-radius: 4px 4px 0 0;
+}
+.fb-q-input:focus {
+  padding-bottom: 9px;
+}
+
+/* Nút chọn loại câu */
+.fb-type-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 210px;
+  height: 48px;
+  padding: 0 8px 0 12px;
+  font: inherit;
+  font-size: 15px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--fb-line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.fb-type-btn span {
+  flex: 1;
+  text-align: left;
+}
+.fb-type-btn svg {
+  color: var(--fb-icon);
+  flex-shrink: 0;
+}
+.fb-type-btn:focus-visible {
+  outline: 2px solid var(--color-focus);
+}
+
+/* ---------- Nút tròn chỉ có icon ---------- */
+.fb-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--fb-icon);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.fb-icon-btn:hover {
+  background: rgba(95, 99, 104, 0.1);
+}
+.fb-icon-btn:active {
+  background: rgba(95, 99, 104, 0.2);
+}
+.fb-icon-btn:focus-visible {
+  outline: 2px solid var(--color-focus);
+}
+.fb-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  background: transparent;
+}
+
+/* ---------- Lựa chọn ---------- */
+.fb-options {
+  margin: 4px 0;
+}
+.fb-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+}
+.fb-radio {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border: 2px solid #9aa0a6;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.fb-radio.is-on {
+  border-color: var(--fb-correct);
+  box-shadow: inset 0 0 0 4px #fff;
+  background: var(--fb-correct);
+}
+.fb-opt-letter {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  width: 14px;
+  flex-shrink: 0;
+}
+.fb-opt-input {
+  flex: 1;
+  min-width: 0;
+  border-bottom-color: transparent;
+}
+.fb-opt-input:hover {
+  border-bottom-color: var(--fb-line);
+}
+.fb-opt-img-btn {
+  opacity: 0;
+}
+.fb-opt:hover .fb-opt-img-btn,
+.fb-opt-img-btn:focus-visible {
+  opacity: 1;
+}
+.fb-correct-mark {
+  display: inline-flex;
+  color: var(--fb-correct);
+}
+.fb-opt-image {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 2px 0 8px 54px;
+}
+.fb-opt-image img {
+  max-width: 260px;
+  max-height: 200px;
+  border-radius: 4px;
+}
+.fb-opt-thumb {
+  max-height: 64px;
+  max-width: 120px;
+  border-radius: 4px;
+  margin-left: auto;
+}
+.fb-add-option {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--color-text-muted);
+  padding: 8px 0;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+}
+.fb-add-option:hover,
+.fb-add-option:focus-visible {
+  border-bottom-color: var(--fb-line);
+  outline: none;
+}
+
+/* Xem gọn */
+.fb-preview-options {
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0;
+}
+.fb-preview-options li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  margin: 0 -8px;
+  border-radius: 4px;
+}
+.fb-preview-options li.is-correct {
+  background: var(--fb-correct-bg);
+}
+
+/* Trả lời ngắn / dài */
+.fb-text-answer {
+  margin: 8px 0;
+  padding-bottom: 8px;
+  width: 50%;
+  color: #9aa0a6;
+  font-size: 14px;
+  border-bottom: 1px dotted #9aa0a6;
+}
+.fb-text-answer.is-long {
+  width: 85%;
+}
+
+/* ---------- Ảnh / audio trong thẻ ---------- */
+.fb-media {
+  display: flex;
+  margin: 4px 0 12px;
+}
+.fb-align-center {
+  justify-content: center;
+}
+.fb-align-right {
+  justify-content: flex-end;
+}
+.fb-media-inner {
+  position: relative;
+  max-width: 100%;
+}
+.fb-q-image {
+  display: block;
+  max-width: 100%;
+  max-height: 420px;
+  border-radius: 4px;
+}
+.fb-media-menu {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.fb-audio-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0 12px;
+}
+.fb-audio {
+  width: 100%;
+  max-width: 460px;
+  height: 40px;
+}
+
+/* ---------- Chân thẻ ---------- */
+.fb-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-top: 1px solid var(--fb-line);
+  margin-top: 16px;
+  padding-top: 8px;
+}
+.fb-spacer {
+  flex: 1;
+}
+.fb-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--fb-line);
+  margin: 0 10px;
+}
+.fb-key-link,
+.fb-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--fb-active);
+  font-weight: 600;
+  padding: 8px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.fb-key-link:hover,
+.fb-link:hover {
+  background: var(--color-primary-soft);
+}
+.fb-link {
+  font-weight: 500;
+  margin: 6px 0;
+}
+
+/* Nút gạt "Bắt buộc" */
+.fb-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 0 4px;
+}
+.fb-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.fb-switch-track {
+  position: relative;
+  width: 36px;
+  height: 14px;
+  border-radius: 7px;
+  background: #bdc1c6;
+  transition: background 0.15s;
+}
+.fb-switch-track::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s, background 0.15s;
+}
+.fb-switch input:checked + .fb-switch-track {
+  background: #a8c4f5;
+}
+.fb-switch input:checked + .fb-switch-track::after {
+  transform: translateX(20px);
+  background: var(--fb-active);
+}
+.fb-switch input:focus-visible + .fb-switch-track {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 4px;
+}
+
+/* ---------- Chế độ "Đáp án" ---------- */
+.fb-key-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--fb-line);
+}
+.fb-key-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+.fb-points {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+}
+.fb-points input {
+  width: 64px;
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--fb-line);
+  border-radius: 4px;
+  text-align: center;
+}
+.fb-key-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.fb-key-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.fb-key-opt:hover {
+  background: var(--fb-soft);
+}
+.fb-key-opt.is-correct {
+  background: var(--fb-correct-bg);
+  color: var(--fb-correct);
+  font-weight: 600;
+}
+.fb-key-opt:focus-visible {
+  outline: 2px solid var(--color-focus);
+}
+.fb-key-text {
+  flex: 1;
+}
+.fb-accepts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.fb-accept {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.fb-check {
+  margin-top: 8px;
+}
+.fb-feedback {
+  margin-top: 12px;
+}
+
+/* Cảnh báo dưới thẻ */
+.fb-warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: var(--color-error);
+}
+.fb-note {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--color-warn);
+}
+
+/* ---------- Menu ---------- */
+.fb-menu-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.fb-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  z-index: 30;
+  min-width: 240px;
+  background: var(--color-surface);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(60, 64, 67, 0.3);
+  padding: 6px 0;
+}
+.fb-menu-right {
+  right: 0;
+}
+.fb-menu-left {
+  left: 0;
+}
+.fb-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  color: var(--color-text);
+  text-align: left;
+  padding: 10px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fb-menu-item:hover,
+.fb-menu-item:focus-visible {
+  background: var(--fb-soft);
+  outline: none;
+}
+.fb-menu-item:disabled {
+  color: #9aa0a6;
+  cursor: default;
+  background: transparent;
+}
+.fb-menu-check {
+  display: inline-flex;
+  width: 20px;
+  color: var(--fb-icon);
+}
+
+/* ---------- Thanh công cụ nổi bên phải ---------- */
+.fb-toolbar {
+  position: absolute;
+  right: -64px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--fb-line);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3);
+  transition: top 0.2s ease;
+  z-index: 10;
+}
+
+/* ---------- Thanh trên cùng ---------- */
+.fb-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--fb-line);
+  border-radius: var(--fb-card-radius);
+  padding: 8px 16px;
+  margin-bottom: 12px;
+  font-size: 15px;
+}
+.fb-add-many {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fb-add-many-count {
+  width: 64px;
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--fb-line);
+  border-radius: 4px;
+}
+.fb-topbar .btn {
+  font-size: 15px;
+}
+.fb-topbar .btn-small {
+  min-height: 0;
+  height: 38px;
+  padding: 0 12px;
+}
+.fb-bulk {
+  margin-bottom: 12px;
+}
+.fb-check-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--color-error);
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+.fb-check-row input {
+  width: 20px;
+  height: 20px;
+}
+
+/* ---------- Popup chọn ảnh / audio ---------- */
+.fb-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(32, 33, 36, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.fb-modal {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  font-size: 16px;
+}
+.fb-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 10px 6px 20px;
+  font-size: 18px;
+}
+.fb-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--fb-line);
+  padding: 0 12px;
+}
+.fb-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  padding: 10px 16px;
+  color: var(--color-text-muted);
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+}
+.fb-tab.is-active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+.fb-modal-body {
+  overflow: auto;
+  padding: 16px 20px 20px;
+}
+.fb-picker-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px;
+  border: 2px dashed var(--fb-line);
+  border-radius: 8px;
+  color: var(--fb-icon);
+  text-align: center;
+}
+.fb-picker-upload p {
+  margin: 0;
+}
+.fb-picker-sub {
+  font-weight: 600;
+  margin: 18px 0 8px;
+}
+.fb-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+.fb-picker-thumb {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--fb-line);
+  border-radius: 6px;
+  background: var(--color-surface);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.fb-picker-thumb:hover,
+.fb-picker-thumb:focus-visible {
+  border-color: var(--fb-active);
+  outline: none;
+}
+.fb-picker-thumb img {
+  width: 100%;
+  height: 90px;
+  object-fit: contain;
+  background: var(--fb-soft);
+}
+.fb-picker-thumb span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fb-picker-audio {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.fb-picker-audio li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--fb-line);
+}
+.fb-picker-audio-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.fb-picker-audio audio {
+  height: 36px;
+  max-width: 260px;
+}
+
+/* ---------- Thanh báo "Đã xóa … · Hoàn tác" ---------- */
+.fb-snackbar {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100vw - 48px);
+  background: #323232;
+  color: #fff;
+  border-radius: 6px;
+  padding: 6px 6px 6px 18px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  font-size: 15px;
+}
+.fb-snackbar-btn {
+  border: 0;
+  background: transparent;
+  color: #8ab4f8;
+  font: inherit;
+  font-weight: 600;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.fb-snackbar-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.fb-snackbar .fb-icon-btn {
+  color: #fff;
+}
+
+.fb-paste-card {
+  cursor: default;
+}
+
+/* Màn hình vừa: thanh công cụ không đủ chỗ bên phải -> thu hẹp cột */
+@media (max-width: 1000px) {
+  .fb-column {
+    margin-right: 60px;
+  }
+}
+
+/* Điện thoại / màn hình hẹp: thanh công cụ thành thanh ngang ở đáy màn hình */
+@media (max-width: 767px) {
+  .fb {
+    padding: 12px 8px 88px;
+  }
+  .fb-column {
+    margin-right: 0;
+  }
+  .fb-card {
+    padding: 18px 14px 14px;
+  }
+  .fb-card.is-selected {
+    padding-left: 9px;
+  }
+  .fb-card.is-in-block {
+    margin-left: 16px;
+  }
+  .fb-card.is-in-block::before {
+    left: -11px;
+  }
+  .fb-q-top {
+    flex-wrap: wrap;
+  }
+  .fb-q-input {
+    flex-basis: calc(100% - 52px);
+  }
+  .fb-type-btn {
+    width: 100%;
+  }
+  .fb-toolbar {
+    position: fixed;
+    top: auto !important;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    flex-direction: row;
+    justify-content: space-around;
+    border-radius: 0;
+    border-width: 1px 0 0;
+    transition: none;
+    z-index: 50;
+  }
+  .fb-snackbar {
+    left: 8px;
+    bottom: 64px;
+  }
+  .fb-form-title,
+  .fb-form-title-input {
+    font-size: 24px;
+  }
+}

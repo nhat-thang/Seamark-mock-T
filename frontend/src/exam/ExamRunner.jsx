@@ -55,10 +55,13 @@ export default function ExamRunner({ view, token, onSubmitted }) {
       if (!auto) {
         const total = view.content.questions.length;
         const done = Object.keys(latest.current.answers).length;
+        // Câu bắt buộc chưa làm: chỉ nhắc, vẫn cho nộp
+        const requiredLeft = view.content.questions.filter((q) => q.required && !latest.current.answers[q.no]).map((q) => shownNo(q));
         const msg =
-          done < total
+          (requiredLeft.length ? `Còn ${requiredLeft.length} câu BẮT BUỘC chưa làm: Question ${requiredLeft.join(', ')}.\n\n` : '') +
+          (done < total
             ? `Bạn còn ${total - done} câu chưa làm.\n\nBạn có chắc muốn nộp bài? Sau khi nộp sẽ không sửa được nữa.`
-            : 'Bạn có chắc muốn nộp bài? Sau khi nộp sẽ không sửa được nữa.';
+            : 'Bạn có chắc muốn nộp bài? Sau khi nộp sẽ không sửa được nữa.');
         if (!window.confirm(msg)) return;
       }
       submittingRef.current = true;
@@ -205,6 +208,7 @@ export default function ExamRunner({ view, token, onSubmitted }) {
             </span>
           </div>
 
+          {pageIndex === 0 && view.content.description && <p className="exam-description card">{view.content.description}</p>}
           {page.firstOfPart && <PartIntro content={view.content} part={page.part} />}
           <ListeningAudio content={view.content} part={page.part} allowSeek={view.allowSeekAudio} />
 

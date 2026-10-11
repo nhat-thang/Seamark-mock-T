@@ -169,14 +169,40 @@ export default function GuidePage() {
           <B>Bỏ qua hướng dẫn</B>, và xem lại bất cứ lúc nào bằng nút <B>Xem lại hướng dẫn</B>.
         </p>
         <ol>
-          <li>Tab <B>Soạn đề</B>: bên trái là dàn ý đề, bên phải là khung soạn.</li>
-          <li>Bấm tên phần để đổi tên, viết lời dặn, gắn audio cho cả phần. Bấm <B>Thêm phần</B> để chia đề thành nhiều phần.</li>
           <li>
-            <B>Thêm câu</B>: gõ câu hỏi (hoặc chỉ dùng ảnh / audio), nhập các lựa chọn, bấm <B>Đáp án đúng</B> ở lựa chọn đúng. Dùng{' '}
-            <B>Thêm lựa chọn</B> / <B>Bớt lựa chọn cuối</B> để có từ 2 đến 6 lựa chọn (2 lựa chọn dùng cho câu Đúng/Sai).
+            Tab <B>Soạn đề</B>: đề hiện thành các thẻ xếp dọc. Bấm vào một thẻ để soạn ngay trên thẻ đó. Thanh nút nhỏ bên phải đi theo thẻ
+            đang chọn; thứ mới thêm nằm ngay dưới thẻ đang chọn. Thẻ trên cùng là tên đề và mô tả đề (học viên thấy trước khi làm bài).
           </li>
-          <li><B>Thêm nhóm đọc hiểu</B>: một đoạn văn (chữ, ảnh hoặc audio) kèm nhiều câu; bấm <B>Thêm câu vào nhóm</B>.</li>
-          <li>Nút <B>Lên</B> / <B>Xuống</B> đổi thứ tự; số câu tự đánh lại.</li>
+          <li>
+            <B>⊕ Thêm câu hỏi</B>: gõ câu hỏi (hoặc chỉ dùng ảnh / audio), gõ các lựa chọn. Nhấn <B>Enter</B> để thêm lựa chọn mới; xóa hết
+            chữ rồi nhấn <B>Backspace</B> để bỏ lựa chọn đó. Có từ 2 đến 6 lựa chọn (2 lựa chọn dùng cho câu Đúng/Sai). Biểu tượng ảnh cạnh
+            ô câu hỏi để chèn ảnh hoặc audio; di chuột vào một lựa chọn để chèn ảnh cho lựa chọn đó.
+          </li>
+          <li>
+            Bấm <B>Đáp án</B> ở chân thẻ: bấm vào lựa chọn đúng (có dấu ✓ xanh), gõ số điểm của câu, có thể thêm phản hồi (giải thích), rồi
+            bấm <B>Xong</B>. Câu chưa có đáp án có dòng chữ đỏ dưới thẻ. Tổng điểm của đề ở thanh trên cùng.
+          </li>
+          <li>
+            Ô loại câu hỏi bên phải: <B>Trắc nghiệm</B>, <B>Trả lời ngắn</B>, <B>Đoạn / Trả lời dài</B>. Hiện học viên mới làm được câu trắc
+            nghiệm; hai loại còn lại soạn được nhưng chưa xuất bản được (sẽ có ở bản cập nhật tới).
+          </li>
+          <li>
+            <B>Tт Thêm tiêu đề và mô tả</B> (hoặc nút thêm ảnh / thêm audio): một đoạn văn, ảnh hoặc bài nghe dùng cho nhiều câu. Thêm câu
+            ngay bên dưới khối: các câu có <strong>vạch nối bên trái</strong> thuộc khối đó, học viên thấy khối bên cạnh các câu này. Nút ⋮
+            của câu có <B>Tách khỏi khối ở trên</B> / <B>Gắn vào khối ở trên</B>.
+          </li>
+          <li>
+            <B>Thêm phần</B> (nút dưới cùng của thanh bên phải): chia đề thành nhiều part. Bấm vào thẻ đầu part để đổi tên, viết lời dặn,
+            gắn audio cho cả part; nút ⋮ để chuyển part lên / xuống.
+          </li>
+          <li>
+            Đổi thứ tự: giữ chuột vào <strong>6 chấm</strong> ở mép trên thẻ rồi kéo, hoặc bấm vào 6 chấm rồi dùng phím mũi tên ↑ ↓. Số câu
+            tự đánh lại.
+          </li>
+          <li>
+            Xóa thẻ bằng biểu tượng thùng rác; lỡ tay thì bấm <B>Hoàn tác</B> ở thanh báo góc dưới màn hình. Muốn xóa nhiều câu: bấm{' '}
+            <B>Chọn nhiều để xóa</B> ở thanh trên cùng.
+          </li>
           <li>
             Tab <B>Thông tin đề</B>: bật <B>Xáo trộn câu hỏi</B> để mỗi học viên làm một thứ tự khác nhau (xáo trong từng phần, câu của
             cùng nhóm luôn liền nhau).
@@ -188,6 +214,30 @@ export default function GuidePage() {
           <B>Tạo đề mới</B>: chọn khung là có ngay đề mới cùng cấu trúc (part, số question, số lựa chọn, nhóm đọc hiểu, thời gian),
           nội dung để trống để soạn đề khác.
         </p>
+        <p>
+          <strong>Dán đề có sẵn:</strong> có đề trắc nghiệm trên trang web, file Word hay PDF thì không cần gõ lại từng câu.
+        </p>
+        <ol>
+          <li>
+            Mở đề, bấm Ctrl + A rồi Ctrl + C để copy. Trong tab <B>Soạn đề</B>, bấm nút <B>⇥ Nhập câu hỏi</B> (nút thứ hai của thanh bên
+            phải), bấm vào ô to rồi Ctrl + V.
+          </li>
+          <li>
+            Nếu đáp án nằm riêng (ví dụ cuối sách), dán vào ô <B>Bảng đáp án</B> dạng "1A 2C 3B…". Chọn chỗ thêm vào (part có sẵn hoặc
+            part mới) rồi bấm <B>Tách đề</B>.
+          </li>
+          <li>
+            Máy tự tách question, lựa chọn, đáp án và đoạn văn đọc hiểu. Nếu web đã được cài AI, AI kiểm tra lại: gợi ý đáp án cho câu chưa
+            có đáp án, báo đáp án có vẻ sai, báo question cần ảnh. Bấm vào một lựa chọn để đổi đáp án; bỏ tích <B>Question …</B> nếu không
+            muốn đưa câu đó vào đề.
+          </li>
+          <li>Bấm <B>Áp dụng</B>. Các question thành thẻ như question bình thường, sửa tiếp được.</li>
+        </ol>
+        <Tip>
+          Ảnh và audio <strong>không</strong> đi theo khi copy chữ. Question có thể cần ảnh và đáp án do AI gợi ý có dòng{' '}
+          <B>Cần xem lại</B> trên thẻ. Bấm vào từng thẻ: thêm ảnh (hoặc bấm <B>Không cần ảnh</B>), kiểm tra đáp án rồi bấm{' '}
+          <B>Xác nhận đáp án</B> (hoặc <B>Xác nhận tất cả</B> ở đầu trang soạn). Đề chưa xuất bản được tới khi xử lý hết các dòng này.
+        </Tip>
         <Tip>Đề tự thiết kế chấm theo số câu đúng và điểm thang 10 (ví dụ 32/40 câu = 8 điểm), có số câu đúng từng phần.</Tip>
       </Section>
 

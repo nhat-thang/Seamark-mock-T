@@ -82,7 +82,11 @@ function buildResult(attempt) {
   const r = gradeAttempt(attempt.content, attempt.answers);
   const showAnswers = attempt.show_answers_after === 1;
   // Hiện đáp án theo đúng thứ tự (và số câu) học viên đã thấy khi làm bài
-  const content = { ...attempt.content, questions: orderedQuestions(attempt.content, attempt.order) };
+  // (bỏ đánh dấu nội bộ "review" của giáo viên, nếu còn)
+  const content = {
+    ...attempt.content,
+    questions: orderedQuestions(attempt.content, attempt.order).map(({ review, ...q }) => q), // eslint-disable-line no-unused-vars
+  };
   const detailByNo = new Map(r.details.map((d) => [d.no, d]));
   return {
     examType: attempt.content.examType || 'TOEIC_LR',
