@@ -947,6 +947,52 @@
   cursor: default;
 }
 
+/* Thẻ "Dán nhiều câu có sẵn" ở đầu trang */
+.fb-paste-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--fb-card-radius);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  color: var(--color-primary);
+}
+.fb-paste-banner svg {
+  flex-shrink: 0;
+}
+.fb-paste-banner-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--color-text);
+  font-size: 15px;
+}
+.fb-paste-banner-text strong {
+  color: var(--color-primary);
+  font-size: 16px;
+}
+.fb-paste-banner .btn {
+  font-size: 15px;
+  white-space: nowrap;
+}
+.fb-paste-banner.is-big {
+  padding: 24px 20px;
+}
+.fb-paste-banner.is-big .fb-paste-banner-text strong {
+  font-size: 19px;
+}
+@media (max-width: 767px) {
+  .fb-paste-banner {
+    flex-wrap: wrap;
+  }
+  .fb-paste-banner .btn {
+    width: 100%;
+  }
+}
+
 /* Màn hình vừa: thanh công cụ không đủ chỗ bên phải -> thu hẹp cột */
 @media (max-width: 1000px) {
   .fb-column {

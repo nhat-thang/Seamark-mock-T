@@ -7,6 +7,9 @@ import '@fontsource/be-vietnam-pro/vietnamese-400.css';
 import '@fontsource/be-vietnam-pro/vietnamese-600.css';
 import '@fontsource/be-vietnam-pro/latin-400.css';
 import '@fontsource/be-vietnam-pro/latin-600.css';
+// Chữ đậm cho tiêu đề lớn ở trang chủ / trang học viên
+import '@fontsource/be-vietnam-pro/vietnamese-800.css';
+import '@fontsource/be-vietnam-pro/latin-800.css';
 
 import './styles/theme.css';
 import './styles/global.css';

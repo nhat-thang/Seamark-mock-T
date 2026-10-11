@@ -195,3 +195,29 @@ test('Không nhầm "2019. Sales rose" (số không nối tiếp) là question',
   const r = parsePastedExam('1. First? A. a B. b\n2019. Sales rose sharply.\n2. Second? A. a B. b');
   assert.deepEqual(r.questions.map((q) => q.srcNo), [1, 2]);
 });
+
+test('Mất xuống dòng (copy từ PDF): nhiều câu dính một dòng vẫn tách đúng từng câu', async () => {
+  const { parsePastedExam } = await load();
+  // Đúng như trường hợp giáo viên gặp: "Câu 2:" nằm ngay sau lựa chọn D của câu 1
+  const r = parsePastedExam(`Câu 1: Hạt nhân chủ yếu của thế giới quan là gì?
+A. Các quan điểm chính trị – xã hội
+B. Các quan điểm kinh tế
+C. Các quan điểm triết học
+D. Các quan điểm mỹ học Câu 2: Điểm chung trong quan niệm về vật chất của chủ nghĩa duy vật thời cổ đại là: A. Đồng nhất vật chất với khối lượng B. Đồng nhất vật chất với nguyên tử C. Đồng nhất vật chất với vật thể cụ thể cảm tính D. Đồng nhất vật chất với thực tại khách quan`);
+  assert.equal(r.questions.length, 2);
+  assert.equal(r.questions[0].options.D, 'Các quan điểm mỹ học');
+  assert.equal(r.questions[1].srcNo, 2);
+  assert.match(r.questions[1].question, /^Điểm chung trong quan niệm/);
+  assert.deepEqual(Object.keys(r.questions[1].options), ['A', 'B', 'C', 'D']);
+  assert.equal(r.questions[1].options.D, 'Đồng nhất vật chất với thực tại khách quan');
+
+  // Cả đề trên một dòng, số câu trần "2." + đáp án nằm giữa dòng
+  const one = parsePastedExam('1. She ___ to school. A. go B. goes C. going D. gone Đáp án: B 2. I have lived here ___ 2010. A. for B. since C. in D. at Đáp án: B 3. Water boils at ___ degrees. A. 90 B. 100 Đáp án: B');
+  assert.deepEqual(one.questions.map((q) => [q.srcNo, Object.keys(q.options).length, q.answer]), [[1, 4, 'B'], [2, 4, 'B'], [3, 2, 'B']]);
+  assert.equal(one.questions[0].options.D, 'gone');
+
+  // Không cắt nhầm: "câu 3:" viết thường trong câu văn, số thập phân, số không phải câu kế tiếp
+  const safe = parsePastedExam('1. Theo câu 3: tốc độ STM-1 là 155.52 Mb/s, gấp 4. lần? A. Đúng B. Sai');
+  assert.equal(safe.questions.length, 1);
+  assert.match(safe.questions[0].question, /câu 3: tốc độ STM-1 là 155.52/);
+});

@@ -219,8 +219,9 @@ export default function GuidePage() {
         </p>
         <ol>
           <li>
-            Mở đề, bấm Ctrl + A rồi Ctrl + C để copy. Trong tab <B>Soạn đề</B>, bấm nút <B>⇥ Nhập câu hỏi</B> (nút thứ hai của thanh bên
-            phải), bấm vào ô to rồi Ctrl + V.
+            Mở đề, bấm Ctrl + A rồi Ctrl + C để copy. Trong tab <B>Soạn đề</B>, bấm <B>Dán đề có sẵn</B> ở đầu trang (hoặc nút{' '}
+            <B>⇥</B> trên thanh bên phải), bấm vào ô to rồi Ctrl + V. Dán được nhiều câu một lúc; câu bị dính liền nhau trên một dòng
+            (thường gặp khi copy từ PDF) máy vẫn tự tách.
           </li>
           <li>
             Nếu đáp án nằm riêng (ví dụ cuối sách), dán vào ô <B>Bảng đáp án</B> dạng "1A 2C 3B…". Chọn chỗ thêm vào (part có sẵn hoặc

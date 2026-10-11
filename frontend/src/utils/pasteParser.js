@@ -152,6 +152,53 @@ function parseKeyText(keyText) {
 
 const isTableText = (s) => /^\s*\|/m.test(s || '');
 
+// ---------------- Ngắt dòng bị mất ----------------
+// Copy từ PDF / một số trang web hay mất xuống dòng, nhiều câu dính thành một dòng:
+//   "D. Các quan điểm mỹ học Câu 2: Điểm chung ... A. ... B. ..."
+// -> ngắt dòng trước "Câu N:" / "Question N." (viết hoa chữ đầu, để không nhầm "câu 3:" trong câu văn),
+//    trước "Đáp án:" / "Giải thích:", và trước số câu trần "N." đúng bằng số câu kế tiếp khi phía trước đã có lựa chọn A–F.
+const INLINE_BREAK = new RegExp(
+  `\\s(?=(?:Câu|CÂU|Cau|CAU|Question|QUESTION)\\s*\\d{1,3}${NOT_RANGE}\\s*[:.)]|(?:Đáp án|ĐÁP ÁN|Dap an|Answer|ANSWER|Giải thích|GIẢI THÍCH|Lời giải|Explanation)\\s*[:\\-–])`,
+  'g'
+);
+// Phía trước số câu trần đã có lựa chọn ("... D. gone 2. ...") hoặc là dòng đáp án ("Đáp án: B 2. ...")
+const HAS_OPTION = /(?:^|\s)\(?[A-Fa-f][.)]\s|^(?:Đáp án|ĐÁP ÁN|Dap an|Answer|ANSWER)\s*[:\-–]/;
+
+function splitRunOnLines(lines) {
+  const out = [];
+  let next = null; // số câu kế tiếp đang chờ
+  for (const line of lines) {
+    if (!line || KEY_LINE.test(line)) {
+      out.push(line);
+      continue;
+    }
+    let rest = line;
+    for (;;) {
+      const head = rest.match(Q_WORD) || rest.match(Q_NUM);
+      if (head) next = Number(head[1]) + 1;
+      const cuts = [];
+      INLINE_BREAK.lastIndex = 0;
+      let m;
+      while ((m = INLINE_BREAK.exec(rest))) {
+        if (m.index > 0) {
+          cuts.push(m.index);
+          break;
+        }
+      }
+      if (next !== null) {
+        const bare = new RegExp(`\\s${next}[.)]\\s+(?=\\S)`).exec(rest);
+        if (bare && HAS_OPTION.test(rest.slice(0, bare.index))) cuts.push(bare.index);
+      }
+      if (!cuts.length) break;
+      const at = Math.min(...cuts);
+      out.push(rest.slice(0, at).trim());
+      rest = rest.slice(at).trim();
+    }
+    out.push(rest);
+  }
+  return out;
+}
+
 // ---------------- Tách đề ----------------
 
 /**
@@ -166,12 +213,12 @@ const isTableText = (s) => /^\s*\|/m.test(s || '');
  * }}
  */
 export function parsePastedExam(text, { answerKey = '' } = {}) {
-  const lines = String(text || '')
+  const lines = splitRunOnLines(String(text || '')
     .replace(/\r\n?/g, '\n')
     .replace(/[   \t]/g, ' ')
     .replace(/[​-‍﻿]/g, '')
     .split('\n')
-    .map((l) => l.replace(/\s+/g, ' ').trim());
+    .map((l) => l.replace(/\s+/g, ' ').trim()));
 
   const questions = [];
   const groups = [];

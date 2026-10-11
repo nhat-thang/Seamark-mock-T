@@ -178,11 +178,14 @@ export default function ExamRunner({ view, token, onSubmitted }) {
   return (
     <div className="exam-page">
       <header className="exam-header">
-        <div className="exam-header-info">
-          <strong className="exam-header-title">{view.examTitle}</strong>
-          <span className="exam-header-student">
-            {view.student.lastName} {view.student.firstName}
-          </span>
+        <div className="exam-header-brand">
+          <img src="/images/logo-seamark.png" alt="Seamark" className="exam-header-logo" />
+          <div className="exam-header-info">
+            <strong className="exam-header-title">{view.examTitle}</strong>
+            <span className="exam-header-student">
+              {view.student.lastName} {view.student.firstName}
+            </span>
+          </div>
         </div>
         <Countdown deadlineAt={view.deadlineAt} clockOffset={clockOffset} onExpire={() => submit({ auto: true })} />
         <div className="exam-header-actions">

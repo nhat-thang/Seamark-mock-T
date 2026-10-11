@@ -24,7 +24,7 @@ const TOUR_STEPS = [
   { target: 'answer-key', title: 'Đáp án và điểm', text: 'Bấm "Đáp án" để chọn lựa chọn đúng (có dấu ✓ xanh) và đặt số điểm của question. Bấm "Xong" để quay lại soạn.' },
   { target: 'drag', title: 'Đổi thứ tự', text: 'Giữ chuột vào 6 chấm ở mép trên thẻ rồi kéo lên / xuống. Hoặc bấm vào 6 chấm rồi dùng phím mũi tên ↑ ↓.' },
   { target: 'toolbar', title: 'Thanh công cụ', text: 'Thanh này đi theo thẻ đang chọn. Từ trên xuống: thêm question, dán đề có sẵn, thêm tiêu đề và mô tả, thêm ảnh, thêm audio, thêm part. Thứ mới thêm nằm ngay dưới thẻ đang chọn.' },
-  { target: 'tool-paste', title: 'Dán đề có sẵn', text: 'Có sẵn đề trên web hoặc Word? Copy cả đề rồi dán vào đây: máy tự tách question, lựa chọn, đáp án và đoạn văn.' },
+  { target: 'paste', title: 'Dán nhiều câu có sẵn', text: 'Có sẵn đề trên Word, web hoặc PDF? Bấm "Dán đề có sẵn", copy cả đề rồi dán vào: máy tự tách thành từng câu, lựa chọn, đáp án và đoạn văn. Nút ⇥ trên thanh bên phải cũng mở chức năng này.' },
   { target: 'tool-text', title: 'Đoạn văn cho nhiều question', text: 'Thêm khối "Tiêu đề và mô tả" (hoặc khối ảnh / audio) rồi thêm question ngay bên dưới. Các question có vạch nối bên trái thuộc khối đó: học viên thấy khối bên cạnh các question.' },
   { target: 'topbar', title: 'Thêm nhiều / xóa nhiều', text: 'Thêm nhiều question một lúc, hoặc bấm "Chọn nhiều để xóa". Tổng điểm của đề ở bên phải.' },
   { target: 'tab-info', title: 'Xáo trộn question', text: 'Ở tab "Thông tin đề": đặt thời gian làm bài, và bật "Xáo trộn question" để mỗi học viên làm theo một thứ tự khác nhau.' },
@@ -371,6 +371,20 @@ export default function CustomBuilderTab(props) {
           </div>
         )}
 
+        {/* Dán nhiều câu có sẵn: đặt ở đầu trang cho dễ thấy */}
+        {!readOnly && !checkMode && (
+          <div className={`fb-paste-banner ${content.questions.length === 0 ? 'is-big' : ''}`} data-tour="paste">
+            <Icon name="import" size={content.questions.length === 0 ? 40 : 28} />
+            <div className="fb-paste-banner-text">
+              <strong>Dán nhiều câu có sẵn</strong>
+              <span>Copy cả đề từ Word, trang web hoặc PDF rồi dán vào: máy tự tách thành từng câu, các lựa chọn và đáp án.</span>
+            </div>
+            <button type="button" className="btn btn-primary btn-small" onClick={() => setPasteOpen(true)}>
+              Dán đề có sẵn
+            </button>
+          </div>
+        )}
+
         {(review.aiAnswer > 0 || review.needsImage > 0) && (
           <div className="review-bar" role="status">
             {review.aiAnswer > 0 && (
@@ -512,7 +526,7 @@ export default function CustomBuilderTab(props) {
             {!readOnly && (
               <div className="fb-toolbar" ref={toolbarRef} style={{ top: toolTop }} role="toolbar" aria-label="Thêm vào đề" data-tour="toolbar">
                 <IconButton icon="add" label="Thêm câu hỏi" onClick={() => addQuestions(1)} />
-                <IconButton icon="import" label="Nhập câu hỏi (dán đề có sẵn)" onClick={() => setPasteOpen(true)} data-tour="tool-paste" />
+                <IconButton icon="import" label="Nhập câu hỏi (dán đề có sẵn)" onClick={() => setPasteOpen(true)} />
                 <IconButton icon="title" label="Thêm tiêu đề và mô tả" onClick={() => addBlock('text')} data-tour="tool-text" />
                 <IconButton icon="image" label="Thêm ảnh" onClick={() => addBlock('image')} />
                 <IconButton icon="audio" label="Thêm audio" onClick={() => addBlock('audio')} />

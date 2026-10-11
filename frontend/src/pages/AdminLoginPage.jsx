@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { apiGet, apiPost } from '../utils/api.js';
-import './SimplePage.css';
+import PageShell from '../components/brand/PageShell.jsx';
 import './AdminLoginPage.css';
 
 export default function AdminLoginPage() {
@@ -52,10 +52,8 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main className="simple-page">
-      <div className="card simple-card login-card">
-        <img src="/images/logo-seamark.png" alt="Seamark" className="login-logo" />
-        <h1 className="login-title">Đăng nhập admin</h1>
+    <PageShell title="Đăng nhập admin" subtitle="Dành cho giáo viên của trung tâm." narrow>
+      <div className="card login-card">
 
         {notice && !error && <p className="login-notice">{notice}</p>}
 
@@ -112,6 +110,6 @@ export default function AdminLoginPage() {
         <p className="login-help muted">Quên mật khẩu? Hãy nhờ admin chính đặt lại mật khẩu cho bạn.</p>
         <Link to="/" className="btn btn-link">Về trang chủ</Link>
       </div>
-    </main>
+    </PageShell>
   );
 }

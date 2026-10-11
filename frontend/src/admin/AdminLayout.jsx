@@ -1,10 +1,36 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useNavigate, useOutletContext } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate, useOutletContext } from 'react-router-dom';
 import { apiGet, apiPost, UNAUTHORIZED_EVENT } from '../utils/api.js';
 import { ROLE_LABELS } from '../utils/format.js';
+import LineIcon from '../components/brand/LineIcon.jsx';
+import { Sparkle } from '../components/brand/SeaArt.jsx';
+import '../components/brand/brand.css';
 import './admin.css';
 
 const LOGIN_PATH = '/admin/dang-nhap';
+
+// Menu: đổi tên mục ở đây thì sửa cả trang Hướng dẫn (GuidePage.jsx)
+const NAV = [
+  { to: '/admin', end: true, icon: 'home', label: 'Trang chính' },
+  { to: '/admin/de-thi', icon: 'exam', label: 'Đề thi' },
+  { to: '/admin/ket-qua', icon: 'chart', label: 'Kết quả' },
+  { to: '/admin/doi-mat-khau', icon: 'key', label: 'Đổi mật khẩu' },
+  { to: '/admin/huong-dan', icon: 'help', label: 'Hướng dẫn' },
+];
+const OWNER_NAV = [
+  { to: '/admin/tai-khoan', icon: 'users', label: 'Tài khoản admin' },
+  { to: '/admin/lich-su-chinh-sua', icon: 'history', label: 'Lịch sử chỉnh sửa' },
+  { to: '/admin/lich-su-dang-nhap', icon: 'login', label: 'Lịch sử đăng nhập' },
+];
+
+function NavItem({ to, end, icon, label }) {
+  return (
+    <NavLink to={to} end={end}>
+      <LineIcon name={icon} size={18} />
+      {label}
+    </NavLink>
+  );
+}
 
 /**
  * Khung chung cho mọi trang admin: kiểm tra đăng nhập, thanh trên cùng, menu.
@@ -76,34 +102,34 @@ export default function AdminLayout() {
   return (
     <div className="admin-page">
       <header className="admin-topbar">
-        <div className="admin-brand">
+        <Sparkle className="admin-topbar-spark admin-topbar-spark-1" size={18} />
+        <Sparkle className="admin-topbar-spark admin-topbar-spark-2" size={12} filled />
+        <Link to="/admin" className="admin-brand">
           <img src="/images/logo-seamark.png" alt="" className="admin-brand-logo" />
-          <span>Quản trị Seamark</span>
-        </div>
+          <span className="admin-brand-text">
+            <span className="admin-brand-name">Seamark</span>
+            <span className="admin-brand-sub">Trang quản trị</span>
+          </span>
+        </Link>
         <div className="admin-user">
-          <span>
+          <span className="admin-user-hello">
             Xin chào, <strong>{admin.displayName}</strong>
             <span className="admin-role">{ROLE_LABELS[admin.role]}</span>
           </span>
-          <button type="button" className="btn btn-secondary btn-small" onClick={handleLogout}>
+          <button type="button" className="btn btn-ghost-light btn-small" onClick={handleLogout}>
+            <LineIcon name="logout" size={18} />
             Đăng xuất
           </button>
         </div>
       </header>
 
       <nav className="admin-nav" aria-label="Menu quản trị">
-        <NavLink to="/admin" end>Trang chính</NavLink>
-        <NavLink to="/admin/de-thi">Đề thi</NavLink>
-        <NavLink to="/admin/ket-qua">Kết quả</NavLink>
-        <NavLink to="/admin/doi-mat-khau">Đổi mật khẩu</NavLink>
-        <NavLink to="/admin/huong-dan">Hướng dẫn</NavLink>
+        {NAV.map((n) => <NavItem key={n.to} {...n} />)}
         {/* Chỉ admin chính thấy các mục này (server cũng kiểm tra quyền) */}
         {isOwner && (
           <>
             <span className="admin-nav-divider" aria-hidden="true" />
-            <NavLink to="/admin/tai-khoan">Tài khoản admin</NavLink>
-            <NavLink to="/admin/lich-su-chinh-sua">Lịch sử chỉnh sửa</NavLink>
-            <NavLink to="/admin/lich-su-dang-nhap">Lịch sử đăng nhập</NavLink>
+            {OWNER_NAV.map((n) => <NavItem key={n.to} {...n} />)}
           </>
         )}
       </nav>

@@ -90,7 +90,7 @@ Thêm thư viện cho backend / frontend: `npm install <tên> --prefix backend` 
 
 Database được tạo tại `DATA_DIR/toeic.sqlite`. Muốn làm lại từ đầu: tắt server, xóa file đó, chạy lại `npm run seed`.
 
-Ảnh giao diện nằm trong `frontend/public/images/` (`logo-seamark.png`, `decor-1.png`, `decor-2.png`): thay file cùng tên là xong. Màu sắc chỉnh trong `frontend/src/styles/theme.css`.
+Ảnh giao diện nằm trong `frontend/public/images/`: `logo-seamark.png` (logo nhỏ ở đầu trang, biểu tượng tab trình duyệt) và `seamark-emblem.png` (hình cá heo + hải đăng lớn ở trang chủ, nền trong suốt) — thay file cùng tên là xong. (`decor-1.png`, `decor-2.png` không còn được dùng.) Màu sắc chỉnh trong `frontend/src/styles/theme.css` (nhóm `--brand-…` là màu thương hiệu của trang học viên). Hotline, địa chỉ ở chân trang chủ chỉnh trong `frontend/src/config/site.js`. Hình trang trí (sóng, bong bóng, cá heo, sao) vẽ bằng SVG trong `frontend/src/components/brand/`.
 
 ## Tài liệu
 

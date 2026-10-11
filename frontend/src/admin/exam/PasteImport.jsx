@@ -162,6 +162,10 @@ export default function PasteImport({ content, onApply, onCancel }) {
           <li>Máy tự tách question, lựa chọn, đáp án, đoạn văn đọc hiểu. {aiStatus?.configured ? 'Sau đó AI kiểm tra lại và gợi ý đáp án.' : ''} Bạn xem lại rồi bấm <strong>"Áp dụng"</strong>.</li>
         </ol>
         <p className="field-hint">
+          Dán được nhiều câu một lúc (tối đa {MAX_TOTAL} question). Mỗi câu bắt đầu bằng số câu ("1.", "Câu 1:"…); câu bị dính liền
+          nhau trên một dòng (thường gặp khi copy từ PDF) máy vẫn tự tách.
+        </p>
+        <p className="field-hint">
           Ảnh và audio <strong>không</strong> đi theo khi copy chữ. Question nào có vẻ cần ảnh sẽ được đánh dấu để bạn tải ảnh lên sau.
         </p>
 

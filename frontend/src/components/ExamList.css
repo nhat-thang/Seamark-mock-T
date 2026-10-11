@@ -7,37 +7,72 @@
   gap: 0.9rem;
 }
 
+/* Mỗi đề một thẻ: biểu tượng | tên + nhãn câu / phút | nút "Làm bài" */
 .exam-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 1rem;
-  padding: 1rem 1.2rem;
+  padding: 1rem 1.1rem;
   border: 1px solid var(--color-border);
-  border-left: 5px solid var(--color-accent);
-  border-radius: var(--radius-small);
-  background: var(--color-primary-soft);
-  transition: border-color 0.15s, background-color 0.15s;
+  border-radius: 16px;
+  background: linear-gradient(120deg, #ffffff 0%, var(--color-primary-soft) 100%);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
 .exam-item:hover {
-  border-left-color: var(--color-primary);
-  background: var(--color-primary-soft-hover);
+  border-color: var(--brand-sky);
+  box-shadow: 0 10px 24px rgba(31, 88, 204, 0.12);
+  transform: translateY(-2px);
+}
+
+.exam-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: linear-gradient(140deg, var(--brand-sky), var(--brand-blue));
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(31, 88, 204, 0.25);
+}
+
+.exam-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .exam-title {
   margin: 0;
-  font-size: 1.15rem;
-  color: var(--color-text);
+  font-size: 1.12rem;
+  color: var(--brand-navy);
+  overflow-wrap: anywhere;
 }
 
 .exam-meta {
-  margin: 0.15rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.35rem 0 0;
+}
+
+.exam-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.65rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid var(--color-border);
   color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .exam-start {
   flex-shrink: 0;
+  gap: 0.4rem;
+  border-radius: 999px;
 }
 
 .exam-start-error {
@@ -47,7 +82,7 @@
 .exam-empty {
   padding: 1.5rem;
   text-align: center;
-  border-radius: var(--radius-small);
+  border-radius: 16px;
   background: var(--color-primary-soft);
   color: var(--color-text-muted);
   font-weight: 600;
@@ -63,8 +98,11 @@
 /* Điện thoại: nút "Làm bài" xuống dòng, rộng hết thẻ */
 @media (max-width: 600px) {
   .exam-item {
-    flex-direction: column;
-    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .exam-icon {
+    width: 46px;
+    height: 46px;
   }
   .exam-start {
     width: 100%;
