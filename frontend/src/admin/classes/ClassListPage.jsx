@@ -8,7 +8,8 @@ import { useAdmin } from '../AdminLayout.jsx';
 import ClassForm from './ClassForm.jsx';
 import './classes.css';
 
-// Danh sách lớp học — mọi admin tạo / mở lớp. Admin chính xem thêm lớp đã xóa để khôi phục.
+// Danh sách lớp học. Admin chính: mọi lớp, tạo lớp, xem lớp đã xóa để khôi phục.
+// Giáo viên: chỉ các lớp mình phụ trách (server đã lọc).
 export default function ClassListPage() {
   const admin = useAdmin();
   const navigate = useNavigate();
@@ -43,6 +44,7 @@ export default function ClassListPage() {
   }
 
   const today = vnToday();
+  const isOwner = admin.role === 'owner';
 
   return (
     <>
@@ -52,16 +54,18 @@ export default function ClassListPage() {
           <p className="admin-intro">
             {showDeleted
               ? 'Các lớp bị xóa vẫn giữ nguyên học sinh, lịch học và điểm danh. Bấm "Khôi phục" để lớp hiện lại.'
-              : 'Bấm vào một lớp để thêm học sinh, xem lịch học, điểm danh và nhắc học phí.'}
+              : isOwner
+                ? 'Bấm vào một lớp để thêm học sinh, xem lịch học, điểm danh và học phí.'
+                : 'Các lớp bạn phụ trách. Bấm vào một lớp để xem học sinh, lịch học và điểm danh.'}
           </p>
         </div>
         <div className="page-head-actions">
-          {admin.role === 'owner' && (
+          {isOwner && (
             <button type="button" className="btn btn-secondary" onClick={() => { setShowDeleted((v) => !v); setCreating(false); }}>
               {showDeleted ? 'Quay lại danh sách lớp' : 'Xem lớp đã xóa'}
             </button>
           )}
-          {!showDeleted && !creating && (
+          {isOwner && !showDeleted && !creating && (
             <button type="button" className="btn btn-primary cl-btn-icon" onClick={() => setCreating(true)}>
               <LineIcon name="plus" size={20} /> Tạo lớp mới
             </button>
@@ -83,7 +87,13 @@ export default function ClassListPage() {
       {classes && classes.length === 0 && (
         <div className="cl-empty">
           <LineIcon name="board" size={40} />
-          <p>{showDeleted ? 'Không có lớp nào bị xóa.' : 'Chưa có lớp nào. Bấm "Tạo lớp mới" để bắt đầu.'}</p>
+          <p>
+            {showDeleted
+              ? 'Không có lớp nào bị xóa.'
+              : isOwner
+                ? 'Chưa có lớp nào. Bấm "Tạo lớp mới" để bắt đầu.'
+                : 'Bạn chưa phụ trách lớp nào. Admin chính sẽ thêm bạn vào lớp (hoặc xếp bạn dạy một buổi).'}
+          </p>
         </div>
       )}
 
@@ -110,10 +120,14 @@ export default function ClassListPage() {
                 ) : (
                   <p className="cl-class-next muted"><LineIcon name="calendar" size={18} /> Chưa có lịch học sắp tới</p>
                 )}
+                {c.teachers.length > 0 && (
+                  <p className="cl-class-next muted small-text"><LineIcon name="user" size={16} /> {c.teachers.map((t) => t.name).join(', ')}</p>
+                )}
                 <div className="cl-class-tags">
-                  {c.feeDue > 0 && <span className="cl-pill is-due"><LineIcon name="money" size={16} /> {c.feeDue} đến hạn học phí</span>}
-                  {c.feeSoon > 0 && <span className="cl-pill is-soon">{c.feeSoon} sắp đến hạn</span>}
-                  {!c.feeEvery && <span className="cl-pill">Không nhắc học phí</span>}
+                  {c.alerts?.red > 0 && <span className="tu-alert is-red"><span className="tu-dot" aria-hidden="true" />{c.alerts.red} đỏ (tới hạn học phí)</span>}
+                  {c.alerts?.orange > 0 && <span className="tu-alert is-orange"><span className="tu-dot" aria-hidden="true" />{c.alerts.orange} cam (còn 1 buổi)</span>}
+                  {c.alerts?.yellow > 0 && <span className="tu-alert is-yellow"><span className="tu-dot" aria-hidden="true" />{c.alerts.yellow} vàng (sắp tới hạn)</span>}
+                  {isOwner && !c.tuitionConfigured && <span className="cl-pill">Chưa cài học phí</span>}
                 </div>
                 {showDeleted && (
                   <div className="cl-class-deleted">

@@ -9,7 +9,8 @@ const MAX_IMPORT = 300;
 
 /**
  * Nhập danh sách lớp từ file Excel bất kỳ:
- * 1. Chọn file -> server đọc và đoán từng cột (Họ và tên / SĐT / Ngày vào học / cột lạ...).
+ * 1. Chọn file -> server đọc và đoán từng cột (Họ và tên / phụ huynh / SĐT / CCCD / Ngày vào học / cột lạ...).
+ *    Nhập từ Excel chỉ bắt buộc họ tên; thiếu thông tin phụ huynh thì lớp hiện nhãn "Thiếu thông tin" để bổ sung sau.
  * 2. Giáo viên kiểm tra các cột (đổi nếu đoán sai), xem trước từng dòng, bỏ tích dòng không muốn nhập.
  * 3. Bấm "Nhập" -> lưu qua API thêm học sinh như bình thường (có ghi lịch sử).
  */
@@ -17,7 +18,8 @@ export default function ImportStudentsDialog({ cls, existing, defaultJoinedOn, o
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [fields, setFields] = useState([]);
-  const [joinedOn, setJoinedOn] = useState(defaultJoinedOn || vnToday());
+  // '' = các dòng không ghi ngày bắt đầu từ buổi sắp tới gần nhất của lớp (server tự chọn)
+  const [joinedOn, setJoinedOn] = useState(defaultJoinedOn || '');
   const [toggled, setToggled] = useState({}); // số dòng -> có nhập hay không (giáo viên tự bấm)
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -58,7 +60,9 @@ export default function ImportStudentsDialog({ cls, existing, defaultJoinedOn, o
     try {
       await apiPost(`/admin/classes/${cls.id}/students`, {
         fileName: preview.fileName,
-        students: chosen.map((s) => ({ fullName: s.fullName, phone: s.phone, joinedOn: s.joinedOn, priorSessions: s.priorSessions, note: s.note })),
+        students: chosen.map((s) => ({
+          fullName: s.fullName, parentName: s.parentName, parentPhone: s.parentPhone, parentIdNumber: s.parentIdNumber, joinedOn: s.joinedOn || undefined, note: s.note,
+        })),
       });
       onDone(chosen.length, preview.fileName);
     } catch (err) {
@@ -108,7 +112,8 @@ export default function ImportStudentsDialog({ cls, existing, defaultJoinedOn, o
               Dùng luôn file danh sách bạn đang có. Cột họ tên đặt tên gì cũng được ("Họ và tên", "Họ tên", "Name", "Tên học
               sinh"…). Web tự nhận cột, bạn kiểm tra lại trước khi nhập.
             </li>
-            <li>Cột khác như ngày sinh, tên phụ huynh, trường… sẽ được <strong>gộp vào Ghi chú</strong>.</li>
+            <li>Web nhận cả cột <strong>tên phụ huynh, SĐT phụ huynh, CCCD phụ huynh</strong>. Chỉ cột họ tên là bắt buộc — thiếu gì thì bổ sung sau.</li>
+            <li>Cột khác như ngày sinh, trường… sẽ được <strong>gộp vào Ghi chú</strong>.</li>
             <li>Google Trang tính: <strong>Tệp → Tải xuống → Microsoft Excel (.xlsx)</strong> rồi chọn file vừa tải.</li>
             <li>
               Chưa có file? <a href="/api/admin/classes/import-template" download>Tải file mẫu</a> về điền.
@@ -164,7 +169,8 @@ export default function ImportStudentsDialog({ cls, existing, defaultJoinedOn, o
 
           <div className="cl-import-date field">
             <label htmlFor="imp-joined">Ngày vào học cho các dòng không ghi ngày</label>
-            <input id="imp-joined" type="date" className="input" value={joinedOn} onChange={(e) => setJoinedOn(e.target.value || vnToday())} />
+            <input id="imp-joined" type="date" className="input" value={joinedOn} onChange={(e) => setJoinedOn(e.target.value)} />
+            <p className="field-hint">Để trống = bắt đầu từ buổi sắp tới gần nhất của lớp. Có ngày thì bắt đầu từ buổi đầu tiên của lớp kể từ ngày đó.</p>
           </div>
 
           {!problem && (
@@ -179,7 +185,9 @@ export default function ImportStudentsDialog({ cls, existing, defaultJoinedOn, o
                       <th>Nhập</th>
                       <th>Dòng</th>
                       <th>Họ và tên</th>
-                      <th>SĐT</th>
+                      <th>Phụ huynh</th>
+                      <th>SĐT phụ huynh</th>
+                      <th>CCCD</th>
                       <th>Vào học</th>
                       <th>Ghi chú</th>
                     </tr>
@@ -204,8 +212,10 @@ export default function ImportStudentsDialog({ cls, existing, defaultJoinedOn, o
                           {s.duplicate && <div className="small-text muted">{s.duplicate} (đã bỏ tích)</div>}
                           {s.warnings.map((w) => <div key={w} className="text-warn small-text">{w}</div>)}
                         </td>
-                        <td className="nowrap">{s.phone || <span className="muted">—</span>}</td>
-                        <td className="nowrap">{formatDate(s.joinedOn)}</td>
+                        <td>{s.parentName || <span className="muted">—</span>}</td>
+                        <td className="nowrap">{s.parentPhone || <span className="muted">—</span>}</td>
+                        <td className="nowrap">{s.parentIdNumber || <span className="muted">—</span>}</td>
+                        <td className="nowrap">{s.joinedOn ? formatDate(s.joinedOn) : <span className="muted">Buổi sắp tới</span>}</td>
                         <td className="cl-import-note">{s.note || <span className="muted">—</span>}</td>
                       </tr>
                     ))}

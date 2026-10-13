@@ -64,8 +64,17 @@ export const AUDIT_ACTION_LABELS = {
   start_session: 'Bắt đầu buổi học',
   save_attendance: 'Điểm danh',
   update_attendance: 'Sửa điểm danh',
-  fee_paid: 'Đã thu học phí',
-  fee_undo: 'Hoàn tác thu học phí',
+  fee_paid: 'Đã thu học phí (cách cũ)',
+  fee_undo: 'Hoàn tác thu học phí (cách cũ)',
+  tuition_pay: 'Thu học phí',
+  tuition_unpay: 'Bỏ "Đã thu" học phí',
+  tuition_snooze: 'Tắt cảnh báo học phí',
+  tuition_unsnooze: 'Bật lại cảnh báo học phí',
+  export_tuition: 'Tải Excel học phí',
+  export_alerts: 'Tải Excel cảnh báo học phí',
+  export_session: 'Tải Excel buổi học',
+  export_activity: 'Tải Excel hoạt động của đề',
+  update_assignment: 'Sửa lớp được giao đề',
 };
 
 // Kết quả trong "Lịch sử đăng nhập"

@@ -2,25 +2,25 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { apiGet, apiPost } from '../../utils/api.js';
 import {
+  ALERT_LEVELS,
   ATTENDANCE,
   STATE_LABELS,
-  addDays,
   classStyle,
   describeDate,
   durationText,
-  feeBadge,
   formatDate,
   relativeDay,
   sessionState,
   useNow,
   vnTimeOf,
+  vnToday,
 } from '../../utils/schedule.js';
 import { formatDateTime } from '../../utils/format.js';
 import LineIcon from '../../components/brand/LineIcon.jsx';
-import { useAdmin } from '../AdminLayout.jsx';
 import Modal from './Modal.jsx';
-import SessionDialog from './SessionDialog.jsx';
+import SessionDialog, { ConfirmBox } from './SessionDialog.jsx';
 import StudentsTab from './StudentsTab.jsx';
+import { AlertBadge } from './TuitionBits.jsx';
 import './classes.css';
 
 const MAX_BONUS = 50;
@@ -59,13 +59,21 @@ const marksOf = (students) =>
 const sameMarks = (a, b) =>
   Object.keys(a).every((id) => b[id] && a[id].status === b[id].status && a[id].bonus === b[id].bonus);
 
+/** Ngày cuối cùng giáo viên còn sửa được điểm danh (editUntil = 0 giờ ngày kế tiếp, giờ VN) */
+const lastEditDay = (s) => formatDate(vnToday(Date.parse(s.editUntil) - 1));
+
+/** Học sinh có cảnh báo học phí, theo mức (đỏ trước) */
+const alertsOf = (students) =>
+  students.filter((st) => st.isActive && st.tuition?.alert).sort((a, b) => ALERT_LEVELS[a.tuition.alert.level].rank - ALERT_LEVELS[b.tuition.alert.level].rank);
+
 /**
- * Trang một buổi học: giáo viên bấm "Bắt đầu" (từ 30 phút trước giờ học) rồi điểm danh, cộng điểm, thêm học sinh.
- * Admin chính: thêm nút sửa / xóa buổi, sửa điểm danh bất cứ lúc nào.
+ * Trang một buổi học: giáo viên bấm "Bắt đầu" (từ 30 phút trước giờ học) rồi điểm danh, cộng điểm.
+ * Cạnh tên học sinh: số buổi đã học + nhãn cảnh báo học phí (giáo viên không thấy số tiền).
+ * Admin chính: xem trước danh sách + tình hình điểm danh bất cứ lúc nào, sửa / xóa buổi (buổi đã điểm danh
+ * không xóa / không đổi giờ được), thêm học sinh, sửa điểm danh bất cứ lúc nào.
  */
 export default function SessionPage() {
   const { id } = useParams();
-  const admin = useAdmin();
   const navigate = useNavigate();
   const now = useNow(15000);
   const [data, setData] = useState(null);
@@ -185,12 +193,12 @@ export default function SessionPage() {
       });
       writeDraft(s.id, null);
       apply(d);
-      const due = d.students.filter((st) => st.isActive && st.fee.state === 'due').length;
+      const warn = alertsOf(d.students).length;
       setNotice({
         type: 'success',
         text:
           `Đã lưu điểm danh lúc ${vnTimeOf(new Date().toISOString())}.` +
-          (due ? ` Có ${due} học sinh đến hạn học phí (xem khung màu vàng bên dưới).` : ''),
+          (warn ? ` Có ${warn} học sinh cần nhắc học phí (xem khung bên dưới).` : ''),
       });
     } catch (err) {
       setNotice({ type: 'error', text: err.message });
@@ -199,41 +207,54 @@ export default function SessionPage() {
     }
   }
 
-  const feeDue = students.filter((st) => st.isActive && st.fee.state === 'due');
-  const feeSoon = students.filter((st) => st.isActive && st.fee.state === 'soon');
+  const alerts = alertsOf(students);
 
   return (
     <div className={`cl-session ${started ? 'has-savebar' : ''}`}>
       <p className="breadcrumb">
         <Link to={`/admin/thoi-khoa-bieu?ngay=${s.date}`}>Thời khóa biểu</Link> ›{' '}
-        <Link to={`/admin/lop-hoc/${s.classId}`}>{s.className}</Link> › {formatDate(s.date)}
+        <Link to={`/admin/lop-hoc/${s.classId}`}>{s.className}</Link> › Buổi {s.no} · {formatDate(s.date)}
       </p>
 
       <section className="cl-hero cl-session-hero" style={classStyle(s.classColor)}>
         <div className="cl-hero-text">
           <span className={`cl-state is-${state} is-hero`}>{STATE_LABELS[state]}</span>
-          <h1>{s.className}</h1>
+          <h1>{s.className} <span className="cl-session-no">Buổi {s.no}/{s.totalSessions}</span></h1>
           <p className="cl-session-when">
             <LineIcon name="calendar" size={22} /> {describeDate(s.date)}
             <span className="cl-session-time"><LineIcon name="clock" size={22} /> {s.startTime} – {s.endTime}</span>
           </p>
           <div className="cl-hero-stats">
-            <span><LineIcon name="user" size={18} /> {s.teacher.id === admin.id ? 'Bạn dạy' : s.teacher.name}{s.teacher.isOther && ' (giáo viên ngoài)'}</span>
+            <span>
+              <LineIcon name="user" size={18} /> {s.teacher.isMine ? (s.teacher.list.length > 1 ? `Bạn dạy cùng ${s.teacher.name}` : 'Bạn dạy') : s.teacher.name || '—'}
+              {s.teacher.isOther && ' (giáo viên ngoài)'}
+            </span>
             {s.room && <span><LineIcon name="pin" size={18} /> {s.room}</span>}
             <span><LineIcon name="users" size={18} /> {students.length} học sinh</span>
           </div>
           {s.note && <p className="cl-hero-note">Ghi chú: {s.note}</p>}
         </div>
-        {isOwner && (
-          <div className="cl-hero-actions">
-            <button type="button" className="btn btn-ghost-light btn-small" onClick={() => setDialog('edit')}>
-              <LineIcon name="edit" size={18} /> Sửa lịch
-            </button>
-            <button type="button" className="btn btn-ghost-light btn-small" onClick={() => setDialog('delete')}>
-              <LineIcon name="trash" size={18} /> Xóa buổi
-            </button>
-          </div>
-        )}
+        <div className="cl-hero-actions">
+          {isOwner && (
+            <>
+              <button type="button" className="btn btn-ghost-light btn-small" onClick={() => setDialog('edit')}>
+                <LineIcon name="edit" size={18} /> {perm.locked ? 'Đổi giáo viên / phòng' : 'Sửa lịch'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost-light btn-small"
+                disabled={perm.locked}
+                title={perm.locked ? 'Buổi đã điểm danh nên không xóa được' : undefined}
+                onClick={() => setDialog('delete')}
+              >
+                <LineIcon name="trash" size={18} /> Xóa buổi
+              </button>
+            </>
+          )}
+          <a className="btn btn-ghost-light btn-small" href={`/api/admin/schedule/${s.id}/export`} download>
+            <LineIcon name="download" size={18} /> Tải Excel buổi này
+          </a>
+        </div>
       </section>
 
       {notice.text && (
@@ -243,7 +264,10 @@ export default function SessionPage() {
       )}
 
       {!started ? (
-        <StartCard s={s} isOwner={isOwner} now={now} canStart={canEditNow} busy={busy} onStart={start} />
+        <>
+          <StartCard s={s} isOwner={isOwner} now={now} canStart={canEditNow} busy={busy} onStart={start} />
+          <RosterPreview students={students} alerts={alerts} />
+        </>
       ) : (
         <>
           {!canEditNow && (
@@ -251,7 +275,7 @@ export default function SessionPage() {
               <LineIcon name="lock" size={20} />
               {isOwner
                 ? 'Chưa tới giờ học nên chưa sửa được điểm danh.'
-                : `Đã hết hạn sửa điểm danh (hết ngày ${formatDate(addDays(s.date, 1))}). Cần sửa thì nhờ admin chính.`}
+                : `Đã hết hạn sửa điểm danh (hết ngày ${lastEditDay(s)}). Cần sửa thì nhờ admin chính.`}
             </p>
           )}
           {s.attendanceAt && (
@@ -269,16 +293,18 @@ export default function SessionPage() {
             <button type="button" role="tab" aria-selected={tab === 'diem-cong'} className={`cl-tab ${tab === 'diem-cong' ? 'is-on' : ''}`} onClick={() => setTab('diem-cong')}>
               <LineIcon name="star" size={20} /> Điểm cộng
             </button>
-            <button type="button" role="tab" aria-selected={tab === 'hoc-sinh'} className={`cl-tab ${tab === 'hoc-sinh' ? 'is-on' : ''}`} onClick={() => setTab('hoc-sinh')}>
-              <LineIcon name="users" size={20} /> Học sinh ({students.length})
-            </button>
+            {isOwner && (
+              <button type="button" role="tab" aria-selected={tab === 'hoc-sinh'} className={`cl-tab ${tab === 'hoc-sinh' ? 'is-on' : ''}`} onClick={() => setTab('hoc-sinh')}>
+                <LineIcon name="users" size={20} /> Học sinh ({students.length})
+              </button>
+            )}
           </nav>
 
           {tab !== 'hoc-sinh' && students.length === 0 && (
             <div className="cl-empty">
               <LineIcon name="users" size={40} />
-              <p>Buổi này chưa có học sinh nào. Thêm học sinh ở tab "Học sinh".</p>
-              <button type="button" className="btn btn-primary" onClick={() => setTab('hoc-sinh')}>Thêm học sinh</button>
+              <p>{isOwner ? 'Buổi này chưa có học sinh nào. Thêm học sinh ở tab "Học sinh".' : 'Buổi này chưa có học sinh nào. Admin chính sẽ thêm học sinh vào lớp.'}</p>
+              {isOwner && <button type="button" className="btn btn-primary" onClick={() => setTab('hoc-sinh')}>Thêm học sinh</button>}
             </div>
           )}
 
@@ -298,26 +324,18 @@ export default function SessionPage() {
                   </button>
                 )}
               </div>
-              {(feeDue.length > 0 || feeSoon.length > 0) && (
-                <div className="cl-alert-fee">
-                  <LineIcon name="money" size={20} />
-                  <div>
-                    {feeDue.length > 0 && <p><strong>Đến hạn học phí — nhắc phụ huynh:</strong> {feeDue.map((st) => st.fullName).join(', ')}</p>}
-                    {feeSoon.length > 0 && <p><strong>Buổi sau đến hạn:</strong> {feeSoon.map((st) => st.fullName).join(', ')}</p>}
-                  </div>
-                </div>
-              )}
+              {alerts.length > 0 && <FeeReminder alerts={alerts} />}
               <ul className="cl-att-list">
                 {students.map((st) => {
                   const m = marks[st.id] || {};
                   const av = avatarOf(st.fullName);
-                  const fee = feeBadge(st.fee);
                   return (
                     <li key={st.id} className={`cl-att-row is-${m.status || 'unmarked'}`}>
                       <span className="cl-avatar" style={{ background: av.color }} aria-hidden="true">{av.letter}</span>
                       <div className="cl-att-name">
                         <strong>{st.fullName}</strong>
-                        {fee && fee.tone === 'due' && <span className="cl-pill is-due"><LineIcon name="money" size={14} /> Đến hạn học phí</span>}
+                        <span className="cl-att-done">đã học {st.tuition?.sessionsDone ?? 0} buổi</span>
+                        {st.tuition?.alert && <AlertBadge alert={st.tuition.alert} short />}
                         {!st.isActive && <span className="cl-pill">Đã nghỉ học</span>}
                         {st.note && <span className="muted small-text">{st.note}</span>}
                       </div>
@@ -378,7 +396,7 @@ export default function SessionPage() {
             </>
           )}
 
-          {tab === 'hoc-sinh' && <SessionStudents classId={s.classId} sessionDate={s.date} onChanged={() => load({ keepDraft: true })} />}
+          {tab === 'hoc-sinh' && isOwner && <SessionStudents classId={s.classId} sessionId={s.id} onChanged={() => load({ keepDraft: true })} />}
 
           {canEditNow && tab !== 'hoc-sinh' && students.length > 0 && (
             <div className="cl-savebar">
@@ -428,7 +446,7 @@ function StartCard({ s, isOwner, now, canStart, busy, onStart }) {
       <div className="cl-start is-expired">
         <LineIcon name="alert" size={40} />
         <h2>Buổi học này chưa được điểm danh</h2>
-        <p>Đã quá hạn để giáo viên điểm danh (hết ngày {formatDate(addDays(s.date, 1))}). Hãy báo admin chính điểm danh giúp.</p>
+        <p>Đã quá hạn để giáo viên điểm danh (hết ngày {lastEditDay(s)}). Hãy báo admin chính điểm danh giúp.</p>
       </div>
     );
   }
@@ -459,8 +477,46 @@ function StartCard({ s, isOwner, now, canStart, busy, onStart }) {
   );
 }
 
-/** Tab "Học sinh" trong buổi học: thêm / sửa / cho nghỉ (danh sách đầy đủ của lớp) */
-function SessionStudents({ classId, sessionDate, onChanged }) {
+/** Nhắc học phí trong trang điểm danh (giáo viên nhắc phụ huynh; không có số tiền) */
+function FeeReminder({ alerts }) {
+  return (
+    <div className="cl-alert-fee">
+      <LineIcon name="money" size={20} />
+      <div>
+        <p><strong>Nhắc phụ huynh đóng học phí:</strong></p>
+        <ul className="tu-remind-list">
+          {alerts.map((st) => (
+            <li key={st.id}>{st.fullName}: <AlertBadge alert={st.tuition.alert} short /></li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/** Trước khi bắt đầu: xem trước danh sách học sinh của buổi (số buổi đã học, cảnh báo học phí, điểm danh đã có) */
+function RosterPreview({ students, alerts }) {
+  if (students.length === 0) return null;
+  return (
+    <section className="card cl-roster-preview">
+      <h3 className="cl-subtitle">Học sinh của buổi này ({students.length})</h3>
+      {alerts.length > 0 && <p className="muted small-text">{alerts.length} học sinh cần nhắc phụ huynh đóng học phí (nhãn màu cạnh tên).</p>}
+      <ul className="cl-roster-list">
+        {students.map((st) => (
+          <li key={st.id}>
+            <strong>{st.fullName}</strong>
+            <span className="muted small-text">đã học {st.tuition?.sessionsDone ?? 0} buổi</span>
+            {st.attendance && <span className={`cl-count is-${st.attendance.status}`}>{ATTENDANCE.find((a) => a.key === st.attendance.status)?.label}</span>}
+            {st.tuition?.alert && <AlertBadge alert={st.tuition.alert} short />}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Tab "Học sinh" trong buổi học (admin chính): thêm / sửa / cho nghỉ (danh sách đầy đủ của lớp) */
+function SessionStudents({ classId, sessionId, onChanged }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const load = useCallback(
@@ -481,7 +537,8 @@ function SessionStudents({ classId, sessionDate, onChanged }) {
       cls={data.class}
       students={data.students}
       compact
-      defaultJoinedOn={sessionDate}
+      isOwner
+      startSessionId={sessionId}
       onChanged={() => {
         load();
         onChanged();
@@ -490,26 +547,27 @@ function SessionStudents({ classId, sessionDate, onChanged }) {
   );
 }
 
-/** Xóa buổi học (admin chính): chỉ buổi này hoặc cả các buổi sau trong lịch lặp lại */
+/**
+ * Xóa buổi học (admin chính): chỉ buổi này hoặc cả các buổi sau trong lịch lặp lại.
+ * Buổi đã điểm danh không xóa được (server chặn). Xóa làm lệch kì học phí đã thu thì server hỏi lại.
+ */
 function DeleteSessionDialog({ s, onClose, onDeleted }) {
   const [scope, setScope] = useState('one');
   const [error, setError] = useState('');
+  const [confirm, setConfirm] = useState(null);
   const [busy, setBusy] = useState(false);
   const following = s.followingCount || 1;
 
-  async function remove(confirmAttendance = false) {
+  async function remove(force = false) {
     setBusy(true);
     setError('');
     try {
-      await apiPost(`/admin/schedule/${s.id}/delete`, { scope, confirmAttendance });
+      await apiPost(`/admin/schedule/${s.id}/delete`, { scope, force });
       onDeleted();
     } catch (err) {
       setBusy(false);
-      if (err.data?.reason === 'has_attendance') {
-        if (window.confirm(`${err.message}\n\nVẫn xóa?`)) remove(true);
-        return;
-      }
-      setError(err.message);
+      if (err.data?.reason === 'confirm') setConfirm(err.data);
+      else setError(err.message);
     }
   }
 
@@ -533,11 +591,11 @@ function DeleteSessionDialog({ s, onClose, onDeleted }) {
         <fieldset className="cl-radio-group">
           <legend>Xóa</legend>
           <label className={`type-row ${scope === 'one' ? 'is-on' : ''}`}>
-            <input type="radio" name="del-scope" checked={scope === 'one'} onChange={() => setScope('one')} />
+            <input type="radio" name="del-scope" checked={scope === 'one'} onChange={() => { setScope('one'); setConfirm(null); }} />
             <span className="type-row-text"><strong>Chỉ buổi này</strong></span>
           </label>
           <label className={`type-row ${scope === 'following' ? 'is-on' : ''}`}>
-            <input type="radio" name="del-scope" checked={scope === 'following'} onChange={() => setScope('following')} />
+            <input type="radio" name="del-scope" checked={scope === 'following'} onChange={() => { setScope('following'); setConfirm(null); }} />
             <span className="type-row-text">
               <strong>Buổi này và {following - 1} buổi sau</strong>
               <span className="type-row-desc">ví dụ lớp kết thúc sớm, hoặc đổi hẳn lịch học</span>
@@ -545,7 +603,10 @@ function DeleteSessionDialog({ s, onClose, onDeleted }) {
           </label>
         </fieldset>
       )}
-      <p className="muted small-text">Giáo viên của các buổi chưa diễn ra sẽ nhận được thông báo.</p>
+      <p className="muted small-text">
+        Xóa thì các buổi sau được đánh số lại. Giáo viên của các buổi chưa diễn ra sẽ nhận được thông báo.
+      </p>
+      {confirm && <ConfirmBox data={confirm} saving={busy} onConfirm={() => remove(true)} label="Vẫn xóa" />}
       {error && <p className="alert-error admin-message" role="alert">{error}</p>}
     </Modal>
   );

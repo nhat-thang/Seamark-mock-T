@@ -21,6 +21,7 @@ import ClassListPage from './admin/classes/ClassListPage.jsx';
 import ClassDetailPage from './admin/classes/ClassDetailPage.jsx';
 import SchedulePage from './admin/classes/SchedulePage.jsx';
 import SessionPage from './admin/classes/SessionPage.jsx';
+import TuitionPage from './admin/classes/TuitionPage.jsx';
 
 export default function App() {
   return (
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="doi-mat-khau" element={<ChangePasswordPage />} />
         <Route path="huong-dan" element={<GuidePage />} />
         {/* Chỉ admin chính */}
+        <Route path="hoc-phi" element={<OwnerOnly><TuitionPage /></OwnerOnly>} />
         <Route path="tai-khoan" element={<OwnerOnly><AccountsPage /></OwnerOnly>} />
         <Route path="lich-su-chinh-sua" element={<OwnerOnly><AuditLogPage /></OwnerOnly>} />
         <Route path="lich-su-dang-nhap" element={<OwnerOnly><LoginHistoryPage /></OwnerOnly>} />

@@ -7,7 +7,7 @@ const SECTIONS = [
   { id: 'lich-day', title: '2. Xem lịch dạy và thông báo' },
   { id: 'diem-danh', title: '3. Điểm danh một buổi học' },
   { id: 'lop-hoc', title: '4. Lớp học và học sinh' },
-  { id: 'hoc-phi', title: '5. Nhắc học phí' },
+  { id: 'hoc-phi', title: '5. Học phí: cảnh báo, thu tiền, quản lý theo tháng' },
   { id: 'xep-lich', title: '6. Xếp thời khóa biểu (admin chính)' },
   { id: 'tao-de', title: '7. Tạo đề mới bằng file Excel' },
   { id: 'anh-audio', title: '8. Thêm ảnh và audio' },
@@ -67,7 +67,8 @@ export default function GuidePage() {
           </li>
           <li>
             Chọn <B>Lịch dạy của tôi</B> để chỉ xem buổi bạn dạy, hoặc <B>Tất cả các lớp</B> để xem lịch cả trung tâm (kể cả giáo viên
-            khác). Buổi bạn dạy có <strong>viền đậm</strong> và bấm vào được; buổi của người khác chỉ xem, không mở được.
+            khác). Buổi bạn dạy có <strong>viền đậm</strong>. Bạn bấm mở được buổi mình dạy và mọi buổi của <strong>lớp mình phụ
+            trách</strong>; buổi của lớp khác chỉ xem.
           </li>
           <li>
             Biểu tượng <B>chuông</B> ở góc trên bên phải: có số màu vàng là có việc mới — buổi dạy trong 24 giờ tới, buổi chưa điểm danh,
@@ -92,7 +93,10 @@ export default function GuidePage() {
             <B>Vắng không phép</B>.
           </li>
           <li>Tab <B>Điểm cộng</B>: bấm <B>+</B> mỗi khi học sinh phát biểu tốt, làm bài tốt (bấm <B>−</B> nếu lỡ tay).</li>
-          <li>Tab <B>Học sinh</B>: có bạn mới vào lớp thì thêm ngay ở đây, bạn đó sẽ hiện trong danh sách điểm danh của buổi này.</li>
+          <li>
+            Cạnh tên mỗi học sinh có <B>số buổi đã học</B> và nhãn <B>cảnh báo học phí</B> (vàng / cam / đỏ, luôn kèm chữ) để bạn nhắc
+            phụ huynh. Có học sinh mới vào lớp thì báo admin chính thêm vào lớp.
+          </li>
           <li>
             Cuối cùng bấm <B>Lưu điểm danh</B> (thanh màu xanh đậm ở cuối màn hình). Thấy chữ "✓ Đã lưu điểm danh" là xong. Còn bạn
             nào chưa điểm danh thì web sẽ hỏi trước khi lưu.
@@ -100,37 +104,48 @@ export default function GuidePage() {
         </ol>
         <Tip>
           Lỡ tải lại trang khi chưa bấm lưu: mở lại buổi học trên cùng máy, các ô đã tích vẫn còn. Bạn sửa được điểm danh tới{' '}
-          <strong>hết ngày hôm sau</strong> ngày học; sau đó cần sửa thì nhờ admin chính. Buổi của giáo viên ngoài (không có tài khoản)
-          do admin chính điểm danh.
+          <strong>hết ngày hôm sau</strong> ngày học (buổi admin chính thêm bù vào ngày đã qua: hết ngày hôm sau ngày thêm); sau đó cần
+          sửa thì nhờ admin chính. Buổi của giáo viên ngoài (không có tài khoản) do giáo viên phụ trách lớp hoặc admin chính điểm danh.
         </Tip>
       </Section>
 
       <Section id="lop-hoc">
+        <p>
+          Giáo viên thấy các <strong>lớp mình phụ trách</strong>: học sinh, số buổi đã học, điểm danh, điểm cộng, nhãn học phí. Thông
+          tin phụ huynh và số tiền chỉ admin chính thấy. Chỉ <strong>admin chính</strong> tạo / sửa lớp và thêm / sửa học sinh.
+        </p>
         <ol>
-          <li>Vào <B>Lớp học</B> → <B>Tạo lớp mới</B> → nhập tên lớp, chọn màu, số buổi nhắc học phí → <B>Tạo lớp</B>.</li>
           <li>
-            Trong lớp, tab <B>Học sinh</B> → <B>Thêm học sinh</B>: gõ từng bạn (<B>Từng bạn</B>), hoặc copy cả danh sách từ Excel / Zalo
-            rồi dán vào <B>Dán cả danh sách</B> (mỗi dòng một bạn, có thể kèm số điện thoại).
+            (Admin chính) Vào <B>Lớp học</B> → <B>Tạo lớp mới</B> → nhập tên lớp, chọn <B>giáo viên phụ trách</B> (chọn được nhiều
+            người), điền học phí (<B>mỗi kì gồm … buổi</B>, <B>học phí mỗi buổi</B>), chọn màu → <B>Tạo lớp</B>. Chưa biết học phí thì để
+            trống, cài sau ở <B>Sửa thông tin lớp</B>.
           </li>
           <li>
-            <B>Ngày vào học</B> rất quan trọng: học sinh chỉ có tên trong điểm danh các buổi từ ngày đó, và chỉ được tính các buổi đó khi
-            nhắc học phí.
+            Trong lớp, tab <B>Học sinh</B> → <B>Thêm học sinh</B>: phải điền đủ <B>họ tên học sinh</B>, <B>tên phụ huynh</B>,{' '}
+            <B>SĐT phụ huynh</B> (10 số) và <B>CCCD phụ huynh</B> (12 số). Có thể ghi giảm giá (%) cho học sinh đặc biệt.
           </li>
           <li>
-            <B>Cho nghỉ</B>: bạn đó không còn trong điểm danh các buổi sau, lịch sử cũ vẫn giữ (xem ở "Học sinh đã nghỉ", bấm{' '}
-            <B>Cho học lại</B> nếu bạn quay lại). <B>Chi tiết</B>: xem từng buổi bạn đó đi học, vắng, điểm cộng.
+            <B>Buổi bắt đầu học</B>: mặc định là buổi sắp tới gần nhất của lớp, đổi được. Học phí tính từ buổi này; học sinh chỉ có tên
+            trong điểm danh từ buổi này.
           </li>
           <li>
-            <B>Nhập từ Excel</B> (tab Học sinh): chọn file danh sách lớp bạn đang có. Cột họ tên đặt tên gì cũng được ("Họ và tên",
-            "Họ tên", "Name", "Tên học sinh"…), web tự nhận cột. Bạn kiểm tra lại từng cột (đổi ở ô chọn nếu web đoán sai), xem trước
-            từng dòng rồi bấm <B>Nhập … học sinh</B>. Cột khác (ngày sinh, tên phụ huynh, trường…) được gộp vào Ghi chú. Bạn đã có
-            trong lớp sẽ tự bỏ tích để không bị trùng.
+            <B>Nhập từ Excel</B>: chọn file danh sách lớp bạn đang có. Chỉ cột họ tên là bắt buộc; web tự nhận cột tên phụ huynh, SĐT,
+            CCCD. Cột lạ (ngày sinh, trường…) được gộp vào Ghi chú. Học sinh còn thiếu thông tin hiện nhãn vàng{' '}
+            <B>Thiếu thông tin</B> — bấm <B>Sửa</B> để bổ sung (khi sửa thì không bắt buộc điền đủ).
           </li>
           <li>
-            <B>Tải danh sách lớp (Excel)</B>: tải về file gồm danh sách học sinh (số buổi, vắng, điểm cộng, học phí) và trang điểm
-            danh từng buổi. File này nhập lại được vào lớp khác.
+            Bấm chữ <B>vắng 2</B> (màu đỏ, cột "Đã học") để xem học sinh vắng những buổi nào. Bấm <B>Chi tiết</B> hoặc tên học sinh để
+            xem từng buổi đi học và các bài đã làm.
           </li>
-          <li>Tab <B>Lịch học</B>: thời khóa biểu riêng của lớp. Tab <B>Các buổi học</B>: các buổi sắp tới và đã qua, số bạn có mặt.</li>
+          <li>
+            <B>Cho nghỉ</B>: bạn đó không còn trong điểm danh các buổi sau, lịch sử cũ (điểm danh, học phí) vẫn giữ. Xem lại ở "Học
+            sinh đã nghỉ", bấm <B>Cho học lại</B> nếu bạn quay lại.
+          </li>
+          <li>
+            <B>Tải danh sách lớp (Excel)</B>: admin chính tải được đủ thông tin; giáo viên tải được tên + số buổi + trang điểm danh từng
+            buổi.
+          </li>
+          <li>Tab <B>Lịch học</B>: thời khóa biểu riêng của lớp. Tab <B>Các buổi học</B>: các buổi (đánh số Buổi 1, 2, 3…) và số bạn có mặt.</li>
         </ol>
         <Tip>
           <B>Xóa lớp</B> chỉ ẩn lớp đi (học sinh, lịch, điểm danh vẫn còn). Admin chính khôi phục được ở <B>Lớp học</B> →{' '}
@@ -139,24 +154,60 @@ export default function GuidePage() {
       </Section>
 
       <Section id="hoc-phi">
+        <p>
+          <strong>Cách tính, nói ngắn gọn:</strong> mỗi lớp chia thành các <strong>kì</strong>, mỗi kì gồm một số buổi (ví dụ 8
+          buổi). Học sinh <strong>đóng trước</strong> mỗi kì. Buổi học đếm theo <strong>thời khóa biểu</strong> — học sinh vắng vẫn
+          tính buổi đó.
+        </p>
         <ol>
           <li>
-            Mỗi lớp đặt "Nhắc học phí sau mỗi … buổi học" (sửa ở <B>Sửa thông tin lớp</B>; ghi 0 nếu không cần nhắc).
+            Ví dụ lớp 8 buổi / kì, 150.000đ / buổi: kì 1 = buổi 1–8, kì 2 = buổi 9–16… Hạn đóng kì 2 là <strong>ngày học buổi
+            8</strong> (buổi cuối của kì 1). Học sinh mới vào thì hạn kì đầu là ngày buổi bắt đầu học.
           </li>
           <li>
-            Web đếm số buổi của <strong>từng học sinh</strong> từ ngày bạn đó vào học, <strong>tính cả buổi vắng</strong>. Ví dụ nhắc mỗi
-            10 buổi: bạn A học từ buổi đầu thì tới buổi thứ 10 của lớp được nhắc; bạn B vào lớp khi lớp đã học 3 buổi thì lúc lớp học xong
-            buổi 10, bạn B mới tính 7 buổi, chưa nhắc.
+            Vào giữa kì (ví dụ từ buổi 6): kì đầu chỉ tính buổi 6, 7, 8 = 3 buổi. Số tiền = số buổi × học phí / buổi, trừ giảm giá nếu có.
           </li>
           <li>
-            Tới hạn: tên học sinh hiện nhãn đỏ <B>Đến hạn học phí</B> trong điểm danh, trong tab <B>Học phí</B> của lớp và ở khung{' '}
-            <B>Nhắc học phí</B> ở Trang chính.
+            <strong>Cảnh báo</strong> (hiện ở Trang chính, điểm danh, danh sách học sinh — luôn có chữ đi kèm màu):
+            <ul>
+              <li><B>Vàng</B>: còn 4, 3 hoặc 2 buổi nữa là tới hạn đóng kì sau.</li>
+              <li><B>Cam</B>: còn 1 buổi.</li>
+              <li><B>Đỏ</B>: đã tới hạn mà chưa đóng. Đỏ kéo dài tới hết buổi thứ 3 của kì mới rồi thôi (trang Quản lý học phí vẫn ghi "Chưa đóng").</li>
+            </ul>
           </li>
           <li>
-            Thu xong, vào tab <B>Học phí</B> bấm <B>Đã thu học phí</B> (có thể ghi chú số tiền). Đợt mới bắt đầu tính, mốc tiếp theo
-            là buổi 20, 30… Bấm nhầm thì bấm <B>Hoàn tác lần thu gần nhất</B>.
+            Lớp chưa xếp đủ lịch của một kì thì chưa thu được kì đó; Trang chính của admin chính nhắc "Lớp … mới xếp 6/8 buổi".
           </li>
-          <li>Đưa lớp đang học dở lên web: khi thêm học sinh, bấm "+ Thêm ghi chú / số buổi đã học trước đó" và ghi số buổi đã học.</li>
+        </ol>
+        <h3 className="guide-sub">Thu tiền (admin chính)</h3>
+        <ol>
+          <li>
+            Vào <B>Quản lý học phí</B> (menu admin chính) → bấm vào lớp → bấm <B>Thu kì …</B> ở dòng học sinh. Hoặc vào lớp → tab{' '}
+            <B>Học phí</B> → <B>Thu / xem</B>.
+          </li>
+          <li>
+            Kiểm tra số tiền (web tự tính sẵn), ngày thu, chọn <B>Tiền mặt</B> hoặc <B>Chuyển khoản</B>, ghi chú nếu cần →{' '}
+            <B>Xác nhận đã thu</B>. Số tiền được <strong>chốt</strong> lúc này; sau đổi giá hay đổi lịch cũng không thay đổi.
+          </li>
+          <li>
+            Ghi nhầm: bấm <B>Bỏ "Đã thu"</B> → <strong>nhập lại mật khẩu đăng nhập của bạn</strong> → kì đó quay về "Chưa đóng". Mọi
+            lần thu / bỏ thu đều ghi vào <B>Lịch sử thu</B>.
+          </li>
+          <li>
+            <B>Tắt cảnh báo</B> (ví dụ phụ huynh đã hẹn ngày đóng): bấm <B>Tắt cảnh báo</B> ở Trang chính hoặc ở kì đó. Cảnh báo của kì
+            đó ẩn hẳn; kì sau vẫn cảnh báo bình thường. Bật lại được bất cứ lúc nào.
+          </li>
+        </ol>
+        <h3 className="guide-sub">Trang Quản lý học phí (admin chính)</h3>
+        <ol>
+          <li>Chọn tháng (nút <B>Tháng trước</B> / <B>Tháng sau</B>). Trên cùng là tổng <B>Cần thu</B>, <B>Đã thu</B>, <B>Còn thiếu</B> của cả trung tâm.</li>
+          <li>
+            Mỗi lớp là một khối: giáo viên, số buổi đã học, cần thu / đã thu / còn thiếu (hoặc "Chưa đến hạn"). Bấm vào khối để xem từng
+            học sinh: buổi bắt đầu, số buổi đã học, buổi nghỉ trong tháng (bấm để xem ngày), số tiền, ngày thu, hình thức, trạng thái
+            (<B>Đã thu</B> xanh / <B>Chưa đóng</B> vàng / <B>Chưa đến hạn</B> xám).
+          </li>
+          <li>"Cần thu trong tháng" = tiền các kì có <strong>hạn đóng</strong> rơi vào tháng đó. Học sinh còn nợ kì trước có dòng đỏ "Còn nợ kì …".</li>
+          <li>Bấm <B>Tải Excel tháng …</B> để tải cả bảng; <B>Lịch sử thu</B> của từng học sinh cũng tải được Excel.</li>
         </ol>
       </Section>
 
@@ -168,18 +219,27 @@ export default function GuidePage() {
             thúc (bấm nhanh "1 giờ 30" để tự điền giờ kết thúc).
           </li>
           <li>
-            <strong>Bắt buộc chọn giáo viên</strong>: chọn tên tài khoản, hoặc <B>Khác (giáo viên không có tài khoản)</B> rồi gõ tên.
-            Giáo viên có tài khoản sẽ nhận thông báo trên web.
+            <strong>Bắt buộc có giáo viên</strong>: tích một hoặc nhiều giáo viên (dạy cùng buổi), và / hoặc gõ tên giáo viên ngoài
+            (không có tài khoản). Giáo viên được xếp dạy tự thành giáo viên phụ trách lớp và nhận thông báo trên web.
           </li>
           <li>
             Lớp học cố định hằng tuần: tích <B>Lặp lại hằng tuần</B>, chọn các thứ (ví dụ T2, T4, T6) và ngày kết thúc (hoặc bấm "3
             tháng"). Hết hạn thì xếp tiếp từ ngày sau đó.
           </li>
-          <li>Web báo nếu giáo viên hoặc lớp đã có buổi khác trùng giờ. Chắc chắn đúng thì bấm <B>Vẫn xếp lịch</B>.</li>
+          <li>
+            Web hỏi lại trước khi lưu nếu: trùng giờ với buổi khác; thêm buổi vào ngày <strong>đã qua</strong> (buổi đó sẽ được tính
+            tiền); hoặc việc thêm / xóa buổi làm <strong>đánh số lại</strong> các buổi và lệch kì học phí đã thu (web nêu tên học sinh,
+            số tiền đã thu giữ nguyên). Chắc chắn thì bấm <B>Vẫn xếp lịch</B> / <B>Vẫn xóa</B>.
+          </li>
           <li>
             Sửa / xóa: bấm vào buổi học → <B>Sửa lịch</B> hoặc <B>Xóa buổi</B>. Với lịch lặp lại, chọn "Chỉ buổi này" hoặc "Buổi này và
-            các buổi sau" (ví dụ đổi giáo viên từ tuần sau).
+            các buổi sau".
           </li>
+          <li>
+            Buổi <strong>đã điểm danh</strong>: không xóa được, không đổi được ngày giờ (để giữ đúng số buổi và học phí). Vẫn đổi được
+            giáo viên, phòng học, ghi chú.
+          </li>
+          <li>Bấm vào bất kỳ buổi nào để xem danh sách học sinh và tình hình điểm danh; nút <B>Tải Excel buổi này</B> để tải về.</li>
         </ol>
       </Section>
 
@@ -403,9 +463,10 @@ export default function GuidePage() {
           <li>
             Xem ai đã làm: ở danh sách <B>Đề thi</B> bấm <B>Hoạt động</B> (hoặc mở đề → tab <B>Hoạt động</B>). Mỗi lớp được giao có đủ
             học sinh: <B>Đã làm</B> / <B>Chưa làm</B>, làm mấy lần, lúc nào, điểm mỗi lần; bấm vào từng lần để xem bài làm chi tiết.
+            Giáo viên chỉ thấy (và chỉ giao đề cho) các lớp mình phụ trách. Bấm <B>Tải Excel</B> để tải bảng này về.
           </li>
           <li>
-            Xem một học sinh: <B>Lớp học</B> → mở lớp → bấm vào <strong>tên học sinh</strong>: có điểm danh, điểm cộng, học phí và các bài
+            Xem một học sinh: <B>Lớp học</B> → mở lớp → bấm vào <strong>tên học sinh</strong>: có điểm danh, điểm cộng và các bài
             đã làm.
           </li>
         </ol>
@@ -469,6 +530,9 @@ export default function GuidePage() {
       <Section id="admin-chinh">
         {admin.role !== 'owner' && <p className="muted">Phần này dành cho admin chính. Bạn không thấy các mục này trong menu.</p>}
         <ul>
+          <li>
+            <B>Quản lý học phí</B>: học phí từng lớp theo tháng, thu tiền, lịch sử thu, tải Excel (xem mục 5).
+          </li>
           <li>
             <B>Tài khoản admin</B>: tạo tài khoản cho giáo viên (tên hiển thị, tên đăng nhập, mật khẩu), <B>Vô hiệu hóa</B> /{' '}
             <B>Mở lại</B> tài khoản, <B>Đặt lại mật khẩu</B> khi có người quên.

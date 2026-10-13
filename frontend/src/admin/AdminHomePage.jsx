@@ -7,13 +7,14 @@ import HomeSchedule from './classes/HomeSchedule.jsx';
 // Các chức năng (mỗi thẻ bấm được cả thẻ). tone: màu ô biểu tượng
 const WORK = [
   { to: '/admin/thoi-khoa-bieu', icon: 'calendar', tone: 'sky', title: 'Thời khóa biểu', text: 'Xem lịch dạy của bạn và của cả trung tâm. Bấm vào buổi mình dạy để bắt đầu và điểm danh.' },
-  { to: '/admin/lop-hoc', icon: 'board', tone: 'blue', title: 'Lớp học', text: 'Tạo lớp, thêm / bớt học sinh, xem các buổi đã học, điểm cộng và nhắc học phí.' },
+  { to: '/admin/lop-hoc', icon: 'board', tone: 'blue', title: 'Lớp học', text: 'Xem lớp mình phụ trách: học sinh, các buổi đã học, điểm danh, điểm cộng, cảnh báo học phí.' },
   { to: '/admin/de-thi', icon: 'exam', tone: 'blue', title: 'Quản lý đề thi', text: 'Tạo đề, sửa thông tin đề, ghi chú nội bộ, xem trước và xuất bản đề cho học viên.' },
   { to: '/admin/ket-qua', icon: 'chart', tone: 'sky', title: 'Kết quả làm bài', text: 'Xem điểm và bài làm của học viên, lọc theo tên, số điện thoại, đề thi, xuất Excel.' },
   { to: '/admin/doi-mat-khau', icon: 'key', tone: 'yellow', title: 'Đổi mật khẩu', text: 'Đổi mật khẩu đăng nhập của bạn.' },
-  { to: '/admin/huong-dan', icon: 'help', tone: 'orange', title: 'Hướng dẫn sử dụng', text: 'Cách điểm danh, quản lý lớp, nhắc học phí, soạn đề và xem kết quả — từng bước một.' },
+  { to: '/admin/huong-dan', icon: 'help', tone: 'orange', title: 'Hướng dẫn sử dụng', text: 'Cách điểm danh, xếp lịch, thu học phí, soạn đề và xem kết quả — từng bước một.' },
 ];
 const OWNER = [
+  { to: '/admin/hoc-phi', icon: 'money', tone: 'navy', title: 'Quản lý học phí', text: 'Học phí từng lớp theo tháng: cần thu, đã thu, còn thiếu; thu tiền, xem lịch sử thu, tải Excel.' },
   { to: '/admin/tai-khoan', icon: 'users', tone: 'navy', title: 'Tài khoản admin', text: 'Tạo tài khoản cho giáo viên, vô hiệu hóa tài khoản, đặt lại mật khẩu khi ai đó quên.' },
   { to: '/admin/lich-su-chinh-sua', icon: 'history', tone: 'navy', title: 'Lịch sử chỉnh sửa', text: 'Xem ai đã thay đổi gì trên web (đề thi, tài liệu, tài khoản) và vào lúc nào.' },
   { to: '/admin/lich-su-dang-nhap', icon: 'login', tone: 'navy', title: 'Lịch sử đăng nhập', text: 'Xem ai đã đăng nhập, lúc nào, từ đâu, và các lần đăng nhập sai.' },

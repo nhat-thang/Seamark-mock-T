@@ -1,57 +1,63 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiGet, apiPost } from '../../utils/api.js';
-import { ATTENDANCE_LABELS, feeBadge, formatDate, formatDay, vnToday } from '../../utils/schedule.js';
+import { ATTENDANCE_LABELS, WEEKDAY_SHORT, formatDate, formatDay, weekdayOf } from '../../utils/schedule.js';
 import { formatDateTime } from '../../utils/format.js';
 import LineIcon from '../../components/brand/LineIcon.jsx';
 import ImportStudentsDialog from './ImportStudentsDialog.jsx';
+import { AlertBadge, ExcelLink, FeeStatus } from './TuitionBits.jsx';
 
-/**
- * Tách danh sách học sinh dán vào (mỗi dòng một bạn), ví dụ copy từ Excel / Zalo:
- *   "1. Nguyễn Văn An 0901 234 567"  -> { fullName: 'Nguyễn Văn An', phone: '0901234567' }
- *   "Trần Bình<Tab>0912345678"       -> { fullName: 'Trần Bình', phone: '0912345678' }
- */
-export function parseStudentLines(text) {
-  return text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      // Bỏ số thứ tự đầu dòng: "1." "2)" "3 -" "4<Tab>"
-      let s = line.replace(/^\d{1,3}(\s*[.)\-–:]|\t)\s*/, '');
-      let phone = '';
-      const m = s.match(/\+?\d[\d .-]{7,}\d/);
-      if (m) {
-        phone = m[0].replace(/[\s.-]/g, '');
-        s = s.replace(m[0], ' ');
-      }
-      const fullName = s.replace(/[\t,;|]+/g, ' ').replace(/\s[-–]\s*$/, '').replace(/\s+/g, ' ').trim();
-      return { fullName, phone };
-    })
-    .filter((s) => s.fullName);
+/** "Buổi 5 · T3 14/10/2026 18:00" */
+const sessionLabel = (s) => `Buổi ${s.no} · ${WEEKDAY_SHORT[weekdayOf(s.date)]} ${formatDate(s.date)} ${s.startTime}`;
+
+/** Các buổi của lớp (để chọn buổi bắt đầu học). Chỉ admin chính dùng. */
+function useClassSessions(classId, enabled) {
+  const [sessions, setSessions] = useState(null);
+  useEffect(() => {
+    if (!enabled) return;
+    apiGet(`/admin/classes/${classId}/sessions`)
+      .then((d) => setSessions(d.sessions))
+      .catch(() => setSessions([]));
+  }, [classId, enabled]);
+  return sessions;
+}
+
+/** Ô chọn buổi bắt đầu học. value = id buổi ('' = để web tự chọn buổi sắp tới gần nhất) */
+function StartSessionSelect({ id, sessions, value, onChange, emptyLabel }) {
+  if (!sessions) return <select id={id} className="input" disabled><option>Đang tải…</option></select>;
+  return (
+    <select id={id} className="input" value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{emptyLabel}</option>
+      {sessions.map((s) => <option key={s.id} value={s.id}>{sessionLabel(s)}</option>)}
+    </select>
+  );
 }
 
 /**
- * Danh sách học sinh của lớp: thêm (một bạn hoặc dán nhiều bạn), sửa, cho nghỉ / học lại, xem lịch sử.
- * compact: bản gọn trong trang buổi học (không có cột thống kê).
- * defaultJoinedOn: ngày vào học điền sẵn (trang buổi học: ngày của buổi đó, để bạn mới có tên ngay trong điểm danh).
+ * Danh sách học sinh của lớp.
+ * - Admin chính: thêm (bắt buộc đủ tên học sinh, tên / SĐT / CCCD phụ huynh), nhập Excel, sửa, cho nghỉ, đủ thông tin.
+ * - Giáo viên: chỉ xem họ tên, số buổi đã học, điểm danh, nhãn học phí (server đã lọc bỏ thông tin riêng).
+ * compact: bản gọn trong trang buổi học (chỉ admin chính mở).
  */
-export default function StudentsTab({ cls, students, onChanged, compact = false, defaultJoinedOn }) {
+export default function StudentsTab({ cls, students, onChanged, isOwner, compact = false, startSessionId = '' }) {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [editing, setEditing] = useState(null); // id học sinh đang sửa
-  const [detail, setDetail] = useState(null); // id học sinh đang xem lịch sử
+  const [detail, setDetail] = useState(null); // { id, focus: 'absent' | 'all' }
   const [showRemoved, setShowRemoved] = useState(false);
   const [importing, setImporting] = useState(false);
+  const sessions = useClassSessions(cls.id, isOwner);
 
   const active = students.filter((s) => s.isActive);
   const removed = students.filter((s) => !s.isActive);
   const say = (type, text) => setMessage({ type, text });
+  const missing = active.filter((s) => s.missingInfo).length;
+  const toggleDetail = (id, focus) => setDetail((d) => (d && d.id === id && d.focus === focus ? null : { id, focus }));
 
   async function removeStudent(s) {
     const ok = window.confirm(
       `Cho "${s.fullName}" nghỉ học lớp này?\n\n` +
-        'Bạn này sẽ không còn trong danh sách điểm danh các buổi sau. Lịch sử điểm danh cũ vẫn được giữ.\n' +
-        '(Nếu bạn này chưa học buổi nào, ví dụ thêm nhầm, thì sẽ bị xóa hẳn.)'
+        'Bạn này sẽ không còn trong danh sách điểm danh các buổi sau. Lịch sử điểm danh, học phí vẫn được giữ.\n' +
+        '(Nếu bạn này chưa có lịch sử nào, ví dụ thêm nhầm, thì sẽ bị xóa hẳn.)'
     );
     if (!ok) return;
     try {
@@ -73,59 +79,64 @@ export default function StudentsTab({ cls, students, onChanged, compact = false,
     }
   }
 
-  const cols = compact ? 4 : 7;
+  const cols = compact ? 3 : isOwner ? 7 : 5;
 
   return (
     <div className="cl-students">
       <div className="cl-students-tools">
-        <button type="button" className="btn btn-secondary cl-btn-icon" onClick={() => setImporting(true)}>
-          <LineIcon name="upload" size={20} /> Nhập từ Excel
-        </button>
+        {isOwner && (
+          <button type="button" className="btn btn-secondary cl-btn-icon" onClick={() => setImporting(true)}>
+            <LineIcon name="upload" size={20} /> Nhập từ Excel
+          </button>
+        )}
         {!compact && (
-          <a className="btn btn-secondary cl-btn-icon" href={`/api/admin/classes/${cls.id}/export`} download>
-            <LineIcon name="download" size={20} /> Tải danh sách lớp (Excel)
-          </a>
+          <ExcelLink href={`/admin/classes/${cls.id}/export`}>{isOwner ? 'Tải danh sách lớp (Excel)' : 'Tải danh sách + điểm danh (Excel)'}</ExcelLink>
         )}
       </div>
       {importing && (
         <ImportStudentsDialog
           cls={cls}
           existing={active}
-          defaultJoinedOn={defaultJoinedOn}
           onClose={() => setImporting(false)}
           onDone={(n, fileName) => {
             setImporting(false);
-            say('success', `Đã nhập ${n} học sinh từ file "${fileName}".`);
+            say('success', `Đã nhập ${n} học sinh từ file "${fileName}".${' '}Học sinh còn thiếu thông tin phụ huynh có nhãn "Thiếu thông tin" — bấm "Sửa" để bổ sung.`);
             onChanged();
           }}
         />
       )}
 
-      <AddStudents
-        cls={cls}
-        existing={active}
-        defaultJoinedOn={defaultJoinedOn || vnToday()}
-        onAdded={(n) => {
-          say('success', `Đã thêm ${n} học sinh vào lớp.`);
-          onChanged();
-        }}
-      />
+      {isOwner && (
+        <AddStudent
+          cls={cls}
+          existing={active}
+          sessions={sessions}
+          defaultStart={startSessionId}
+          onAdded={(name) => {
+            say('success', `Đã thêm "${name}" vào lớp.`);
+            onChanged();
+          }}
+        />
+      )}
 
       {message.text && (
         <p className={`admin-message ${message.type === 'error' ? 'alert-error' : 'alert-success'}`} role="status">{message.text}</p>
       )}
 
-      <h3 className="cl-subtitle">Đang học ({active.length})</h3>
+      <h3 className="cl-subtitle">
+        Đang học ({active.length})
+        {isOwner && missing > 0 && <span className="cl-pill is-soon cl-subtitle-pill">{missing} học sinh thiếu thông tin</span>}
+      </h3>
       <div className="table-wrap">
         <table className="table cl-table">
           <thead>
             <tr>
               <th>Họ và tên</th>
-              <th>SĐT</th>
-              <th>Vào học</th>
+              {isOwner && <th>Phụ huynh</th>}
               {!compact && (
                 <>
-                  <th title="Tính cả buổi vắng, dùng để nhắc học phí">Đã học</th>
+                  {isOwner && <th>Bắt đầu học</th>}
+                  <th title="Buổi trên thời khóa biểu đã qua, tính từ buổi bắt đầu học (vắng vẫn tính)">Đã học</th>
                   <th>Điểm cộng</th>
                   <th>Học phí</th>
                 </>
@@ -135,7 +146,8 @@ export default function StudentsTab({ cls, students, onChanged, compact = false,
           </thead>
           <tbody>
             {active.map((s) => {
-              const fee = feeBadge(s.fee);
+              const t = s.tuition || {};
+              const absent = s.stats.absent + s.stats.excused;
               return (
                 <Fragment key={s.id}>
                   <tr>
@@ -143,41 +155,63 @@ export default function StudentsTab({ cls, students, onChanged, compact = false,
                       {compact ? (
                         <strong>{s.fullName}</strong>
                       ) : (
-                        // Bấm tên: xem lịch sử hoạt động (đi học, bài đã làm, học phí)
-                        <button type="button" className="cl-name-btn" onClick={() => setDetail(detail === s.id ? null : s.id)} title="Xem lịch sử hoạt động">
+                        // Bấm tên: xem lịch sử đi học + bài đã làm
+                        <button type="button" className="cl-name-btn" onClick={() => toggleDetail(s.id, 'all')} title="Xem lịch sử đi học">
                           {s.fullName}
                         </button>
                       )}
-                      {s.note && <div className="muted small-text cl-note" title={s.note}>{s.note}</div>}
+                      {isOwner && s.missingInfo && <span className="cl-pill is-soon cl-missing">Thiếu thông tin</span>}
+                      {isOwner && s.discountPercent > 0 && <span className="cl-pill">Giảm {s.discountPercent}%</span>}
+                      {isOwner && s.note && <div className="muted small-text cl-note" title={s.note}>{s.note}</div>}
                     </td>
-                    <td className="nowrap">{s.phone || <span className="muted">—</span>}</td>
-                    <td className="nowrap">{formatDate(s.joinedOn)}</td>
+                    {isOwner && (
+                      <td className="cl-parent">
+                        {s.parentName || <span className="muted">—</span>}
+                        <div className="muted small-text nowrap">{s.parentPhone ? `SĐT ${s.parentPhone}` : 'chưa có SĐT'}</div>
+                        <div className="muted small-text nowrap">{s.parentIdNumber ? `CCCD ${s.parentIdNumber}` : 'chưa có CCCD'}</div>
+                      </td>
+                    )}
                     {!compact && (
                       <>
+                        {isOwner && (
+                          <td className="nowrap">{t.startNo ? <>Buổi {t.startNo}<div className="muted small-text">{formatDate(t.startDate)}</div></> : <span className="muted">—</span>}</td>
+                        )}
                         <td className="nowrap">
-                          <strong>{s.stats.sessions} buổi</strong>
-                          <div className="muted small-text">
-                            vắng {s.stats.absent + s.stats.excused}
-                            {s.priorSessions > 0 && ` · ${s.priorSessions} buổi trước khi lên web`}
+                          <strong>{t.sessionsDone ?? 0} buổi</strong>
+                          <div className="small-text">
+                            {absent > 0 ? (
+                              <button type="button" className="cl-absent-btn" onClick={() => toggleDetail(s.id, 'absent')} title="Xem vắng những buổi nào">
+                                vắng {absent}
+                              </button>
+                            ) : (
+                              <span className="muted">không vắng</span>
+                            )}
                           </div>
                         </td>
                         <td><span className="cl-bonus-total"><LineIcon name="star" size={16} /> {s.stats.bonus}</span></td>
-                        <td>{fee ? <span className={`cl-pill is-${fee.tone}`}>{fee.text}</span> : <span className="muted">—</span>}</td>
+                        <td>
+                          <FeeStatus labels={t.labels} />
+                          {t.alert && <div><AlertBadge alert={t.alert} short /></div>}
+                        </td>
                       </>
                     )}
                     <td>
                       <div className="table-actions cl-row-actions">
                         {!compact && (
-                          <button type="button" className="btn btn-secondary btn-small" onClick={() => setDetail(detail === s.id ? null : s.id)}>
-                            {detail === s.id ? 'Đóng' : 'Chi tiết'}
+                          <button type="button" className="btn btn-secondary btn-small" onClick={() => toggleDetail(s.id, 'all')}>
+                            {detail?.id === s.id ? 'Đóng' : 'Chi tiết'}
                           </button>
                         )}
-                        <button type="button" className="btn btn-secondary btn-small" onClick={() => setEditing(editing === s.id ? null : s.id)}>
-                          Sửa
-                        </button>
-                        <button type="button" className="btn btn-danger btn-small" onClick={() => removeStudent(s)}>
-                          Cho nghỉ
-                        </button>
+                        {isOwner && (
+                          <>
+                            <button type="button" className="btn btn-secondary btn-small" onClick={() => setEditing(editing === s.id ? null : s.id)}>
+                              Sửa
+                            </button>
+                            <button type="button" className="btn btn-danger btn-small" onClick={() => removeStudent(s)}>
+                              Cho nghỉ
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -187,6 +221,7 @@ export default function StudentsTab({ cls, students, onChanged, compact = false,
                         <EditStudent
                           cls={cls}
                           student={s}
+                          sessions={sessions}
                           onCancel={() => setEditing(null)}
                           onSaved={() => {
                             setEditing(null);
@@ -197,10 +232,10 @@ export default function StudentsTab({ cls, students, onChanged, compact = false,
                       </td>
                     </tr>
                   )}
-                  {detail === s.id && (
+                  {detail?.id === s.id && (
                     <tr className="row-panel">
                       <td colSpan={cols}>
-                        <StudentHistory cls={cls} studentId={s.id} />
+                        <StudentHistory cls={cls} studentId={s.id} absentOnly={detail.focus === 'absent'} />
                       </td>
                     </tr>
                   )}
@@ -209,7 +244,9 @@ export default function StudentsTab({ cls, students, onChanged, compact = false,
             })}
           </tbody>
         </table>
-        {active.length === 0 && <p className="table-empty">Lớp chưa có học sinh. Thêm học sinh ở ô phía trên.</p>}
+        {active.length === 0 && (
+          <p className="table-empty">{isOwner ? 'Lớp chưa có học sinh. Thêm học sinh ở ô phía trên.' : 'Lớp chưa có học sinh.'}</p>
+        )}
       </div>
 
       {removed.length > 0 && (
@@ -223,11 +260,15 @@ export default function StudentsTab({ cls, students, onChanged, compact = false,
                 <li key={s.id}>
                   <span>
                     <strong>{s.fullName}</strong>{' '}
-                    <span className="muted small-text">đã học {s.stats.sessions} buổi · nghỉ từ {formatDateTime(s.removedAt)}</span>
+                    <span className="muted small-text">
+                      đã học {s.tuition?.sessionsDone ?? 0} buổi{isOwner && s.removedAt && ` · nghỉ từ ${formatDateTime(s.removedAt)}`}
+                    </span>
                   </span>
-                  <button type="button" className="btn btn-secondary btn-small" onClick={() => restoreStudent(s)}>
-                    Cho học lại
-                  </button>
+                  {isOwner && (
+                    <button type="button" className="btn btn-secondary btn-small" onClick={() => restoreStudent(s)}>
+                      Cho học lại
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -238,30 +279,98 @@ export default function StudentsTab({ cls, students, onChanged, compact = false,
   );
 }
 
-/** Thêm học sinh: một bạn (có thêm tùy chọn) hoặc dán cả danh sách */
-function AddStudents({ cls, existing, onAdded, defaultJoinedOn }) {
-  const empty = { fullName: '', phone: '', joinedOn: defaultJoinedOn, priorSessions: '', note: '' };
-  const [mode, setMode] = useState('one');
-  const [one, setOne] = useState(empty);
-  const [more, setMore] = useState(false);
-  const [text, setText] = useState('');
-  const [joinedOn, setJoinedOn] = useState(defaultJoinedOn);
+const PHONE_RE = /^0\d{9}$/;
+const ID_RE = /^(\d{9}|\d{12})$/;
+const digits = (v) => String(v || '').replace(/[\s.-]/g, '');
+
+/** Kiểm tra trước ở trình duyệt (server kiểm tra lại). requireAll: thêm tay thì bắt buộc đủ 4 trường. */
+function checkStudent(f, requireAll) {
+  if (!f.fullName.trim()) return 'Vui lòng nhập họ tên học sinh.';
+  if (requireAll) {
+    const miss = [!f.parentName.trim() && 'tên phụ huynh', !f.parentPhone.trim() && 'SĐT phụ huynh', !f.parentIdNumber.trim() && 'CCCD phụ huynh'].filter(Boolean);
+    if (miss.length) return `Vui lòng nhập ${miss.join(', ')}.`;
+  }
+  if (f.parentPhone.trim() && !PHONE_RE.test(digits(f.parentPhone)) && !/^02\d{9}$/.test(digits(f.parentPhone))) {
+    return 'SĐT phụ huynh gồm 10 số, ví dụ 0901234567.';
+  }
+  if (f.parentIdNumber.trim() && !ID_RE.test(digits(f.parentIdNumber))) return 'Số CCCD gồm 12 số (CMND cũ 9 số).';
+  const d = f.discountPercent === '' ? 0 : Number(f.discountPercent);
+  if (!Number.isInteger(d) || d < 0 || d > 100) return 'Giảm giá phải từ 0 đến 100 (%).';
+  return '';
+}
+
+/** Các ô nhập thông tin học sinh (dùng chung cho thêm và sửa) */
+function StudentFields({ prefix, form, set, sessions, required, startLabel }) {
+  const req = required ? <span className="cl-required"> (bắt buộc)</span> : null;
+  return (
+    <>
+      <div className="cl-add-row cl-add-grid">
+        <div className="field">
+          <label htmlFor={`${prefix}-name`}>Họ tên học sinh<span className="cl-required"> (bắt buộc)</span></label>
+          <input id={`${prefix}-name`} className="input" value={form.fullName} onChange={set('fullName')} placeholder="Ví dụ: Nguyễn Văn An" maxLength={80} />
+        </div>
+        <div className="field">
+          <label htmlFor={`${prefix}-parent`}>Tên phụ huynh{req}</label>
+          <input id={`${prefix}-parent`} className="input" value={form.parentName} onChange={set('parentName')} placeholder="Ví dụ: Nguyễn Thị Mai" maxLength={80} />
+        </div>
+        <div className="field">
+          <label htmlFor={`${prefix}-phone`}>SĐT phụ huynh{req}</label>
+          <input id={`${prefix}-phone`} className="input" value={form.parentPhone} onChange={set('parentPhone')} placeholder="10 số, ví dụ 0901234567" inputMode="tel" />
+        </div>
+        <div className="field">
+          <label htmlFor={`${prefix}-id`}>CCCD phụ huynh{req}</label>
+          <input id={`${prefix}-id`} className="input" value={form.parentIdNumber} onChange={set('parentIdNumber')} placeholder="12 số" inputMode="numeric" />
+        </div>
+      </div>
+      <div className="cl-add-row cl-add-grid">
+        <div className="field">
+          <label htmlFor={`${prefix}-start`}>Buổi bắt đầu học</label>
+          <StartSessionSelect id={`${prefix}-start`} sessions={sessions} value={form.startSessionId} onChange={(v) => set('startSessionId')({ target: { value: v } })} emptyLabel={startLabel} />
+          <p className="field-hint">Học phí tính từ buổi này. Vào giữa kì thì kì đầu chỉ tính từ buổi bắt đầu.</p>
+        </div>
+        <div className="field">
+          <label htmlFor={`${prefix}-discount`}>Giảm giá (%)</label>
+          <input id={`${prefix}-discount`} className="input" type="number" min="0" max="100" inputMode="numeric" value={form.discountPercent} onChange={set('discountPercent')} placeholder="0" />
+        </div>
+        <div className="field">
+          <label htmlFor={`${prefix}-dnote`}>Lý do giảm giá</label>
+          <input id={`${prefix}-dnote`} className="input" value={form.discountNote} onChange={set('discountNote')} placeholder="Ví dụ: Anh em học cùng" maxLength={200} />
+        </div>
+        <div className="field">
+          <label htmlFor={`${prefix}-note`}>Ghi chú</label>
+          <input id={`${prefix}-note`} className="input" value={form.note} onChange={set('note')} placeholder="Ví dụ: mẹ đón lúc 19h" maxLength={500} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** Thêm một học sinh bằng tay (admin chính) — bắt buộc đủ thông tin phụ huynh. Nhiều bạn thì dùng "Nhập từ Excel". */
+function AddStudent({ cls, existing, sessions, defaultStart, onAdded }) {
+  const empty = { fullName: '', parentName: '', parentPhone: '', parentIdNumber: '', startSessionId: defaultStart ? String(defaultStart) : '', discountPercent: '', discountNote: '', note: '' };
+  const [form, setForm] = useState(empty);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const parsed = mode === 'many' ? parseStudentLines(text) : [];
+  const set = (name) => (e) => setForm((f) => ({ ...f, [name]: e.target.value }));
 
-  async function send(list) {
-    // Trùng tên với bạn đang học: hỏi lại (có thể là 2 bạn trùng tên thật)
-    const names = new Set(existing.map((s) => s.fullName.toLowerCase()));
-    const dup = list.filter((s) => names.has(s.fullName.trim().toLowerCase())).map((s) => s.fullName);
-    if (dup.length && !window.confirm(`Lớp đã có học sinh tên: ${dup.join(', ')}.\n\nVẫn thêm (ví dụ hai bạn trùng tên)?`)) return;
+  // Mặc định: buổi sắp tới gần nhất (giáo viên đổi được)
+  const nextId = sessions?.find((s) => Date.parse(s.endsAt) > Date.now())?.id;
+  const startLabel = nextId ? 'Buổi sắp tới gần nhất (mặc định)' : 'Từ bây giờ (lớp chưa có buổi sắp tới)';
+
+  async function submit(e) {
+    e.preventDefault();
+    const problem = checkStudent(form, true);
+    if (problem) return setError(problem);
+    if (existing.some((s) => s.fullName.trim().toLowerCase() === form.fullName.trim().toLowerCase())
+      && !window.confirm(`Lớp đã có học sinh tên "${form.fullName.trim()}".\n\nVẫn thêm (ví dụ hai bạn trùng tên)?`)) return;
     setSaving(true);
     setError('');
     try {
-      await apiPost(`/admin/classes/${cls.id}/students`, { students: list });
-      onAdded(list.length);
-      setOne(empty);
-      setText('');
+      await apiPost(`/admin/classes/${cls.id}/students`, {
+        students: [{ ...form, startSessionId: form.startSessionId || undefined, discountPercent: form.discountPercent || 0 }],
+      });
+      onAdded(form.fullName.trim());
+      setForm(empty);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -269,127 +378,48 @@ function AddStudents({ cls, existing, onAdded, defaultJoinedOn }) {
     }
   }
 
-  function submit(e) {
-    e.preventDefault();
-    if (mode === 'one') {
-      if (!one.fullName.trim()) return setError('Vui lòng nhập họ tên học sinh.');
-      send([one]);
-    } else {
-      if (parsed.length === 0) return setError('Hãy dán danh sách học sinh, mỗi dòng một bạn.');
-      if (parsed.length > 100) return setError('Mỗi lần thêm tối đa 100 học sinh.');
-      send(parsed.map((s) => ({ ...s, joinedOn })));
-    }
-  }
-
-  const setField = (name) => (e) => setOne((f) => ({ ...f, [name]: e.target.value }));
-
   return (
     <form className="card cl-add" onSubmit={submit} noValidate>
       <div className="cl-add-head">
         <h3><LineIcon name="plus" size={20} /> Thêm học sinh</h3>
-        <div className="cl-seg" role="tablist" aria-label="Cách thêm">
-          <button type="button" role="tab" aria-selected={mode === 'one'} className={mode === 'one' ? 'is-on' : ''} onClick={() => { setMode('one'); setError(''); }}>
-            Từng bạn
-          </button>
-          <button type="button" role="tab" aria-selected={mode === 'many'} className={mode === 'many' ? 'is-on' : ''} onClick={() => { setMode('many'); setError(''); }}>
-            Dán cả danh sách
-          </button>
-        </div>
+        <span className="muted small-text">Nhiều bạn cùng lúc: bấm "Nhập từ Excel".</span>
       </div>
-
-      {mode === 'one' ? (
-        <>
-          <div className="cl-add-row">
-            <div className="field">
-              <label htmlFor="st-name">Họ và tên</label>
-              <input id="st-name" className="input" value={one.fullName} onChange={setField('fullName')} placeholder="Ví dụ: Nguyễn Văn An" maxLength={80} />
-            </div>
-            <div className="field">
-              <label htmlFor="st-phone">SĐT phụ huynh / học sinh</label>
-              <input id="st-phone" className="input" value={one.phone} onChange={setField('phone')} placeholder="Không bắt buộc" inputMode="tel" />
-            </div>
-            <div className="field">
-              <label htmlFor="st-joined">Ngày vào học</label>
-              <input id="st-joined" className="input" type="date" value={one.joinedOn} onChange={setField('joinedOn')} />
-            </div>
-          </div>
-          {more ? (
-            <div className="cl-add-row">
-              <div className="field">
-                <label htmlFor="st-prior">Số buổi đã học trước đó</label>
-                <input id="st-prior" className="input" type="number" min="0" inputMode="numeric" value={one.priorSessions} onChange={setField('priorSessions')} placeholder="0" />
-                <p className="field-hint">Chỉ dùng khi đưa lớp đang học dở lên web: số buổi bạn này đã học từ lần đóng học phí gần nhất.</p>
-              </div>
-              <div className="field cl-span-2">
-                <label htmlFor="st-note">Ghi chú</label>
-                <input id="st-note" className="input" value={one.note} onChange={setField('note')} placeholder="Ví dụ: Học bù, mẹ đón lúc 19h" maxLength={500} />
-              </div>
-            </div>
-          ) : (
-            <p className="cl-add-more">
-              <button type="button" className="btn btn-link small-text" onClick={() => setMore(true)}>+ Thêm ghi chú / số buổi đã học trước đó</button>
-            </p>
-          )}
-        </>
-      ) : (
-        <div className="cl-add-many">
-          <div className="field">
-            <label htmlFor="st-list">Dán danh sách (mỗi dòng một học sinh, có thể kèm SĐT)</label>
-            <textarea
-              id="st-list"
-              className="input textarea"
-              rows={6}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder={'Nguyễn Văn An 0901234567\nTrần Thị Bình\nLê Minh Châu 0912 345 678'}
-            />
-            <p className="field-hint">Copy từ Excel, Word hay tin nhắn Zalo đều được. Số thứ tự đầu dòng sẽ tự bỏ.</p>
-          </div>
-          <div className="cl-add-preview">
-            <div className="field">
-              <label htmlFor="st-joined-many">Ngày vào học (cả danh sách)</label>
-              <input id="st-joined-many" className="input" type="date" value={joinedOn} onChange={(e) => setJoinedOn(e.target.value)} />
-            </div>
-            <p className="cl-add-count">Sẽ thêm <strong>{parsed.length}</strong> học sinh</p>
-            {parsed.length > 0 && (
-              <ol className="cl-preview-list">
-                {parsed.slice(0, 50).map((s, i) => (
-                  <li key={i}>
-                    {s.fullName} {s.phone && <span className="muted">· {s.phone}</span>}
-                  </li>
-                ))}
-              </ol>
-            )}
-          </div>
-        </div>
-      )}
-
+      <StudentFields prefix="st" form={form} set={set} sessions={sessions} required startLabel={startLabel} />
       {error && <p className="alert-error admin-message" role="alert">{error}</p>}
-      <button type="submit" className="btn btn-primary" disabled={saving}>
-        {saving ? 'Đang thêm…' : mode === 'one' ? 'Thêm học sinh' : `Thêm ${parsed.length || ''} học sinh`}
-      </button>
+      <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Đang thêm…' : 'Thêm học sinh'}</button>
     </form>
   );
 }
 
-function EditStudent({ cls, student, onCancel, onSaved }) {
+/** Sửa học sinh (admin chính) — không bắt buộc đủ thông tin (đã chốt) */
+function EditStudent({ cls, student, sessions, onCancel, onSaved }) {
   const [form, setForm] = useState({
     fullName: student.fullName,
-    phone: student.phone,
-    joinedOn: student.joinedOn,
-    priorSessions: String(student.priorSessions),
-    note: student.note,
+    parentName: student.parentName || '',
+    parentPhone: student.parentPhone || '',
+    parentIdNumber: student.parentIdNumber || '',
+    startSessionId: '',
+    discountPercent: String(student.discountPercent || ''),
+    discountNote: student.discountNote || '',
+    note: student.note || '',
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const set = (name) => (e) => setForm((f) => ({ ...f, [name]: e.target.value }));
+  const startNo = student.tuition?.startNo;
 
   async function submit(e) {
     e.preventDefault();
+    const problem = checkStudent(form, false);
+    if (problem) return setError(problem);
     setSaving(true);
     setError('');
     try {
-      await apiPost(`/admin/classes/${cls.id}/students/${student.id}/update`, form);
+      await apiPost(`/admin/classes/${cls.id}/students/${student.id}/update`, {
+        ...form,
+        startSessionId: form.startSessionId || undefined, // để trống = giữ buổi bắt đầu cũ
+        discountPercent: form.discountPercent || 0,
+      });
       onSaved();
     } catch (err) {
       setError(err.message);
@@ -399,30 +429,13 @@ function EditStudent({ cls, student, onCancel, onSaved }) {
 
   return (
     <form className="cl-edit-student" onSubmit={submit} noValidate>
-      <div className="cl-add-row">
-        <div className="field">
-          <label htmlFor={`es-name-${student.id}`}>Họ và tên</label>
-          <input id={`es-name-${student.id}`} className="input" value={form.fullName} onChange={set('fullName')} maxLength={80} />
-        </div>
-        <div className="field">
-          <label htmlFor={`es-phone-${student.id}`}>SĐT</label>
-          <input id={`es-phone-${student.id}`} className="input" value={form.phone} onChange={set('phone')} inputMode="tel" />
-        </div>
-        <div className="field">
-          <label htmlFor={`es-joined-${student.id}`}>Ngày vào học</label>
-          <input id={`es-joined-${student.id}`} className="input" type="date" value={form.joinedOn} onChange={set('joinedOn')} />
-        </div>
-      </div>
-      <div className="cl-add-row">
-        <div className="field">
-          <label htmlFor={`es-prior-${student.id}`}>Số buổi đã học trước khi lên web</label>
-          <input id={`es-prior-${student.id}`} className="input" type="number" min="0" value={form.priorSessions} onChange={set('priorSessions')} />
-        </div>
-        <div className="field cl-span-2">
-          <label htmlFor={`es-note-${student.id}`}>Ghi chú</label>
-          <input id={`es-note-${student.id}`} className="input" value={form.note} onChange={set('note')} maxLength={500} />
-        </div>
-      </div>
+      <StudentFields
+        prefix={`es-${student.id}`}
+        form={form}
+        set={set}
+        sessions={sessions}
+        startLabel={startNo ? `Giữ nguyên (buổi ${startNo}, ${formatDate(student.tuition.startDate)})` : 'Giữ nguyên'}
+      />
       {error && <p className="alert-error admin-message" role="alert">{error}</p>}
       <div className="admin-form-actions">
         <button type="submit" className="btn btn-primary btn-small" disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu'}</button>
@@ -432,8 +445,11 @@ function EditStudent({ cls, student, onCancel, onSaved }) {
   );
 }
 
-/** Lịch sử đi học (từng buổi) + các lần thu học phí của một học sinh */
-export function StudentHistory({ cls, studentId }) {
+/**
+ * Lịch sử đi học (từng buổi) + bài đã làm của một học sinh.
+ * absentOnly: chỉ hiện các buổi vắng (bấm "vắng N" trong danh sách).
+ */
+export function StudentHistory({ cls, studentId, absentOnly = false }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
 
@@ -445,21 +461,36 @@ export function StudentHistory({ cls, studentId }) {
 
   if (error) return <p className="alert-error">{error}</p>;
   if (!data) return <p className="muted">Đang tải…</p>;
-  const { student: s, history, payments, attempts = [] } = data;
+  const { student: s, history, attempts = [] } = data;
+  const absences = history.filter((h) => h.status === 'absent' || h.status === 'excused');
+
+  if (absentOnly) {
+    return (
+      <div className="cl-history">
+        <p className="cl-history-sum"><strong>{s.fullName}</strong> vắng {absences.length} buổi:</p>
+        <ul className="cl-absence-list">
+          {absences.map((h) => (
+            <li key={h.sessionId} className={`is-${h.status}`}>
+              {h.no ? `Buổi ${h.no} · ` : ''}{WEEKDAY_SHORT[weekdayOf(h.date)]} {formatDate(h.date)} {h.startTime}–{h.endTime} · <strong>{ATTENDANCE_LABELS[h.status]}</strong>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
 
   return (
     <div className="cl-history">
       <p className="cl-history-sum">
-        Đã học <strong>{s.stats.sessions}</strong> buổi
-        {s.priorSessions > 0 && ` (gồm ${s.priorSessions} buổi trước khi lên web)`}: có mặt {s.stats.present}, đi muộn {s.stats.late},
-        vắng có phép {s.stats.excused}, vắng không phép {s.stats.absent}. Tổng điểm cộng: <strong>{s.stats.bonus}</strong>.
+        Đã học <strong>{s.tuition?.sessionsDone ?? 0}</strong> buổi (tính theo thời khóa biểu từ buổi bắt đầu học). Điểm danh: có mặt {s.stats.present}, đi muộn{' '}
+        {s.stats.late}, vắng có phép {s.stats.excused}, vắng không phép {s.stats.absent}. Tổng điểm cộng: <strong>{s.stats.bonus}</strong>.
       </p>
       {history.length === 0 ? (
         <p className="muted">Chưa có buổi học nào được điểm danh.</p>
       ) : (
         <ul className="cl-history-list">
           {history.map((h) => (
-            <li key={h.sessionId} className={`is-${h.status}`} title={`${formatDate(h.date)} ${h.startTime}–${h.endTime}`}>
+            <li key={h.sessionId} className={`is-${h.status}`} title={`${h.no ? `Buổi ${h.no} · ` : ''}${formatDate(h.date)} ${h.startTime}–${h.endTime}`}>
               <span className="cl-history-day">{formatDay(h.date)}</span>
               <span>{ATTENDANCE_LABELS[h.status]}</span>
               {h.bonus > 0 && <span className="cl-history-bonus">+{h.bonus}</span>}
@@ -489,19 +520,6 @@ export function StudentHistory({ cls, studentId }) {
             </li>
           ))}
         </ul>
-      )}
-      {payments.length > 0 && (
-        <>
-          <p className="cl-history-sum"><strong>Các lần thu học phí</strong></p>
-          <ul className="cl-pay-list">
-            {payments.map((p) => (
-              <li key={p.cycleNo}>
-                Đợt {p.cycleNo}: lúc đã học {p.sessionsAt} buổi · {p.by || 'không rõ'} · {formatDateTime(p.createdAt)}
-                {p.note && <span className="muted"> — {p.note}</span>}
-              </li>
-            ))}
-          </ul>
-        </>
       )}
     </div>
   );

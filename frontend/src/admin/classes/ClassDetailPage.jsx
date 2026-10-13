@@ -6,6 +6,7 @@ import {
   STATE_LABELS,
   classStyle,
   describeDate,
+  formatMoney,
   sessionState,
   useNow,
 } from '../../utils/schedule.js';
@@ -14,7 +15,7 @@ import { useAdmin } from '../AdminLayout.jsx';
 import { useHistory } from '../useHistory.js';
 import Pagination from '../Pagination.jsx';
 import ClassForm from './ClassForm.jsx';
-import FeeTab from './FeeTab.jsx';
+import ClassTuitionTab from './ClassTuitionTab.jsx';
 import Modal from './Modal.jsx';
 import StudentsTab from './StudentsTab.jsx';
 import WeekSchedule from './WeekSchedule.jsx';
@@ -24,11 +25,12 @@ const TABS = [
   { key: 'hoc-sinh', icon: 'users', label: 'Học sinh' },
   { key: 'lich-hoc', icon: 'calendar', label: 'Lịch học' },
   { key: 'buoi-hoc', icon: 'check', label: 'Các buổi học' },
-  { key: 'hoc-phi', icon: 'money', label: 'Học phí' },
+  { key: 'hoc-phi', icon: 'money', label: 'Học phí', ownerOnly: true },
   { key: 'lich-su', icon: 'history', label: 'Lịch sử thay đổi', ownerOnly: true },
 ];
 
-// Chi tiết một lớp: học sinh, lịch học riêng của lớp, các buổi đã học, nhắc học phí, lịch sử (admin chính)
+// Chi tiết một lớp: học sinh, lịch học riêng của lớp, các buổi học, học phí + lịch sử (chỉ admin chính).
+// Giáo viên phụ trách chỉ xem (server lọc bỏ thông tin phụ huynh, số tiền); chỉ admin chính sửa / xóa lớp.
 export default function ClassDetailPage() {
   const { id } = useParams();
   const admin = useAdmin();
@@ -87,7 +89,7 @@ export default function ClassDetailPage() {
   }
 
   const activeCount = data.students.filter((s) => s.isActive).length;
-  const feeDue = data.students.filter((s) => s.isActive && s.fee.state === 'due').length;
+  const alertCount = data.students.filter((s) => s.isActive && s.tuition?.alert).length;
 
   return (
     <>
@@ -101,10 +103,18 @@ export default function ClassDetailPage() {
             <span><LineIcon name="users" size={18} /> {activeCount} học sinh</span>
             <span><LineIcon name="check" size={18} /> {cls.doneSessions} buổi đã học</span>
             <span><LineIcon name="calendar" size={18} /> {cls.upcomingSessions} buổi sắp tới</span>
-            <span><LineIcon name="money" size={18} /> {cls.feeEvery ? `Nhắc học phí mỗi ${cls.feeEvery} buổi` : 'Không nhắc học phí'}</span>
+            {isOwner && (
+              <span>
+                <LineIcon name="money" size={18} />{' '}
+                {cls.tuitionConfigured ? `${formatMoney(cls.pricePerSession)}/buổi · kì ${cls.cycleSessions} buổi` : 'Chưa cài học phí'}
+              </span>
+            )}
           </div>
+          <p className="cl-hero-note">
+            <LineIcon name="user" size={16} /> Giáo viên phụ trách: {cls.teachers.length ? cls.teachers.map((t) => t.name).join(', ') : 'chưa có'}
+          </p>
         </div>
-        {!cls.deletedAt && (
+        {isOwner && !cls.deletedAt && (
           <div className="cl-hero-actions">
             <button type="button" className="btn btn-ghost-light btn-small" onClick={() => setEditing(true)}>
               <LineIcon name="edit" size={18} /> Sửa thông tin lớp
@@ -138,16 +148,16 @@ export default function ClassDetailPage() {
               >
                 <LineIcon name={t.icon} size={18} />
                 {t.label}
-                {t.key === 'hoc-phi' && feeDue > 0 && <span className="cl-tab-badge">{feeDue}</span>}
+                {t.key === 'hoc-sinh' && alertCount > 0 && <span className="cl-tab-badge" title="Học sinh có cảnh báo học phí">{alertCount}</span>}
               </button>
             ))}
           </nav>
 
           <div className="cl-tab-panel">
-            {tab === 'hoc-sinh' && <StudentsTab cls={cls} students={data.students} onChanged={load} />}
+            {tab === 'hoc-sinh' && <StudentsTab cls={cls} students={data.students} onChanged={load} isOwner={isOwner} />}
             {tab === 'lich-hoc' && <WeekSchedule admin={admin} classId={cls.id} />}
             {tab === 'buoi-hoc' && <SessionsTab cls={cls} admin={admin} />}
-            {tab === 'hoc-phi' && <FeeTab cls={cls} students={data.students} onChanged={load} onEditClass={() => setEditing(true)} />}
+            {tab === 'hoc-phi' && <ClassTuitionTab cls={cls} students={data.students} onChanged={load} onEditClass={() => setEditing(true)} />}
             {tab === 'lich-su' && <ClassHistory cls={cls} />}
           </div>
         </>
@@ -194,9 +204,10 @@ function SessionsTab({ cls, admin }) {
     const state = sessionState(s, now);
     const body = (
       <>
+        <span className="cl-row-no">Buổi {s.no}</span>
         <span className="cl-row-date">{describeDate(s.date)}</span>
         <span className="cl-row-time">{s.startTime}–{s.endTime}</span>
-        <span className="cl-row-teacher"><LineIcon name="user" size={16} /> {s.teacher.id === admin.id ? 'Bạn' : s.teacher.name}</span>
+        <span className="cl-row-teacher"><LineIcon name="user" size={16} /> {s.teacher.isMine ? 'Bạn' : s.teacher.name || '—'}</span>
         <span className={`cl-state is-${state}`}>
           {STATE_LABELS[state]}{state === 'done' && ` · ${s.present}/${s.marked} có mặt`}
         </span>

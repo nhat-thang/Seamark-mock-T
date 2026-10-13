@@ -26,10 +26,14 @@ function readView(fallback) {
   }
 }
 
-/** Một buổi học trên lưới. Admin chỉ bấm được buổi mình dạy; buổi khác chỉ xem. */
-export function SessionCard({ s, admin, now, showClass = true }) {
+/**
+ * Một buổi học trên lưới. Admin chính bấm vào mọi buổi (xem chi tiết + tình hình điểm danh).
+ * Giáo viên bấm được buổi mình dạy và buổi của lớp mình phụ trách; buổi khác chỉ xem.
+ */
+export function SessionCard({ s, now, showClass = true }) {
   const state = sessionState(s, now);
-  const mine = s.teacher.id === admin.id;
+  const mine = s.teacher.isMine;
+  const others = s.teacher.list.length > 1 || s.teacher.otherName;
   const content = (
     <>
       <span className="cl-card-time">{s.startTime}–{s.endTime}</span>
@@ -37,7 +41,7 @@ export function SessionCard({ s, admin, now, showClass = true }) {
       <span className="cl-card-line">
         <LineIcon name="user" size={14} />
         <span>
-          {mine ? <strong>Bạn dạy</strong> : s.teacher.name}
+          {mine ? <strong>{others ? `Bạn + ${s.teacher.list.length - 1 + (s.teacher.otherName ? 1 : 0)} GV` : 'Bạn dạy'}</strong> : s.teacher.name || '—'}
           {s.teacher.isOther && <span className="cl-card-other"> (GV ngoài)</span>}
         </span>
       </span>
@@ -52,7 +56,7 @@ export function SessionCard({ s, admin, now, showClass = true }) {
     return <Link to={`/admin/buoi-hoc/${s.id}`} className={cls} style={classStyle(s.classColor)}>{content}</Link>;
   }
   return (
-    <div className={`${cls} is-locked`} style={classStyle(s.classColor)} title={`Buổi của ${s.teacher.name}. Bạn chỉ mở được buổi mình dạy.`}>
+    <div className={`${cls} is-locked`} style={classStyle(s.classColor)} title={`Buổi của ${s.teacher.name || 'giáo viên khác'}. Bạn chỉ mở được buổi mình dạy hoặc của lớp mình phụ trách.`}>
       {content}
     </div>
   );
@@ -116,7 +120,7 @@ export default function WeekSchedule({ admin, classId = null, initialDate = null
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const isThisWeek = weekStart === mondayOf(today);
   const total = sessions?.length ?? 0;
-  const mineCount = sessions ? sessions.filter((s) => s.teacher.id === admin.id).length : 0;
+  const mineCount = sessions ? sessions.filter((s) => s.teacher.isMine).length : 0;
 
   return (
     <div className="cl-week">
@@ -190,7 +194,7 @@ export default function WeekSchedule({ admin, classId = null, initialDate = null
                 {date === today && <span className="cl-today">Hôm nay</span>}
               </header>
               <div className="cl-day-body">
-                {items.map((s) => <SessionCard key={s.id} s={s} admin={admin} now={now} showClass={!classId} />)}
+                {items.map((s) => <SessionCard key={s.id} s={s} now={now} showClass={!classId} />)}
                 {sessions && items.length === 0 && <p className="cl-day-empty">Không có buổi học</p>}
                 {isOwner && (
                   <button type="button" className="cl-day-add" onClick={() => setDialog({ date })}>
@@ -205,7 +209,7 @@ export default function WeekSchedule({ admin, classId = null, initialDate = null
       {!sessions && !error && <p className="muted">Đang tải…</p>}
       {!isOwner && (
         <p className="cl-week-hint muted small-text">
-          <LineIcon name="lock" size={14} /> Bạn chỉ bấm mở được các buổi mình dạy. Thời khóa biểu do admin chính xếp.
+          <LineIcon name="lock" size={14} /> Bạn bấm mở được các buổi mình dạy và các buổi của lớp mình phụ trách. Thời khóa biểu do admin chính xếp.
         </p>
       )}
 

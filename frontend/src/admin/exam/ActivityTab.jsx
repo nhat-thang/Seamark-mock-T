@@ -70,10 +70,14 @@ export default function ActivityTab({ examId }) {
           )}
           <button type="button" className="btn btn-secondary btn-small" onClick={load}>Tải lại</button>
           <Link to={`/admin/ket-qua?examId=${examId}`} className="btn btn-secondary btn-small">Xem ở trang Kết quả</Link>
+          <a className="btn btn-secondary btn-small" href={`/api/admin/exams/${examId}/activity/export`} download>Tải Excel</a>
         </div>
       </div>
+      {data.hiddenClasses > 0 && (
+        <p className="muted small-text">Đề còn được giao cho {data.hiddenClasses} lớp khác bạn không phụ trách (không hiện ở đây).</p>
+      )}
 
-      {isAssignment && data.classes.length === 0 && (
+      {isAssignment && data.classes.length === 0 && !data.hiddenClasses && (
         <p className="alert-error admin-message">Đề chưa giao cho lớp nào. Chọn lớp ở tab "Thông tin đề" → mục "Giao cho lớp".</p>
       )}
 
