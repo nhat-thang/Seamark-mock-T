@@ -15,10 +15,11 @@ function getAttempt(db, attemptId) {
     .prepare(
       `SELECT a.*, v.title AS exam_title, v.duration_minutes, v.content_json,
               v.show_answers_after, v.allow_seek_audio,
-              s.last_name, s.first_name
+              s.last_name, s.first_name, cs.class_id
          FROM attempts a
          JOIN exam_versions v ON v.id = a.exam_version_id
          JOIN students s ON s.id = a.student_id
+         LEFT JOIN class_students cs ON cs.id = s.class_student_id
         WHERE a.id = ?`
     )
     .get(attemptId);

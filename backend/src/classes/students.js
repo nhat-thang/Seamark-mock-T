@@ -121,4 +121,4 @@ function feeReminders(db) {
   return out;
 }
 
-module.exports = { feeInfo, loadStudents, loadStudent, loadRoster, feeReminders };
+module.exports = { feeInfo, loadStudents, loadStudent, loadRoster, feeReminders, byGivenName };

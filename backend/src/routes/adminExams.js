@@ -16,15 +16,21 @@ const { normalizeContent, ContentError, emptyContent } = require('../exam/conten
 const { parseExamWorkbook } = require('../exam/excelImport');
 const { buildFilesMap } = require('../exam/files');
 const { toStructure, fromStructure } = require('../exam/templates');
+const { finalizeExpiredAttempts } = require('../exam/attempts');
+const { byGivenName } = require('../classes/students');
 const {
   mediaUpload, excelUpload, uploadErrorMessage, requireSameOrigin, signatureMatches, readHead, originalName, extOf,
 } = require('../upload');
 
 const CODE_RE = /^[A-Z0-9][A-Z0-9_-]{1,29}$/;
 const EXAM_TYPES = ['TOEIC_LR', 'CUSTOM'];
-// Mục đích của đề: đề thi thử, hoặc bài tập về nhà (homework). Bên trong đề giống hệt nhau.
+// Mục đích của đề (bên trong đề giống hệt nhau):
+//   'exam'     = Training Test: cho mọi người, học viên chỉ nhập họ tên
+//   'homework' = Class Assignment: đề riêng của lớp (bảng exam_classes), có thể có mật khẩu
+//                (giá trị 'homework' giữ nguyên trong database; giao diện gọi là "Class Assignment")
 const CATEGORIES = ['exam', 'homework'];
-const HOMEWORK_PREFIX = 'Homework - ';
+const ASSIGNMENT_PREFIX = 'Class Assignment - ';
+const ACCESS_CODE_MAX = 30;
 /** Nội dung nháp của đề (đề cũ chưa có nội dung -> nội dung trống đúng loại) */
 const draftOf = (exam) => JSON.parse(exam.draft_json || 'null') || emptyContent(exam.exam_type);
 
@@ -44,14 +50,15 @@ const AUDIT_MERGE_MS = 10 * 60 * 1000;
 const cleanText = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
 
 /**
- * Tên bài tập về nhà luôn bắt đầu bằng "Homework - " (đã chốt với người dùng):
- * giáo viên gõ "đề lớp 1a" -> "Homework - đề lớp 1a". Lỡ gõ "homework đề lớp 1a" cũng không bị lặp chữ.
- * Trả về chuỗi rỗng nếu phần tên giáo viên đặt bị trống.
+ * Tên đề Class Assignment luôn bắt đầu bằng "Class Assignment - " (đã chốt với người dùng):
+ * giáo viên gõ "đề lớp 1a" -> "Class Assignment - đề lớp 1a". Lỡ gõ "class assignment ..." / "homework ..." ở đầu
+ * cũng không bị lặp chữ. Trả về chuỗi rỗng nếu phần tên giáo viên đặt bị trống.
  */
-function homeworkTitle(raw) {
+const PREFIX_RE = /^(class\s*assignment|homework)\b\s*[-–—:_.]*\s*/i;
+function assignmentTitle(raw) {
   let name = cleanText(raw);
-  while (/^homework\b/i.test(name)) name = name.replace(/^homework\s*[-–—:_.]*\s*/i, '');
-  return name ? `${HOMEWORK_PREFIX}${name}` : '';
+  while (PREFIX_RE.test(name)) name = name.replace(PREFIX_RE, '');
+  return name ? `${ASSIGNMENT_PREFIX}${name}` : '';
 }
 
 /** Kiểm tra + chuẩn hóa thông tin đề. Trả về { settings } hoặc { error }. */
@@ -113,14 +120,47 @@ function adminExamsRouter(db, config) {
   const codeTaken = (code, exceptId = 0) =>
     !!db.prepare('SELECT 1 FROM exams WHERE code = ? AND id != ?').get(code, exceptId);
 
-  /** Mã đề tự đặt cho homework: HW-001, HW-002... (giáo viên không phải nghĩ mã) */
-  function nextHomeworkCode() {
-    const used = db.prepare(`SELECT code FROM exams WHERE code LIKE 'HW-%'`).all()
+  /** Mã đề tự đặt cho Class Assignment: CA-001, CA-002... (giáo viên không phải nghĩ mã) */
+  function nextAssignmentCode() {
+    const used = db.prepare(`SELECT code FROM exams WHERE code LIKE 'CA-%'`).all()
       .map((r) => Number.parseInt(r.code.slice(3), 10)).filter(Number.isFinite);
-    return `HW-${String((used.length ? Math.max(...used) : 0) + 1).padStart(3, '0')}`;
+    return `CA-${String((used.length ? Math.max(...used) : 0) + 1).padStart(3, '0')}`;
   }
 
   const authorName = (id) => (id ? db.prepare('SELECT display_name FROM admins WHERE id = ?').get(id)?.display_name ?? null : null);
+
+  /** Các lớp được giao đề */
+  const classesOf = (examId) =>
+    db.prepare(
+      `SELECT c.id, c.name, c.color FROM exam_classes ec JOIN classes c ON c.id = ec.class_id
+        WHERE ec.exam_id = ? AND c.deleted_at IS NULL ORDER BY c.name COLLATE NOCASE`
+    ).all(examId);
+
+  /**
+   * Đọc + kiểm tra lớp được giao và mật khẩu đề từ dữ liệu gửi lên.
+   * Trả về { classIds, accessCode } hoặc { error }.
+   */
+  function readAssignment(body) {
+    const ids = [...new Set((Array.isArray(body?.classIds) ? body.classIds : []).map((v) => Number.parseInt(v, 10)).filter(Boolean))];
+    for (const id of ids) {
+      if (!db.prepare('SELECT 1 FROM classes WHERE id = ? AND deleted_at IS NULL').get(id)) {
+        return { error: 'Có lớp đã chọn không còn tồn tại. Hãy tải lại trang rồi chọn lại.' };
+      }
+    }
+    const accessCode = cleanText(body?.accessCode);
+    if (accessCode.length > ACCESS_CODE_MAX) return { error: `Mật khẩu đề tối đa ${ACCESS_CODE_MAX} ký tự.` };
+    return { classIds: ids, accessCode };
+  }
+
+  function saveAssignment(examId, { classIds, accessCode }) {
+    db.transaction(() => {
+      db.prepare('DELETE FROM exam_classes WHERE exam_id = ?').run(examId);
+      const add = db.prepare('INSERT INTO exam_classes (exam_id, class_id) VALUES (?, ?)');
+      for (const id of classIds) add.run(examId, id);
+      db.prepare('UPDATE exams SET access_code = ? WHERE id = ?').run(accessCode, examId);
+    })();
+  }
+  const classNames = (ids) => ids.map((id) => db.prepare('SELECT name FROM classes WHERE id = ?').get(id)?.name).filter(Boolean);
 
   // Lấy đề theo :id; gửi 404 và trả null nếu không có
   function loadExam(req, res) {
@@ -197,6 +237,8 @@ function adminExamsRouter(db, config) {
         `SELECT e.id, e.code, e.title, e.exam_type, e.status, e.version, e.updated_at, e.published_version_id,
                 e.lock_admin_id, e.lock_expires_at, la.display_name AS lock_name,
                 ua.display_name AS updated_by_name, e.category, ca.display_name AS author_name,
+                (SELECT GROUP_CONCAT(c.name, ', ') FROM exam_classes ec JOIN classes c ON c.id = ec.class_id
+                  WHERE ec.exam_id = e.id AND c.deleted_at IS NULL) AS class_names,
                 COALESCE(json_array_length(e.draft_json, '$.questions'), 0) AS question_count,
                 (SELECT COUNT(*) FROM attempts a JOIN exam_versions av ON av.id = a.exam_version_id WHERE av.exam_id = e.id) AS attempt_count,
                 v.source_version, v.version_no
@@ -216,6 +258,7 @@ function adminExamsRouter(db, config) {
         examType: r.exam_type,
         category: r.category,
         author: r.author_name,
+        classNames: r.class_names || '',
         title: r.title,
         status: r.status,
         questionCount: r.question_count,
@@ -234,10 +277,13 @@ function adminExamsRouter(db, config) {
   router.post('/', (req, res) => {
     const category = CATEGORIES.includes(req.body?.category) ? req.body.category : 'exam';
     const body = { ...req.body, internalNote: req.body?.internalNote ?? '' };
+    let assignment = null;
     if (category === 'homework') {
-      body.title = homeworkTitle(req.body?.title);
-      if (!body.title) return res.status(400).json({ error: 'Vui lòng đặt tên cho bài tập về nhà (ví dụ: Đề lớp 1A).' });
-      if (!cleanText(req.body?.code)) body.code = nextHomeworkCode();
+      body.title = assignmentTitle(req.body?.title);
+      if (!body.title) return res.status(400).json({ error: 'Vui lòng đặt tên cho đề Class Assignment (ví dụ: Đề lớp 1A).' });
+      if (!cleanText(req.body?.code)) body.code = nextAssignmentCode();
+      assignment = readAssignment(req.body);
+      if (assignment.error) return res.status(400).json({ error: assignment.error });
     }
     // Giáo viên ra đề: mặc định là người tạo; chọn được giáo viên khác (tài khoản đang hoạt động)
     let authorId = req.admin.id;
@@ -269,10 +315,13 @@ function adminExamsRouter(db, config) {
       )
       .run(s.code, s.title, examType, category, authorId, s.durationMinutes, s.internalNote, s.allowSeekAudio ? 1 : 0,
         s.showAnswersAfter ? 1 : 0, JSON.stringify(initialContent || emptyContent(examType)), req.admin.id, new Date().toISOString()).lastInsertRowid;
+    if (assignment) saveAssignment(id, assignment);
     const kind = template ? `từ khung mẫu "${template.name}"` : examType === 'CUSTOM' ? 'tự thiết kế' : 'TOEIC';
-    const what = category === 'homework' ? `bài tập về nhà (${kind})` : `đề ${kind}`;
+    const what = category === 'homework' ? `đề Class Assignment (${kind})` : `đề Training Test (${kind})`;
     const by = authorId !== req.admin.id ? `, giáo viên ra đề: ${authorName(authorId)}` : '';
-    logAudit(db, { adminId: req.admin.id, action: 'create_exam', examId: id, detail: `Tạo ${what} "${s.title}" (${s.code})${by}` });
+    const forClasses = assignment?.classIds.length ? `, giao cho lớp: ${classNames(assignment.classIds).join(', ')}` : '';
+    const pw = assignment?.accessCode ? ', có mật khẩu' : '';
+    logAudit(db, { adminId: req.admin.id, action: 'create_exam', examId: id, detail: `Tạo ${what} "${s.title}" (${s.code})${by}${forClasses}${pw}` });
     res.status(201).json({ id, code: s.code, title: s.title });
   });
 
@@ -300,6 +349,9 @@ function adminExamsRouter(db, config) {
         examType: exam.exam_type,
         category: exam.category,
         author: authorName(exam.created_by),
+        // Class Assignment: lớp được giao + mật khẩu (admin xem được để đọc cho học sinh)
+        classes: exam.category === 'homework' ? classesOf(exam.id) : [],
+        accessCode: exam.category === 'homework' ? exam.access_code : '',
         status: exam.status,
         version: exam.version,
         updatedAt: exam.updated_at,
@@ -417,8 +469,8 @@ function adminExamsRouter(db, config) {
     if (parsed.error) return res.status(400).json({ error: parsed.error });
     const s = parsed.settings;
     if (exam.category === 'homework') {
-      s.title = homeworkTitle(s.title);
-      if (!s.title) return res.status(400).json({ error: 'Vui lòng đặt tên cho bài tập về nhà (phần sau chữ "Homework -").' });
+      s.title = assignmentTitle(s.title);
+      if (!s.title) return res.status(400).json({ error: 'Vui lòng đặt tên cho đề (phần sau chữ "Class Assignment -").' });
     }
     if (codeTaken(s.code, exam.id)) {
       return res.status(409).json({ reason: 'code', error: `Mã đề "${s.code}" đã được dùng cho đề khác.` });
@@ -741,6 +793,97 @@ function adminExamsRouter(db, config) {
     db.prepare(`UPDATE exams SET status = 'draft' WHERE id = ?`).run(exam.id);
     logAudit(db, { adminId: req.admin.id, action: 'unpublish_exam', examId: exam.id, detail: 'Ngừng mở đề cho học viên' });
     res.json({ ok: true });
+  });
+
+  // ---------- Class Assignment: lớp được giao + mật khẩu ----------
+
+  // POST /api/admin/exams/:id/assignment — { classIds: [...], accessCode: '' }
+  // Có hiệu lực NGAY (không cần xuất bản lại): học sinh lớp mới được giao thấy đề luôn.
+  router.post('/:id/assignment', (req, res) => {
+    const exam = loadExam(req, res);
+    if (!exam) return;
+    if (exam.category !== 'homework') return res.status(400).json({ error: 'Chỉ đề Class Assignment mới giao cho lớp và đặt mật khẩu.' });
+    if (!checkLockHolder(req, res, exam)) return;
+    const a = readAssignment(req.body);
+    if (a.error) return res.status(400).json({ error: a.error });
+
+    const before = classesOf(exam.id).map((c) => c.id);
+    saveAssignment(exam.id, a);
+    const changes = [];
+    const added = a.classIds.filter((id) => !before.includes(id));
+    const removed = before.filter((id) => !a.classIds.includes(id));
+    if (added.length) changes.push(`giao thêm cho lớp ${classNames(added).join(', ')}`);
+    if (removed.length) changes.push(`bỏ lớp ${classNames(removed).join(', ')}`);
+    if (a.accessCode !== exam.access_code) {
+      changes.push(!a.accessCode ? 'bỏ mật khẩu đề' : exam.access_code ? 'đổi mật khẩu đề' : 'đặt mật khẩu đề');
+    }
+    if (changes.length) logAudit(db, { adminId: req.admin.id, action: 'update_assignment', examId: exam.id, detail: `Class Assignment: ${changes.join('; ')}` });
+    res.json({ classes: classesOf(exam.id), accessCode: a.accessCode });
+  });
+
+  // ---------- Hoạt động: ai đã làm đề, lúc nào, mấy lần ----------
+
+  // GET /api/admin/exams/:id/activity
+  // Class Assignment: theo từng lớp được giao, đủ mọi học sinh (kể cả chưa làm).
+  // Ngoài ra (Training Test, học sinh lớp khác...): theo từng người làm bài.
+  router.get('/:id/activity', (req, res) => {
+    const exam = loadExam(req, res);
+    if (!exam) return;
+    finalizeExpiredAttempts(db); // bài hết giờ chưa nộp -> chấm luôn để số liệu đúng
+    const rows = db
+      .prepare(
+        `SELECT a.id, a.status, a.started_at, a.submitted_at, a.correct_count, a.question_total, a.score10, a.total_score,
+                s.id AS student_id, s.last_name, s.first_name, s.phone, s.class_student_id
+           FROM attempts a
+           JOIN exam_versions v ON v.id = a.exam_version_id
+           JOIN students s ON s.id = a.student_id
+          WHERE v.exam_id = ?
+          ORDER BY a.started_at`
+      )
+      .all(exam.id);
+    const view = (r) => ({
+      id: r.id,
+      status: r.status,
+      startedAt: r.started_at,
+      submittedAt: r.submitted_at,
+      correct: r.correct_count,
+      total: r.question_total,
+      score10: r.score10,
+      totalScore: r.total_score,
+    });
+    const byClassStudent = new Map();
+    for (const r of rows) {
+      if (!r.class_student_id) continue;
+      if (!byClassStudent.has(r.class_student_id)) byClassStudent.set(r.class_student_id, []);
+      byClassStudent.get(r.class_student_id).push(view(r));
+    }
+
+    const assigned = exam.category === 'homework' ? classesOf(exam.id) : [];
+    const shown = new Set();
+    const classes = assigned.map((c) => {
+      // Học sinh đang học + học sinh đã nghỉ nhưng có làm bài này
+      const students = db
+        .prepare('SELECT id, full_name AS fullName, removed_at FROM class_students WHERE class_id = ?')
+        .all(c.id)
+        .filter((st) => !st.removed_at || byClassStudent.has(st.id))
+        .sort(byGivenName) // xếp theo tên như sổ điểm danh
+        .map((st) => {
+          shown.add(st.id);
+          return { classStudentId: st.id, fullName: st.fullName, isActive: !st.removed_at, attempts: byClassStudent.get(st.id) || [] };
+        });
+      return { ...c, students };
+    });
+
+    // Người làm bài không thuộc các lớp trên: gom theo từng người
+    const others = new Map();
+    for (const r of rows) {
+      if (r.class_student_id && shown.has(r.class_student_id)) continue;
+      if (!others.has(r.student_id)) {
+        others.set(r.student_id, { studentId: r.student_id, name: `${r.last_name} ${r.first_name}`.trim(), phone: r.phone, attempts: [] });
+      }
+      others.get(r.student_id).attempts.push(view(r));
+    }
+    res.json({ category: exam.category, examType: exam.exam_type, classes, others: [...others.values()] });
   });
 
   return router;

@@ -37,9 +37,13 @@ export default function ResultDetailPage() {
       <section className="admin-section">
         <div className="card">
           <div className="detail-grid">
-            <Info label="Số điện thoại" value={a.student.phone} />
+            {a.student.className ? (
+              <Info label="Lớp" value={a.student.className} />
+            ) : (
+              <Info label="Số điện thoại" value={a.student.phone || '(không có — Training Test chỉ nhập tên)'} />
+            )}
             <Info label="Đề" value={`${a.exam.title} (${a.exam.code}, lần xuất bản ${a.exam.versionNo})`} />
-            {a.exam.category === 'homework' && <Info label="Bài tập về nhà của" value={a.exam.author || '(không rõ)'} />}
+            {a.exam.category === 'homework' && <Info label="Class Assignment của" value={a.exam.author || '(không rõ)'} />}
             {done && (
               <Info
                 label="Câu sai / bỏ trống"

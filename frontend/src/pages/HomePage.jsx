@@ -12,12 +12,13 @@ const POINTS = [
 ];
 
 const STEPS = [
-  { icon: 'user', title: 'Nhập thông tin', text: 'Họ, tên và số điện thoại — không cần tạo tài khoản.' },
-  { icon: 'list', title: 'Chọn đề thi', text: 'Chọn một đề trong danh sách trung tâm đã mở.' },
+  { icon: 'user', title: 'Chọn cách làm bài', text: 'Training Test: chỉ nhập họ tên. Class Assignment: chọn lớp, bấm tên của bạn.' },
+  { icon: 'list', title: 'Chọn đề', text: 'Chọn một đề trung tâm đã mở, hoặc bài giáo viên giao cho lớp.' },
   { icon: 'trophy', title: 'Làm bài & xem điểm', text: 'Bài tự lưu khi làm, hết giờ tự nộp, có điểm ngay.' },
 ];
 
-// Trang chủ: 2 chức năng "Bắt đầu làm bài" (nút vàng lớn) và "Đăng nhập admin" (góc trên bên phải)
+// Trang chủ: 2 cách làm bài (Training Test cho mọi người, Class Assignment cho học sinh của lớp)
+// và "Đăng nhập admin" (góc trên bên phải)
 export default function HomePage() {
   return (
     <div className="home">
@@ -61,12 +62,15 @@ export default function HomePage() {
               ))}
             </ul>
 
-            <div className="home-cta">
-              <Link to="/bat-dau" className="btn btn-large btn-sun home-start">
-                Bắt đầu làm bài
-                <ArrowIcon />
+            <div className="home-choices">
+              <Link to="/bat-dau" className="home-choice is-training">
+                <span className="home-choice-title">Training Test <ArrowIcon /></span>
+                <span className="home-choice-text">Luyện đề cho mọi người — chỉ cần nhập họ tên.</span>
               </Link>
-              <p className="home-cta-note">Chỉ cần họ tên và số điện thoại.</p>
+              <Link to="/lop" className="home-choice is-class">
+                <span className="home-choice-title">Class Assignment <ArrowIcon /></span>
+                <span className="home-choice-text">Bài của lớp — chọn lớp, bấm vào tên của bạn.</span>
+              </Link>
             </div>
           </div>
 

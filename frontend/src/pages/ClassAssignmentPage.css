@@ -1,0 +1,165 @@
+/* Class Assignment phía học sinh: chọn lớp -> bấm tên -> chọn bài. Màu lớp: --cls / --cls-soft (classStyle) */
+
+/* Bước 1: các lớp */
+.ca-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.8rem;
+}
+.ca-pick-class {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1.1rem 3rem 1.1rem 1.2rem;
+  border-radius: 18px;
+  border-left: 8px solid var(--cls);
+  background: var(--cls-soft);
+  color: var(--brand-navy);
+  text-decoration: none;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.ca-pick-class:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(20, 40, 90, 0.14);
+}
+.ca-pick-class:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+.ca-pick-class svg {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--cls);
+}
+.ca-pick-class-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+.ca-pick-class-meta {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.ca-pick-foot {
+  margin: 1.2rem 0 0;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+.ca-pick-foot a {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* Bước 2: tên học sinh (nút to, dễ bấm trên điện thoại) */
+.ca-search {
+  margin-bottom: 1rem;
+}
+.ca-names {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.6rem;
+}
+.ca-name {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 60px;
+  padding: 0.5rem 0.9rem;
+  border: 2px solid var(--color-border);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--brand-navy);
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s, transform 0.08s;
+}
+.ca-name:hover {
+  border-color: var(--brand-sky);
+  background: var(--color-primary-soft);
+}
+.ca-name:active {
+  transform: scale(0.98);
+}
+.ca-name:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.ca-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 800;
+}
+
+/* Bước 3: bài của lớp */
+.ca-item {
+  flex-direction: column;
+  align-items: stretch;
+}
+.ca-item-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.ca-mine {
+  margin: 0.4rem 0 0;
+}
+.ca-status {
+  display: inline-block;
+  padding: 0.1rem 0.7rem;
+  border-radius: 999px;
+  background: #eef1f6;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.ca-status.is-done {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+.ca-status.is-live {
+  background: #fff2cf;
+  color: #a36a00;
+}
+.ca-pw {
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px dashed #d6c8fb;
+}
+.ca-pw label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+}
+.ca-pw-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.ca-pw-row .input {
+  flex: 1;
+  min-width: 160px;
+}
+.ca-error {
+  margin: 0.7rem 0 0;
+}
+
+@media (max-width: 600px) {
+  .ca-item-row {
+    flex-wrap: wrap;
+  }
+  .ca-names {
+    grid-template-columns: 1fr;
+  }
+}

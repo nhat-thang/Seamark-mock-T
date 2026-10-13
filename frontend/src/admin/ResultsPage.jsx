@@ -77,8 +77,8 @@ export default function ResultsPage() {
           <label htmlFor="r-category">Loại đề</label>
           <select id="r-category" className="input" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value, examId: '' }))}>
             <option value="">Tất cả</option>
-            <option value="exam">Đề thi thử</option>
-            <option value="homework">Bài tập về nhà (Homework)</option>
+            <option value="exam">Training Test</option>
+            <option value="homework">Class Assignment</option>
           </select>
         </div>
         <div className="field">
@@ -125,7 +125,7 @@ export default function ResultsPage() {
             <tr>
               <th>Bắt đầu</th>
               <th>Học viên</th>
-              <th>SĐT</th>
+              <th>SĐT / Lớp</th>
               <th>Đề</th>
               <th>Trạng thái</th>
               <th>Kết quả</th>
@@ -143,11 +143,13 @@ export default function ResultsPage() {
                     <strong>{r.student.lastName} {r.student.firstName}</strong>
                   </Link>
                 </td>
-                <td className="nowrap">{r.student.phone}</td>
+                <td className="nowrap">
+                  {r.student.className ? <span className="hw-sub">Lớp {r.student.className}</span> : r.student.phone || <span className="muted">—</span>}
+                </td>
                 <td className="col-exam">
                   {r.exam.title}
-                  {r.exam.category === 'homework' && (
-                    <div className="small-text hw-sub">Bài tập về nhà{r.exam.author ? ` · Giáo viên: ${r.exam.author}` : ''}</div>
+                  {r.exam.category === 'homework' && r.exam.author && (
+                    <div className="small-text hw-sub">Giáo viên ra đề: {r.exam.author}</div>
                   )}
                   <div className="muted small-text">{r.exam.code} · lần xuất bản {r.exam.versionNo}</div>
                 </td>

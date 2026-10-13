@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { apiGet, apiPost } from '../../utils/api.js';
 import { ATTENDANCE_LABELS, feeBadge, formatDate, formatDay, vnToday } from '../../utils/schedule.js';
 import { formatDateTime } from '../../utils/format.js';
@@ -139,7 +140,14 @@ export default function StudentsTab({ cls, students, onChanged, compact = false,
                 <Fragment key={s.id}>
                   <tr>
                     <td className="cl-col-name">
-                      <strong>{s.fullName}</strong>
+                      {compact ? (
+                        <strong>{s.fullName}</strong>
+                      ) : (
+                        // Bấm tên: xem lịch sử hoạt động (đi học, bài đã làm, học phí)
+                        <button type="button" className="cl-name-btn" onClick={() => setDetail(detail === s.id ? null : s.id)} title="Xem lịch sử hoạt động">
+                          {s.fullName}
+                        </button>
+                      )}
                       {s.note && <div className="muted small-text cl-note" title={s.note}>{s.note}</div>}
                     </td>
                     <td className="nowrap">{s.phone || <span className="muted">—</span>}</td>
@@ -437,7 +445,7 @@ export function StudentHistory({ cls, studentId }) {
 
   if (error) return <p className="alert-error">{error}</p>;
   if (!data) return <p className="muted">Đang tải…</p>;
-  const { student: s, history, payments } = data;
+  const { student: s, history, payments, attempts = [] } = data;
 
   return (
     <div className="cl-history">
@@ -455,6 +463,29 @@ export function StudentHistory({ cls, studentId }) {
               <span className="cl-history-day">{formatDay(h.date)}</span>
               <span>{ATTENDANCE_LABELS[h.status]}</span>
               {h.bonus > 0 && <span className="cl-history-bonus">+{h.bonus}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="cl-history-sum"><strong>Bài đã làm (Class Assignment)</strong> — {attempts.length} lượt</p>
+      {attempts.length === 0 ? (
+        <p className="muted">Chưa làm bài nào.</p>
+      ) : (
+        <ul className="cl-attempt-list">
+          {attempts.map((a) => (
+            <li key={a.id}>
+              <Link to={`/admin/ket-qua/${a.id}`} className="cl-attempt">
+                <span className="cl-attempt-title">{a.examTitle}</span>
+                <span className="muted small-text">
+                  {formatDateTime(a.submittedAt || a.startedAt)}
+                  {a.status === 'submitted' ? '' : ' · đang làm'}
+                </span>
+                {a.status === 'submitted' && a.correct !== null && (
+                  <span className="cl-pill is-ok">
+                    {a.correct}/{a.total} câu{a.score10 !== null ? ` · ${String(a.score10).replace('.', ',')} điểm` : ''}
+                  </span>
+                )}
+              </Link>
             </li>
           ))}
         </ul>

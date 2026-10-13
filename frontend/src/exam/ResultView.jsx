@@ -47,7 +47,8 @@ export default function ResultView({ view }) {
           )}
 
           <div className="result-actions">
-            <Link to="/bat-dau" className="btn btn-primary">Làm đề khác</Link>
+            {/* Làm bài của lớp: quay về đúng lớp (tên học sinh vẫn được nhớ trong tab này) */}
+            <Link to={view.classId ? `/lop/${view.classId}` : '/bat-dau'} className="btn btn-primary">Làm bài khác</Link>
             <Link to="/" className="btn btn-secondary">Về trang chủ</Link>
           </div>
         </section>

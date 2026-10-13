@@ -16,6 +16,7 @@ const aiRouter = require('./routes/ai');
 const classesRouter = require('./routes/classes');
 const scheduleRouter = require('./routes/schedule');
 const notificationsRouter = require('./routes/notifications');
+const publicClassesRouter = require('./routes/publicClasses');
 const { requireAdmin, requireOwner } = require('./auth/middleware');
 
 /**
@@ -39,6 +40,8 @@ function createApp({ db, config }) {
   api.get('/health', (req, res) => res.json({ ok: true }));
   api.use('/exams', examsRouter(db));
   api.use('/attempts', attemptsRouter(db));
+  // Class Assignment: học sinh chọn lớp -> bấm tên mình (chỉ trả họ tên, không SĐT)
+  api.use('/classes', publicClassesRouter(db));
   api.use('/files', filesRouter(db, config));
   api.use('/auth', authRouter(db, config));
 

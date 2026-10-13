@@ -1,6 +1,11 @@
 // API phía HỌC VIÊN: bắt đầu làm bài, lưu bài, nộp bài, xem kết quả.
 // Học viên không đăng nhập: mỗi lượt làm bài có một mã bí mật (access_token),
 // trình duyệt gửi kèm trong header "X-Attempt-Token".
+//
+// Hai cách bắt đầu (đã chốt):
+//   Training Test    : { lastName, firstName, examId } — chỉ cần họ tên (SĐT không bắt buộc), đề loại 'exam'.
+//   Class Assignment : { classStudentId, examId, password? } — học sinh bấm tên mình trong lớp, đề loại 'homework'
+//                      phải được giao cho lớp đó; đề có mật khẩu thì phải nhập đúng.
 const crypto = require('crypto');
 const express = require('express');
 const { requireJson } = require('../auth/middleware');
@@ -12,6 +17,15 @@ const {
 
 const PHONE_RE = /^0\d{9}$/;
 const cleanText = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
+
+/** "Nguyễn Văn An" -> { lastName: 'Nguyễn Văn', firstName: 'An' } (bảng students lưu họ và tên riêng) */
+function splitName(fullName) {
+  const words = cleanText(fullName).split(' ');
+  return { lastName: words.slice(0, -1).join(' '), firstName: words.at(-1) || '' };
+}
+
+/** Mật khẩu đề: bỏ khoảng trắng hai đầu, không phân biệt hoa / thường (học sinh nhỏ hay gõ nhầm hoa thường) */
+const samePassword = (typed, code) => cleanText(typed).toLowerCase() === cleanText(code).toLowerCase();
 
 /** So sánh mã an toàn (thời gian so sánh không phụ thuộc nội dung). */
 function sameToken(a, b) {
@@ -40,6 +54,7 @@ function attemptsRouter(db) {
       status: attempt.status,
       examTitle: attempt.exam_title,
       durationMinutes: attempt.duration_minutes,
+      classId: attempt.class_id ?? null, // làm bài của lớp: nút "Làm bài khác" quay về đúng lớp
       student: { lastName: attempt.last_name, firstName: attempt.first_name },
     };
     if (attempt.status === 'submitted') {
@@ -65,21 +80,11 @@ function attemptsRouter(db) {
 
   // POST /api/attempts — bắt đầu (hoặc tiếp tục) làm một đề
   router.post('/', startLimit, (req, res) => {
-    const lastName = cleanText(req.body?.lastName);
-    const firstName = cleanText(req.body?.firstName);
-    const phone = String(req.body?.phone ?? '').replace(/[\s.-]/g, '');
     const examId = Number.parseInt(req.body?.examId, 10) || 0;
-
-    if (!lastName || !firstName || lastName.length > 50 || firstName.length > 30) {
-      return res.status(400).json({ error: 'Vui lòng nhập đầy đủ họ và tên.' });
-    }
-    if (!PHONE_RE.test(phone)) {
-      return res.status(400).json({ error: 'Số điện thoại phải gồm 10 chữ số và bắt đầu bằng số 0.' });
-    }
-
+    const classStudentId = Number.parseInt(req.body?.classStudentId, 10) || 0;
     const exam = db
       .prepare(
-        `SELECT e.published_version_id AS version_id, v.duration_minutes, v.content_json
+        `SELECT e.id, e.category, e.access_code, e.published_version_id AS version_id, v.duration_minutes, v.content_json
            FROM exams e JOIN exam_versions v ON v.id = e.published_version_id
           WHERE e.id = ? AND e.status = 'published'`
       )
@@ -88,18 +93,85 @@ function attemptsRouter(db) {
       return res.status(404).json({ error: 'Đề thi không tồn tại hoặc đã đóng. Vui lòng chọn đề khác.' });
     }
 
+    let classStudent = null;
+    let lastName;
+    let firstName;
+    let phone = '';
+    if (classStudentId) {
+      // ----- Class Assignment: học sinh đã chọn lớp và bấm tên mình -----
+      if (exam.category !== 'homework') return res.status(400).json({ error: 'Đề này không phải bài của lớp.' });
+      classStudent = db
+        .prepare(
+          `SELECT st.* FROM class_students st JOIN classes c ON c.id = st.class_id
+            WHERE st.id = ? AND st.removed_at IS NULL AND c.deleted_at IS NULL`
+        )
+        .get(classStudentId);
+      if (!classStudent) return res.status(404).json({ error: 'Không tìm thấy tên bạn trong lớp. Vui lòng chọn lại lớp và tên.' });
+      if (!db.prepare('SELECT 1 FROM exam_classes WHERE exam_id = ? AND class_id = ?').get(exam.id, classStudent.class_id)) {
+        return res.status(403).json({ error: 'Đề này không giao cho lớp của bạn.' });
+      }
+      if (exam.access_code && !samePassword(req.body?.password, exam.access_code)) {
+        return res.status(403).json({
+          reason: 'password',
+          error: cleanText(req.body?.password) ? 'Mật khẩu đề không đúng. Hãy hỏi lại giáo viên.' : 'Đề này cần mật khẩu. Hãy nhập mật khẩu giáo viên cho.',
+        });
+      }
+      ({ lastName, firstName } = splitName(classStudent.full_name));
+    } else {
+      // ----- Training Test: chỉ cần họ tên -----
+      lastName = cleanText(req.body?.lastName);
+      firstName = cleanText(req.body?.firstName);
+      phone = String(req.body?.phone ?? '').replace(/[\s.-]/g, '');
+      if (!lastName || !firstName || lastName.length > 50 || firstName.length > 30) {
+        return res.status(400).json({ error: 'Vui lòng nhập đầy đủ họ và tên.' });
+      }
+      // SĐT không bắt buộc nữa; có gửi thì phải đúng dạng (giữ cho các trình duyệt còn bản cũ)
+      if (phone && !PHONE_RE.test(phone)) {
+        return res.status(400).json({ error: 'Số điện thoại phải gồm 10 chữ số và bắt đầu bằng số 0.' });
+      }
+      if (exam.category !== 'exam') {
+        return res.status(403).json({ error: 'Đề này chỉ dành cho học sinh của lớp. Hãy vào mục "Class Assignment".' });
+      }
+    }
+
     finalizeExpiredAttempts(db);
 
     const result = db.transaction(() => {
-      // Gộp học viên theo SĐT: có rồi thì cập nhật họ tên mới nhất
-      db.prepare(
-        `INSERT INTO students (last_name, first_name, phone, created_at) VALUES (?, ?, ?, ?)
-         ON CONFLICT(phone) DO UPDATE SET last_name = excluded.last_name, first_name = excluded.first_name`
-      ).run(lastName, firstName, phone, new Date().toISOString());
-      const studentId = db.prepare('SELECT id FROM students WHERE phone = ?').get(phone).id;
+      const createdAt = new Date().toISOString();
+      let studentId;
+      // Được tự mở lại bài đang làm dở khi biết chắc là cùng một người (cùng học sinh của lớp / cùng SĐT).
+      // Chỉ có họ tên thì KHÔNG: người trùng tên có thể vào nhầm bài nhau (trình duyệt tự nhớ bài dở trên máy).
+      let resumable = true;
+      if (classStudent) {
+        const found = db.prepare('SELECT id FROM students WHERE class_student_id = ?').get(classStudent.id);
+        if (found) {
+          db.prepare('UPDATE students SET last_name = ?, first_name = ? WHERE id = ?').run(lastName, firstName, found.id);
+          studentId = found.id;
+        } else {
+          studentId = db
+            .prepare(`INSERT INTO students (last_name, first_name, phone, created_at, class_student_id) VALUES (?, ?, '', ?, ?)`)
+            .run(lastName, firstName, createdAt, classStudent.id).lastInsertRowid;
+        }
+      } else if (phone) {
+        // Gộp học viên theo SĐT: có rồi thì cập nhật họ tên mới nhất
+        db.prepare(
+          `INSERT INTO students (last_name, first_name, phone, created_at) VALUES (?, ?, ?, ?)
+           ON CONFLICT(phone) WHERE phone <> '' DO UPDATE SET last_name = excluded.last_name, first_name = excluded.first_name`
+        ).run(lastName, firstName, phone, createdAt);
+        studentId = db.prepare('SELECT id FROM students WHERE phone = ?').get(phone).id;
+      } else {
+        // Chỉ có họ tên: gộp theo đúng họ tên (để giáo viên xem các lần làm của cùng một người)
+        const found = db
+          .prepare(`SELECT id FROM students WHERE phone = '' AND class_student_id IS NULL AND last_name = ? AND first_name = ?`)
+          .get(lastName, firstName);
+        studentId = found
+          ? found.id
+          : db.prepare(`INSERT INTO students (last_name, first_name, phone, created_at) VALUES (?, ?, '', ?)`).run(lastName, firstName, createdAt).lastInsertRowid;
+        resumable = false;
+      }
 
       // Đang làm dở đúng đề này mà chưa hết giờ -> tiếp tục lượt cũ (không tính giờ lại từ đầu)
-      const ongoing = db
+      const ongoing = resumable && db
         .prepare(
           `SELECT id, access_token FROM attempts
             WHERE student_id = ? AND exam_version_id = ? AND status = 'in_progress' AND deadline_at > ?

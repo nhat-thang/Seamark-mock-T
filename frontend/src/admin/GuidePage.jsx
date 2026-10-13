@@ -15,7 +15,7 @@ const SECTIONS = [
   { id: 'sua-cau', title: '10. Sửa một câu hoặc một đoạn văn' },
   { id: 'xuat-ban', title: '11. Xem trước và xuất bản đề' },
   { id: 'tu-thiet-ke', title: '12. Đề tự thiết kế' },
-  { id: 'homework', title: '13. Bài tập về nhà (Homework)' },
+  { id: 'homework', title: '13. Đề Class Assignment (đề riêng của lớp)' },
   { id: 'nguoi-khac-sua', title: '14. Khi người khác đang sửa cùng đề' },
   { id: 'ket-qua', title: '15. Xem kết quả học viên' },
   { id: 'hoc-vien', title: '16. Học viên làm bài thế nào' },
@@ -377,28 +377,39 @@ export default function GuidePage() {
       </Section>
 
       <Section id="homework">
+        <p>
+          Web có 2 loại đề: <strong>Training Test</strong> (cho mọi người luyện tập, chỉ cần nhập họ tên) và{' '}
+          <strong>Class Assignment</strong> (đề riêng của lớp: học sinh chọn lớp, bấm vào tên mình rồi làm).
+        </p>
         <ol>
           <li>
-            Vào <B>Đề thi</B> → <B>Tạo đề mới</B> → chọn <B>Bài tập về nhà (Homework)</B>, rồi chọn loại đề như bình thường (TOEIC, đề
-            tự thiết kế hoặc khung mẫu).
+            Vào <B>Đề thi</B> → <B>Tạo đề mới</B> → chọn <B>Class Assignment</B>, rồi chọn loại đề như bình thường (TOEIC, đề tự thiết kế
+            hoặc khung mẫu).
           </li>
           <li>
-            Ô <B>Tên bài tập</B>: chỉ cần gõ phần tên, ví dụ "Đề lớp 1A". Web tự thêm chữ <strong>Homework -</strong> ở đầu, học viên thấy
-            "Homework - Đề lớp 1A". Mã đề web tự đặt (HW-001, HW-002…).
+            Ô <B>Tên đề</B>: chỉ cần gõ phần tên, ví dụ "Đề lớp 1A". Web tự thêm chữ <strong>Class Assignment -</strong> ở đầu. Mã đề web
+            tự đặt (CA-001, CA-002…).
           </li>
           <li>
-            <B>Giáo viên ra đề</B>: mặc định là bạn. Học viên thấy tên giáo viên này ở danh sách bài tập về nhà.
+            <B>Giao cho lớp</B>: bấm chọn một hoặc nhiều lớp. <B>Mật khẩu đề</B>: không bắt buộc; nếu đặt, học sinh phải nhập đúng mới vào
+            làm được (không phân biệt chữ hoa / thường). Đổi lớp hoặc mật khẩu sau ở tab <B>Thông tin đề</B> → mục "Giao cho lớp" → bấm{' '}
+            <B>Lưu lớp và mật khẩu</B> (có hiệu lực ngay, không cần xuất bản lại).
           </li>
-          <li>Soạn đề, xem trước và <B>Xuất bản</B> giống hệt đề thi thử.</li>
+          <li>Soạn đề, thời gian, cách làm bài, xem trước và <B>Xuất bản</B> giống hệt Training Test.</li>
           <li>
-            Học viên bấm <B>Bắt đầu làm bài</B> → nhập thông tin → chọn mục <B>Bài tập về nhà (Homework)</B> → bấm <B>Làm bài</B> ở bài
-            của mình (lọc được theo giáo viên).
+            Học sinh: trang chủ → <B>Class Assignment</B> → chọn lớp → bấm vào <strong>tên mình</strong> → bấm <B>Làm bài</B>. Không cần
+            gõ tên, web tự biết là ai.
           </li>
           <li>
-            Xem bài làm: ở danh sách <B>Đề thi</B> bấm <B>Kết quả</B> cạnh bài tập đó, hoặc vào <B>Kết quả</B> → "Loại đề: Bài tập về
-            nhà". Mỗi dòng có tên học viên, điểm và các câu làm sai / bỏ trống; bấm vào tên để xem chi tiết từng câu.
+            Xem ai đã làm: ở danh sách <B>Đề thi</B> bấm <B>Hoạt động</B> (hoặc mở đề → tab <B>Hoạt động</B>). Mỗi lớp được giao có đủ
+            học sinh: <B>Đã làm</B> / <B>Chưa làm</B>, làm mấy lần, lúc nào, điểm mỗi lần; bấm vào từng lần để xem bài làm chi tiết.
+          </li>
+          <li>
+            Xem một học sinh: <B>Lớp học</B> → mở lớp → bấm vào <strong>tên học sinh</strong>: có điểm danh, điểm cộng, học phí và các bài
+            đã làm.
           </li>
         </ol>
+        <Tip>Các đề "Homework" tạo trước đây đã được chuyển thành Training Test (giữ nguyên tên).</Tip>
       </Section>
 
       <Section id="nguoi-khac-sua">
@@ -418,7 +429,10 @@ export default function GuidePage() {
 
       <Section id="ket-qua">
         <ol>
-          <li>Vào <B>Kết quả</B>. Lọc theo tên (gõ có dấu hoặc không dấu đều được), số điện thoại, đề, ngày.</li>
+          <li>
+            Vào <B>Kết quả</B>. Lọc theo tên (gõ có dấu hoặc không dấu đều được), số điện thoại, loại đề (Training Test / Class
+            Assignment), giáo viên ra đề, đề, ngày. Học sinh làm bài của lớp hiện tên lớp thay cho số điện thoại.
+          </li>
           <li>Bấm vào tên học viên để xem từng câu: chọn gì, đúng hay sai, và các lần làm khác của học viên đó.</li>
           <li>
             Bấm <B>Xuất Excel</B> để tải file theo bộ lọc đang chọn. File có 2 trang: «Kết quả» (điểm) và «Đáp án từng câu» (ô xanh =
@@ -433,10 +447,20 @@ export default function GuidePage() {
 
       <Section id="hoc-vien">
         <ol>
-          <li>Học viên vào trang web → <B>Bắt đầu làm bài</B> → nhập họ, tên, số điện thoại → <B>Tiếp tục</B> → chọn đề → <B>Làm bài</B>.</li>
+          <li>
+            <B>Training Test</B>: học viên vào trang web → bấm <B>Training Test</B> → nhập họ và tên (không cần số điện thoại) →{' '}
+            <B>Tiếp tục</B> → chọn đề → <B>Làm bài</B>.
+          </li>
+          <li>
+            <B>Class Assignment</B>: bấm <B>Class Assignment</B> → chọn lớp → bấm vào tên mình → chọn bài của lớp → <B>Làm bài</B> (đề có
+            mật khẩu thì nhập mật khẩu giáo viên cho).
+          </li>
           <li>Đồng hồ bắt đầu chạy ngay. Hết giờ, bài <strong>tự nộp và tự chấm</strong>.</li>
           <li>Bài làm được tự động lưu. Lỡ tải lại trang hay mất mạng, mở lại vẫn còn bài.</li>
-          <li>Đóng trình duyệt giữa chừng: vào lại với <strong>đúng số điện thoại cũ</strong> và chọn đúng đề đó để làm tiếp (thời gian vẫn tính tiếp).</li>
+          <li>
+            Đóng trình duyệt giữa chừng: Class Assignment thì bấm lại tên mình và bấm <B>Làm tiếp</B>; Training Test thì mở lại trên{' '}
+            <strong>cùng máy</strong>, nhập đúng họ tên cũ và chọn đúng đề đó (thời gian vẫn tính tiếp).
+          </li>
           <li>Ô <B>Cần xem lại</B> giúp học viên đánh dấu câu muốn xem lại. Bảng số câu: xanh = đã làm, trắng = chưa làm, viền cam = cần xem lại.</li>
           <li>Phần nghe: nếu đề không cho tua, học viên chỉ bấm được <B>Phát audio</B> / <B>Tạm dừng</B>.</li>
         </ol>
@@ -472,8 +496,10 @@ export default function GuidePage() {
           <dd>Mạng đang chập chờn. Đừng đóng trang; khi có mạng lại, web tự lưu lên. Nếu lỡ đóng, mở lại đề trên cùng máy sẽ được khôi phục.</dd>
           <dt>Báo "Đề vừa được lưu ở nơi khác"?</dt>
           <dd>Có người (hoặc chính bạn ở tab / máy khác) vừa sửa đề này. Bấm <B>Tải lại trang</B> để xem bản mới nhất rồi sửa tiếp.</dd>
-          <dt>Học viên nhập sai số điện thoại?</dt>
-          <dd>Mỗi số điện thoại là một học viên. Nhập sai số thì bài làm sẽ nằm ở số đó; tìm theo tên trong mục Kết quả.</dd>
+          <dt>Học sinh không thấy bài của lớp?</dt>
+          <dd>Kiểm tra đề đã <B>Xuất bản</B> chưa và đã chọn lớp ở tab <B>Thông tin đề</B> → "Giao cho lớp" chưa.</dd>
+          <dt>Học sinh không thấy tên mình trong lớp?</dt>
+          <dd>Thêm học sinh vào lớp ở <B>Lớp học</B> → tab <B>Học sinh</B>. Học sinh đã "Cho nghỉ" sẽ không hiện.</dd>
           <dt>Nút "Bắt đầu buổi học" bị mờ?</dt>
           <dd>Chưa tới 30 phút trước giờ học. Đợi tới giờ, nút tự sáng lên (không cần tải lại trang).</dd>
           <dt>Không bấm mở được một buổi học trên thời khóa biểu?</dt>

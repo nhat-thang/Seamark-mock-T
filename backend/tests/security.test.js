@@ -41,6 +41,8 @@ const ADMIN_ROUTES = [
   ['POST', '/api/admin/exams/1/template/remove'],
   ['GET', '/api/admin/results/export'],
   ['GET', '/api/admin/results/1'],
+  ['POST', '/api/admin/exams/1/assignment'],
+  ['GET', '/api/admin/exams/1/activity'],
   ['GET', '/api/admin/classes'],
   ['POST', '/api/admin/classes'],
   ['GET', '/api/admin/classes/1'],
