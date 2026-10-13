@@ -22,6 +22,9 @@ const {
 
 const CODE_RE = /^[A-Z0-9][A-Z0-9_-]{1,29}$/;
 const EXAM_TYPES = ['TOEIC_LR', 'CUSTOM'];
+// Mục đích của đề: đề thi thử, hoặc bài tập về nhà (homework). Bên trong đề giống hệt nhau.
+const CATEGORIES = ['exam', 'homework'];
+const HOMEWORK_PREFIX = 'Homework - ';
 /** Nội dung nháp của đề (đề cũ chưa có nội dung -> nội dung trống đúng loại) */
 const draftOf = (exam) => JSON.parse(exam.draft_json || 'null') || emptyContent(exam.exam_type);
 
@@ -39,6 +42,17 @@ const FIELD_LABELS = {
 const AUDIT_MERGE_MS = 10 * 60 * 1000;
 
 const cleanText = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
+
+/**
+ * Tên bài tập về nhà luôn bắt đầu bằng "Homework - " (đã chốt với người dùng):
+ * giáo viên gõ "đề lớp 1a" -> "Homework - đề lớp 1a". Lỡ gõ "homework đề lớp 1a" cũng không bị lặp chữ.
+ * Trả về chuỗi rỗng nếu phần tên giáo viên đặt bị trống.
+ */
+function homeworkTitle(raw) {
+  let name = cleanText(raw);
+  while (/^homework\b/i.test(name)) name = name.replace(/^homework\s*[-–—:_.]*\s*/i, '');
+  return name ? `${HOMEWORK_PREFIX}${name}` : '';
+}
 
 /** Kiểm tra + chuẩn hóa thông tin đề. Trả về { settings } hoặc { error }. */
 function parseSettings(body) {
@@ -98,6 +112,15 @@ function adminExamsRouter(db, config) {
   const findExam = (id) => db.prepare('SELECT * FROM exams WHERE id = ?').get(id);
   const codeTaken = (code, exceptId = 0) =>
     !!db.prepare('SELECT 1 FROM exams WHERE code = ? AND id != ?').get(code, exceptId);
+
+  /** Mã đề tự đặt cho homework: HW-001, HW-002... (giáo viên không phải nghĩ mã) */
+  function nextHomeworkCode() {
+    const used = db.prepare(`SELECT code FROM exams WHERE code LIKE 'HW-%'`).all()
+      .map((r) => Number.parseInt(r.code.slice(3), 10)).filter(Number.isFinite);
+    return `HW-${String((used.length ? Math.max(...used) : 0) + 1).padStart(3, '0')}`;
+  }
+
+  const authorName = (id) => (id ? db.prepare('SELECT display_name FROM admins WHERE id = ?').get(id)?.display_name ?? null : null);
 
   // Lấy đề theo :id; gửi 404 và trả null nếu không có
   function loadExam(req, res) {
@@ -173,12 +196,13 @@ function adminExamsRouter(db, config) {
       .prepare(
         `SELECT e.id, e.code, e.title, e.exam_type, e.status, e.version, e.updated_at, e.published_version_id,
                 e.lock_admin_id, e.lock_expires_at, la.display_name AS lock_name,
-                ua.display_name AS updated_by_name,
+                ua.display_name AS updated_by_name, e.category, ca.display_name AS author_name,
                 COALESCE(json_array_length(e.draft_json, '$.questions'), 0) AS question_count,
                 (SELECT COUNT(*) FROM attempts a JOIN exam_versions av ON av.id = a.exam_version_id WHERE av.exam_id = e.id) AS attempt_count,
                 v.source_version, v.version_no
            FROM exams e
            LEFT JOIN admins ua ON ua.id = e.updated_by
+           LEFT JOIN admins ca ON ca.id = e.created_by
            LEFT JOIN admins la ON la.id = e.lock_admin_id
            LEFT JOIN exam_versions v ON v.id = e.published_version_id
           ORDER BY e.updated_at DESC`
@@ -190,6 +214,8 @@ function adminExamsRouter(db, config) {
         id: r.id,
         code: r.code,
         examType: r.exam_type,
+        category: r.category,
+        author: r.author_name,
         title: r.title,
         status: r.status,
         questionCount: r.question_count,
@@ -206,7 +232,21 @@ function adminExamsRouter(db, config) {
 
   // POST /api/admin/exams — tạo đề mới (bản nháp trống)
   router.post('/', (req, res) => {
-    const parsed = parseSettings({ ...req.body, internalNote: req.body?.internalNote ?? '' });
+    const category = CATEGORIES.includes(req.body?.category) ? req.body.category : 'exam';
+    const body = { ...req.body, internalNote: req.body?.internalNote ?? '' };
+    if (category === 'homework') {
+      body.title = homeworkTitle(req.body?.title);
+      if (!body.title) return res.status(400).json({ error: 'Vui lòng đặt tên cho bài tập về nhà (ví dụ: Đề lớp 1A).' });
+      if (!cleanText(req.body?.code)) body.code = nextHomeworkCode();
+    }
+    // Giáo viên ra đề: mặc định là người tạo; chọn được giáo viên khác (tài khoản đang hoạt động)
+    let authorId = req.admin.id;
+    if (req.body?.authorId) {
+      const a = db.prepare('SELECT id FROM admins WHERE id = ? AND is_active = 1').get(Number.parseInt(req.body.authorId, 10) || 0);
+      if (!a) return res.status(400).json({ error: 'Giáo viên ra đề không tồn tại hoặc đã bị vô hiệu hóa.' });
+      authorId = a.id;
+    }
+    const parsed = parseSettings(body);
     if (parsed.error) return res.status(400).json({ error: parsed.error });
     const s = parsed.settings;
     let examType = EXAM_TYPES.includes(req.body?.examType) ? req.body.examType : 'TOEIC_LR';
@@ -223,14 +263,17 @@ function adminExamsRouter(db, config) {
 
     const id = db
       .prepare(
-        `INSERT INTO exams (code, title, exam_type, duration_minutes, internal_note, allow_seek_audio, show_answers_after,
-                            status, draft_json, updated_by, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?)`
+        `INSERT INTO exams (code, title, exam_type, category, created_by, duration_minutes, internal_note, allow_seek_audio,
+                            show_answers_after, status, draft_json, updated_by, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?)`
       )
-      .run(s.code, s.title, examType, s.durationMinutes, s.internalNote, s.allowSeekAudio ? 1 : 0, s.showAnswersAfter ? 1 : 0,
-        JSON.stringify(initialContent || emptyContent(examType)), req.admin.id, new Date().toISOString()).lastInsertRowid;
-    logAudit(db, { adminId: req.admin.id, action: 'create_exam', examId: id, detail: `Tạo đề ${template ? `từ khung mẫu "${template.name}"` : examType === 'CUSTOM' ? 'tự thiết kế' : 'TOEIC'} "${s.title}" (${s.code})` });
-    res.status(201).json({ id });
+      .run(s.code, s.title, examType, category, authorId, s.durationMinutes, s.internalNote, s.allowSeekAudio ? 1 : 0,
+        s.showAnswersAfter ? 1 : 0, JSON.stringify(initialContent || emptyContent(examType)), req.admin.id, new Date().toISOString()).lastInsertRowid;
+    const kind = template ? `từ khung mẫu "${template.name}"` : examType === 'CUSTOM' ? 'tự thiết kế' : 'TOEIC';
+    const what = category === 'homework' ? `bài tập về nhà (${kind})` : `đề ${kind}`;
+    const by = authorId !== req.admin.id ? `, giáo viên ra đề: ${authorName(authorId)}` : '';
+    logAudit(db, { adminId: req.admin.id, action: 'create_exam', examId: id, detail: `Tạo ${what} "${s.title}" (${s.code})${by}` });
+    res.status(201).json({ id, code: s.code, title: s.title });
   });
 
   // GET /api/admin/exams/:id — chi tiết đề (bản nháp + thông tin xuất bản + khóa)
@@ -255,6 +298,8 @@ function adminExamsRouter(db, config) {
         id: exam.id,
         ...settingsOf(exam),
         examType: exam.exam_type,
+        category: exam.category,
+        author: authorName(exam.created_by),
         status: exam.status,
         version: exam.version,
         updatedAt: exam.updated_at,
@@ -371,6 +416,10 @@ function adminExamsRouter(db, config) {
     const parsed = parseSettings(req.body?.settings);
     if (parsed.error) return res.status(400).json({ error: parsed.error });
     const s = parsed.settings;
+    if (exam.category === 'homework') {
+      s.title = homeworkTitle(s.title);
+      if (!s.title) return res.status(400).json({ error: 'Vui lòng đặt tên cho bài tập về nhà (phần sau chữ "Homework -").' });
+    }
     if (codeTaken(s.code, exam.id)) {
       return res.status(409).json({ reason: 'code', error: `Mã đề "${s.code}" đã được dùng cho đề khác.` });
     }

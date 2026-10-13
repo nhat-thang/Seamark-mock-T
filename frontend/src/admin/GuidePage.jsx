@@ -15,11 +15,12 @@ const SECTIONS = [
   { id: 'sua-cau', title: '10. Sửa một câu hoặc một đoạn văn' },
   { id: 'xuat-ban', title: '11. Xem trước và xuất bản đề' },
   { id: 'tu-thiet-ke', title: '12. Đề tự thiết kế' },
-  { id: 'nguoi-khac-sua', title: '13. Khi người khác đang sửa cùng đề' },
-  { id: 'ket-qua', title: '14. Xem kết quả học viên' },
-  { id: 'hoc-vien', title: '15. Học viên làm bài thế nào' },
-  { id: 'admin-chinh', title: '16. Việc của admin chính' },
-  { id: 'hoi-dap', title: '17. Câu hỏi thường gặp' },
+  { id: 'homework', title: '13. Bài tập về nhà (Homework)' },
+  { id: 'nguoi-khac-sua', title: '14. Khi người khác đang sửa cùng đề' },
+  { id: 'ket-qua', title: '15. Xem kết quả học viên' },
+  { id: 'hoc-vien', title: '16. Học viên làm bài thế nào' },
+  { id: 'admin-chinh', title: '17. Việc của admin chính' },
+  { id: 'hoi-dap', title: '18. Câu hỏi thường gặp' },
 ];
 
 export default function GuidePage() {
@@ -118,6 +119,16 @@ export default function GuidePage() {
           <li>
             <B>Cho nghỉ</B>: bạn đó không còn trong điểm danh các buổi sau, lịch sử cũ vẫn giữ (xem ở "Học sinh đã nghỉ", bấm{' '}
             <B>Cho học lại</B> nếu bạn quay lại). <B>Chi tiết</B>: xem từng buổi bạn đó đi học, vắng, điểm cộng.
+          </li>
+          <li>
+            <B>Nhập từ Excel</B> (tab Học sinh): chọn file danh sách lớp bạn đang có. Cột họ tên đặt tên gì cũng được ("Họ và tên",
+            "Họ tên", "Name", "Tên học sinh"…), web tự nhận cột. Bạn kiểm tra lại từng cột (đổi ở ô chọn nếu web đoán sai), xem trước
+            từng dòng rồi bấm <B>Nhập … học sinh</B>. Cột khác (ngày sinh, tên phụ huynh, trường…) được gộp vào Ghi chú. Bạn đã có
+            trong lớp sẽ tự bỏ tích để không bị trùng.
+          </li>
+          <li>
+            <B>Tải danh sách lớp (Excel)</B>: tải về file gồm danh sách học sinh (số buổi, vắng, điểm cộng, học phí) và trang điểm
+            danh từng buổi. File này nhập lại được vào lớp khác.
           </li>
           <li>Tab <B>Lịch học</B>: thời khóa biểu riêng của lớp. Tab <B>Các buổi học</B>: các buổi sắp tới và đã qua, số bạn có mặt.</li>
         </ol>
@@ -365,6 +376,31 @@ export default function GuidePage() {
         <Tip>Đề tự thiết kế chấm theo số câu đúng và điểm thang 10 (ví dụ 32/40 câu = 8 điểm), có số câu đúng từng phần.</Tip>
       </Section>
 
+      <Section id="homework">
+        <ol>
+          <li>
+            Vào <B>Đề thi</B> → <B>Tạo đề mới</B> → chọn <B>Bài tập về nhà (Homework)</B>, rồi chọn loại đề như bình thường (TOEIC, đề
+            tự thiết kế hoặc khung mẫu).
+          </li>
+          <li>
+            Ô <B>Tên bài tập</B>: chỉ cần gõ phần tên, ví dụ "Đề lớp 1A". Web tự thêm chữ <strong>Homework -</strong> ở đầu, học viên thấy
+            "Homework - Đề lớp 1A". Mã đề web tự đặt (HW-001, HW-002…).
+          </li>
+          <li>
+            <B>Giáo viên ra đề</B>: mặc định là bạn. Học viên thấy tên giáo viên này ở danh sách bài tập về nhà.
+          </li>
+          <li>Soạn đề, xem trước và <B>Xuất bản</B> giống hệt đề thi thử.</li>
+          <li>
+            Học viên bấm <B>Bắt đầu làm bài</B> → nhập thông tin → chọn mục <B>Bài tập về nhà (Homework)</B> → bấm <B>Làm bài</B> ở bài
+            của mình (lọc được theo giáo viên).
+          </li>
+          <li>
+            Xem bài làm: ở danh sách <B>Đề thi</B> bấm <B>Kết quả</B> cạnh bài tập đó, hoặc vào <B>Kết quả</B> → "Loại đề: Bài tập về
+            nhà". Mỗi dòng có tên học viên, điểm và các câu làm sai / bỏ trống; bấm vào tên để xem chi tiết từng câu.
+          </li>
+        </ol>
+      </Section>
+
       <Section id="nguoi-khac-sua">
         <p>Mỗi đề chỉ một người sửa tại một thời điểm.</p>
         <ul>
@@ -444,6 +480,10 @@ export default function GuidePage() {
           <dd>Đó là buổi của giáo viên khác. Bạn chỉ mở được buổi mình dạy. Nếu đúng là buổi của bạn, nhờ admin chính sửa lại giáo viên.</dd>
           <dt>Học sinh mới không có trong danh sách điểm danh?</dt>
           <dd>Kiểm tra <B>Ngày vào học</B> của bạn đó (tab Học sinh → <B>Sửa</B>): phải là ngày của buổi học hoặc trước đó.</dd>
+          <dt>Nhập Excel báo "File .xls (Excel đời cũ) chưa đọc được"?</dt>
+          <dd>Mở file bằng Excel → <B>Lưu thành</B> (Save As) → chọn "Excel Workbook (.xlsx)" rồi chọn lại file mới.</dd>
+          <dt>Nhập Excel báo chưa có cột "Họ và tên"?</dt>
+          <dd>Ở mục "1. Kiểm tra các cột", tìm cột chứa tên học sinh và chọn <B>Họ và tên</B> ở ô bên phải.</dd>
           <dt>Xuất bản báo thiếu file?</dt>
           <dd>Vào tab <B>Ảnh & audio</B>, xem các dòng "Chưa tải lên" và tải đúng file đó lên (tên file phải giống tên ghi trong đề).</dd>
         </dl>

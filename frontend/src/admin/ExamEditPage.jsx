@@ -409,6 +409,9 @@ function ExamEditor({ examId, initial }) {
         <div>
           <h1 className="admin-title">{settings.title || exam.title}</h1>
           <div className="exam-edit-status">
+            {exam.category === 'homework' && (
+              <span className="tag tag-hw">Bài tập về nhà{exam.author ? ` · ${exam.author}` : ''}</span>
+            )}
             <ExamStatusTag exam={{ status: exam.status, hasUnpublishedChanges: meta.hasUnpublishedChanges, everPublished: !!meta.published }} />
             <span className="muted small-text">{content.questions.length} {isCustom ? 'question' : 'câu'}</span>
             {mode === 'edit' && <SaveStatus state={saveState} />}

@@ -1,23 +1,42 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { apiGet } from '../utils/api.js';
 import { formatDateTime } from '../utils/format.js';
 import { useHistory } from './useHistory.js';
 import Pagination from './Pagination.jsx';
 
-const EMPTY_FILTERS = { name: '', phone: '', examId: '', status: '', from: '', to: '' };
+const EMPTY_FILTERS = { name: '', phone: '', category: '', authorId: '', examId: '', status: '', from: '', to: '' };
+const SHOW_NOS = 15; // số câu sai hiện tối đa trên một dòng (xem đủ ở trang chi tiết)
 
-// Kết quả làm bài — mọi admin
+/** "Sai câu 3, 7, 12" + "Bỏ trống câu 5" (đã nộp bài) */
+function Mistakes({ r }) {
+  if (r.status !== 'submitted') return null;
+  const list = (nos) => nos.slice(0, SHOW_NOS).join(', ') + (nos.length > SHOW_NOS ? ` … (+${nos.length - SHOW_NOS})` : '');
+  if (r.wrong.length === 0 && r.blank.length === 0) return <div className="text-ok small-text">Đúng hết</div>;
+  return (
+    <div className="result-mistakes small-text">
+      {r.wrong.length > 0 && <div className="text-error">Sai câu {list(r.wrong)}</div>}
+      {r.blank.length > 0 && <div className="muted">Bỏ trống câu {list(r.blank)}</div>}
+    </div>
+  );
+}
+
+// Kết quả làm bài — mọi admin. Mở từ danh sách đề: /admin/ket-qua?examId=... (lọc sẵn theo đề)
 export default function ResultsPage() {
+  const [params] = useSearchParams();
+  const initial = { ...EMPTY_FILTERS, examId: params.get('examId') || '' };
   const [exams, setExams] = useState([]);
-  const [form, setForm] = useState(EMPTY_FILTERS); // giá trị đang gõ
-  const [filters, setFilters] = useState(EMPTY_FILTERS); // giá trị dùng để tải (chờ ngừng gõ)
+  const [teachers, setTeachers] = useState([]);
+  const [form, setForm] = useState(initial); // giá trị đang gõ
+  const [filters, setFilters] = useState(initial); // giá trị dùng để tải (chờ ngừng gõ)
   const [page, setPage] = useState(1);
   const list = useHistory('/admin/results', filters, page);
 
   useEffect(() => {
     apiGet('/admin/exams').then((d) => setExams(d.exams)).catch(() => {});
+    apiGet('/admin/schedule/teachers').then((d) => setTeachers(d.teachers)).catch(() => {});
   }, []);
+  const examOptions = exams.filter((e) => !form.category || e.category === form.category);
 
   // Ô chữ: chờ ngừng gõ 0,4 giây mới tải lại, đỡ gọi server liên tục
   useEffect(() => {
@@ -36,7 +55,9 @@ export default function ResultsPage() {
       <div className="page-head">
         <div>
           <h1 className="admin-title">Kết quả làm bài</h1>
-          <p className="admin-intro">Bấm vào một dòng để xem bài làm chi tiết (học viên chọn gì ở từng câu, đúng hay sai).</p>
+          <p className="admin-intro">
+            Mỗi dòng có điểm và các câu học viên làm sai. Bấm vào tên để xem bài làm chi tiết (chọn gì ở từng câu, đáp án đúng).
+          </p>
         </div>
         <a className="btn btn-primary" href={`/api/admin/results/export${exportQuery ? `?${exportQuery}` : ''}`} download>
           Xuất Excel
@@ -53,10 +74,25 @@ export default function ResultsPage() {
           <input id="r-phone" className="input" inputMode="numeric" value={form.phone} onChange={set('phone')} />
         </div>
         <div className="field">
+          <label htmlFor="r-category">Loại đề</label>
+          <select id="r-category" className="input" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value, examId: '' }))}>
+            <option value="">Tất cả</option>
+            <option value="exam">Đề thi thử</option>
+            <option value="homework">Bài tập về nhà (Homework)</option>
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="r-author">Giáo viên ra đề</label>
+          <select id="r-author" className="input" value={form.authorId} onChange={set('authorId')}>
+            <option value="">Tất cả</option>
+            {teachers.map((t) => <option key={t.id} value={t.id}>{t.displayName}</option>)}
+          </select>
+        </div>
+        <div className="field">
           <label htmlFor="r-exam">Đề thi</label>
           <select id="r-exam" className="input" value={form.examId} onChange={set('examId')}>
             <option value="">Tất cả</option>
-            {exams.map((e) => <option key={e.id} value={e.id}>{e.code} – {e.title}</option>)}
+            {examOptions.map((e) => <option key={e.id} value={e.id}>{e.code} – {e.title}</option>)}
           </select>
         </div>
         <div className="field">
@@ -110,6 +146,9 @@ export default function ResultsPage() {
                 <td className="nowrap">{r.student.phone}</td>
                 <td className="col-exam">
                   {r.exam.title}
+                  {r.exam.category === 'homework' && (
+                    <div className="small-text hw-sub">Bài tập về nhà{r.exam.author ? ` · Giáo viên: ${r.exam.author}` : ''}</div>
+                  )}
                   <div className="muted small-text">{r.exam.code} · lần xuất bản {r.exam.versionNo}</div>
                 </td>
                 <td>
@@ -136,6 +175,7 @@ export default function ResultsPage() {
                   {r.totalScore !== null && <div><strong>Tổng ước tính: {r.totalScore}</strong></div>}
                   </>
                   )}
+                  <Mistakes r={r} />
                 </td>
               </tr>
             ))}

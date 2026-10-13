@@ -69,6 +69,76 @@
   font-weight: 600;
 }
 
+/* Chọn "Đề thi thử" / "Bài tập về nhà" */
+.exam-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.exam-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 48px;
+  padding: 0 1.2rem;
+  border: 2px solid var(--color-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--brand-navy);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.exam-tabs button.is-on {
+  border-color: var(--brand-blue);
+  background: var(--brand-blue);
+  color: #fff;
+}
+.exam-tabs button.is-hw.is-on {
+  border-color: #7c4fe0;
+  background: #7c4fe0;
+}
+.exam-tabs button:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.exam-tab-count {
+  min-width: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+  color: var(--brand-navy);
+  font-size: 0.85rem;
+  text-align: center;
+}
+.exam-teacher-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+.exam-teacher-filter label {
+  font-weight: 600;
+}
+.exam-teacher-filter .input {
+  width: auto;
+  min-width: 220px;
+}
+/* Bài tập về nhà: tông tím để phân biệt với đề thi thử */
+.exam-item.is-hw {
+  background: linear-gradient(120deg, #ffffff 0%, #f1ebff 100%);
+}
+.exam-item.is-hw .exam-icon {
+  background: linear-gradient(140deg, #a084f0, #6b3fd8);
+  box-shadow: 0 6px 14px rgba(107, 63, 216, 0.25);
+}
+.exam-chip.is-teacher {
+  border-color: #d6c8fb;
+  color: #6b3fd8;
+}
+
 .exam-start {
   flex-shrink: 0;
   gap: 0.4rem;
@@ -106,5 +176,13 @@
   }
   .exam-start {
     width: 100%;
+  }
+  .exam-tabs button {
+    flex: 1;
+    justify-content: center;
+  }
+  .exam-teacher-filter .input {
+    flex: 1;
+    min-width: 0;
   }
 }

@@ -429,6 +429,7 @@ export default function CustomBuilderTab(props) {
                 title={settings.title}
                 description={content.description}
                 onTitle={(v) => updateSetting('title', v)}
+                homework={props.meta?.exam?.category === 'homework'}
                 onDescription={(v) => save({ ...contentRef.current, description: v })}
               />
             </div>
