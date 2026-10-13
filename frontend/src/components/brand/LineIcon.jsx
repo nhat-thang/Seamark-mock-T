@@ -38,6 +38,8 @@ const ICONS = {
   close: 'M6 6l12 12M18 6L6 18',
   alert: 'M12 3.5l9.5 17h-19zM12 10v4.5M12 17.5h.01',
   undo: 'M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
+  upload: 'M12 16V4M7 9l5-5 5 5M4 20h16',
+  download: 'M12 4v12M7 11l5 5 5-5M4 20h16',
 };
 
 export default function LineIcon({ name, size = 24 }) {

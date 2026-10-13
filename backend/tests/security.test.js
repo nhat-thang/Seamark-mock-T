@@ -64,6 +64,9 @@ const ADMIN_ROUTES = [
   ['POST', '/api/admin/schedule/1/delete'],
   ['POST', '/api/admin/schedule/1/start'],
   ['POST', '/api/admin/schedule/1/attendance'],
+  ['GET', '/api/admin/classes/import-template'],
+  ['POST', '/api/admin/classes/1/import/preview'],
+  ['GET', '/api/admin/classes/1/export'],
   ['GET', '/api/admin/notifications'],
   ['POST', '/api/admin/notifications/read'],
 ];

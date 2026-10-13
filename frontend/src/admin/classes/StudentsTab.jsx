@@ -3,6 +3,7 @@ import { apiGet, apiPost } from '../../utils/api.js';
 import { ATTENDANCE_LABELS, feeBadge, formatDate, formatDay, vnToday } from '../../utils/schedule.js';
 import { formatDateTime } from '../../utils/format.js';
 import LineIcon from '../../components/brand/LineIcon.jsx';
+import ImportStudentsDialog from './ImportStudentsDialog.jsx';
 
 /**
  * Tách danh sách học sinh dán vào (mỗi dòng một bạn), ví dụ copy từ Excel / Zalo:
@@ -39,6 +40,7 @@ export default function StudentsTab({ cls, students, onChanged, compact = false,
   const [editing, setEditing] = useState(null); // id học sinh đang sửa
   const [detail, setDetail] = useState(null); // id học sinh đang xem lịch sử
   const [showRemoved, setShowRemoved] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const active = students.filter((s) => s.isActive);
   const removed = students.filter((s) => !s.isActive);
@@ -74,6 +76,30 @@ export default function StudentsTab({ cls, students, onChanged, compact = false,
 
   return (
     <div className="cl-students">
+      <div className="cl-students-tools">
+        <button type="button" className="btn btn-secondary cl-btn-icon" onClick={() => setImporting(true)}>
+          <LineIcon name="upload" size={20} /> Nhập từ Excel
+        </button>
+        {!compact && (
+          <a className="btn btn-secondary cl-btn-icon" href={`/api/admin/classes/${cls.id}/export`} download>
+            <LineIcon name="download" size={20} /> Tải danh sách lớp (Excel)
+          </a>
+        )}
+      </div>
+      {importing && (
+        <ImportStudentsDialog
+          cls={cls}
+          existing={active}
+          defaultJoinedOn={defaultJoinedOn}
+          onClose={() => setImporting(false)}
+          onDone={(n, fileName) => {
+            setImporting(false);
+            say('success', `Đã nhập ${n} học sinh từ file "${fileName}".`);
+            onChanged();
+          }}
+        />
+      )}
+
       <AddStudents
         cls={cls}
         existing={active}
@@ -114,7 +140,7 @@ export default function StudentsTab({ cls, students, onChanged, compact = false,
                   <tr>
                     <td className="cl-col-name">
                       <strong>{s.fullName}</strong>
-                      {s.note && <div className="muted small-text">{s.note}</div>}
+                      {s.note && <div className="muted small-text cl-note" title={s.note}>{s.note}</div>}
                     </td>
                     <td className="nowrap">{s.phone || <span className="muted">—</span>}</td>
                     <td className="nowrap">{formatDate(s.joinedOn)}</td>
@@ -288,7 +314,7 @@ function AddStudents({ cls, existing, onAdded, defaultJoinedOn }) {
               </div>
               <div className="field cl-span-2">
                 <label htmlFor="st-note">Ghi chú</label>
-                <input id="st-note" className="input" value={one.note} onChange={setField('note')} placeholder="Ví dụ: Học bù, mẹ đón lúc 19h" maxLength={200} />
+                <input id="st-note" className="input" value={one.note} onChange={setField('note')} placeholder="Ví dụ: Học bù, mẹ đón lúc 19h" maxLength={500} />
               </div>
             </div>
           ) : (
@@ -386,7 +412,7 @@ function EditStudent({ cls, student, onCancel, onSaved }) {
         </div>
         <div className="field cl-span-2">
           <label htmlFor={`es-note-${student.id}`}>Ghi chú</label>
-          <input id={`es-note-${student.id}`} className="input" value={form.note} onChange={set('note')} maxLength={200} />
+          <input id={`es-note-${student.id}`} className="input" value={form.note} onChange={set('note')} maxLength={500} />
         </div>
       </div>
       {error && <p className="alert-error admin-message" role="alert">{error}</p>}

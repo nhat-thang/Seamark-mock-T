@@ -14,15 +14,22 @@
 //   POST /api/admin/classes/:id/students/:sid/restore  cho học lại
 //   POST /api/admin/classes/:id/students/:sid/fee-paid đã thu học phí đợt này
 //   POST /api/admin/classes/:id/students/:sid/fee-undo hoàn tác lần thu gần nhất
+//   GET  /api/admin/classes/import-template         file Excel mẫu danh sách lớp
+//   POST /api/admin/classes/:id/import/preview      đọc file Excel danh sách lớp (CHƯA lưu gì), đoán các cột
+//   GET  /api/admin/classes/:id/export              tải danh sách lớp + điểm danh từng buổi về Excel
 const express = require('express');
+const ExcelJS = require('exceljs');
 const { requireJson } = require('../auth/middleware');
 const { logAudit } = require('../audit');
-const { vnDate, isValidDate, formatDate } = require('../classes/time');
+const { excelUpload, uploadErrorMessage, requireSameOrigin, signatureMatches, originalName } = require('../upload');
+const { vnDate, isValidDate, formatDate, weekdayOf, WEEKDAY_SHORT } = require('../classes/time');
 const { loadStudents, loadStudent } = require('../classes/students');
 const { SESSION_SELECT, toSession } = require('../classes/sessions');
+const { readRosterWorkbook, RosterFileError } = require('../classes/rosterExcel');
 
 const COLORS = ['blue', 'sky', 'teal', 'green', 'yellow', 'orange', 'pink', 'purple'];
-const MAX_BATCH = 100;
+const MAX_BATCH = 300; // nhập từ Excel tối đa 300 học sinh / lần
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 const cleanText = (v, max) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 const nowIso = () => new Date().toISOString();
@@ -55,7 +62,8 @@ function studentFields(body, current = null) {
   if (!fullName) return { error: 'Vui lòng nhập họ tên học sinh.' };
   const phone = cleanPhone(body?.phone ?? current?.phone);
   if (phone === null) return { error: `Số điện thoại của "${fullName}" không đúng (để trống nếu không có).` };
-  const note = cleanText(body?.note ?? current?.note, 200);
+  // Ghi chú dài hơn vì khi nhập Excel, các cột lạ (ngày sinh, trường...) được gộp vào đây
+  const note = cleanText(body?.note ?? current?.note, 500);
   const joinedOn = String(body?.joinedOn || current?.joined_on || vnDate());
   if (!isValidDate(joinedOn)) return { error: `Ngày vào học của "${fullName}" không đúng.` };
   const priorRaw = body?.priorSessions ?? current?.prior_sessions ?? 0;
@@ -66,9 +74,43 @@ function studentFields(body, current = null) {
   return { value: { fullName, phone, note, joinedOn, priorSessions } };
 }
 
-function classesRouter(db) {
+/** Lời nhắc dễ hiểu khi chọn file Excel đời cũ (.xls) hoặc .csv thay vì .xlsx */
+function importUploadError(err, config) {
+  const ext = (/File "(.+)"/.exec(err.message || '')?.[1] || '').split('.').pop().toLowerCase();
+  if (ext === 'xls') {
+    return 'File .xls (Excel đời cũ) chưa đọc được. Hãy mở file bằng Excel → "Lưu thành" (Save As) → chọn "Excel Workbook (.xlsx)" rồi chọn lại file mới.';
+  }
+  if (ext === 'csv') {
+    return 'File .csv chưa đọc được. Hãy mở file bằng Excel rồi "Lưu thành" dạng .xlsx (Google Trang tính: Tệp → Tải xuống → Microsoft Excel).';
+  }
+  return uploadErrorMessage(err, config);
+}
+
+/** Tô màu dòng tên cột trong file Excel tải về */
+function styleHeader(row) {
+  row.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  row.alignment = { vertical: 'middle', wrapText: true };
+  row.height = 30;
+  row.eachCell((cell) => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4FA8' } };
+  });
+}
+
+/** "2026-10-13" -> ô ngày của Excel (lưu giờ UTC để Excel hiện đúng ngày) */
+const excelDate = (date) => new Date(`${date}T00:00:00Z`);
+
+async function sendWorkbook(res, wb, fileName) {
+  res.setHeader('Content-Type', XLSX_MIME);
+  res.attachment(fileName.replace(/[\\/:*?"<>|]+/g, '-'));
+  await wb.xlsx.write(res);
+  res.end();
+}
+
+function classesRouter(db, config) {
   const router = express.Router();
-  router.use(requireJson);
+  // Tải file lên (multipart) kiểm tra Origin; mọi request khác phải là JSON
+  router.use((req, res, next) => (req.is('multipart/form-data') ? requireSameOrigin(req, res, next) : requireJson(req, res, next)));
+  const uploadExcel = excelUpload(config).single('file');
 
   const isOwner = (req) => req.admin.role === 'owner';
 
@@ -124,6 +166,34 @@ function classesRouter(db) {
   }
 
   // ----- Lớp học -----
+
+  // File Excel mẫu danh sách lớp (không bắt buộc dùng: file của trung tâm có cột khác tên vẫn nhập được)
+  router.get('/import-template', async (req, res) => {
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Seamark';
+    const ws = wb.addWorksheet('Danh sách lớp', { views: [{ state: 'frozen', ySplit: 1 }] });
+    ws.columns = [
+      { header: 'Họ và tên', width: 28 },
+      { header: 'SĐT', width: 15, style: { numFmt: '@' } }, // kiểu chữ: không mất số 0 ở đầu
+      { header: 'Ngày vào học', width: 14, style: { numFmt: 'dd/mm/yyyy' } },
+      { header: 'Ghi chú', width: 40 },
+    ];
+    styleHeader(ws.getRow(1));
+    const guide = wb.addWorksheet('Hướng dẫn');
+    guide.getColumn(1).width = 110;
+    [
+      'Cách điền danh sách lớp',
+      '1. Mỗi dòng ở trang «Danh sách lớp» là một học sinh. Chỉ cột "Họ và tên" là bắt buộc.',
+      '2. SĐT: gõ đủ 10 số, ví dụ 0901234567 (cột đã để kiểu chữ nên không mất số 0).',
+      '3. Ngày vào học: ví dụ 13/10/2026. Để trống thì web dùng ngày bạn chọn lúc nhập.',
+      '4. Muốn thêm cột khác (ngày sinh, tên phụ huynh, trường...) cứ thêm: web sẽ gộp vào phần Ghi chú.',
+      '5. Không dùng file mẫu này cũng được: file danh sách có sẵn của bạn (tên cột khác) web vẫn tự nhận cột.',
+    ].forEach((t, i) => {
+      const row = guide.addRow([t]);
+      if (i === 0) row.font = { bold: true, size: 14 };
+    });
+    await sendWorkbook(res, wb, 'mau-danh-sach-lop.xlsx');
+  });
 
   router.get('/', (req, res) => {
     const deleted = req.query.deleted === '1';
@@ -222,6 +292,7 @@ function classesRouter(db) {
     if (!cls) return;
     const list = Array.isArray(req.body?.students) ? req.body.students : [];
     if (list.length === 0) return res.status(400).json({ error: 'Chưa có học sinh nào để thêm.' });
+    const fileName = cleanText(req.body?.fileName, 120); // có khi nhập từ file Excel
     if (list.length > MAX_BATCH) return res.status(400).json({ error: `Mỗi lần thêm tối đa ${MAX_BATCH} học sinh.` });
     const values = [];
     for (const item of list) {
@@ -239,8 +310,127 @@ function classesRouter(db) {
     )();
     const names = values.map((v) => v.fullName);
     const shown = names.length > 10 ? `${names.slice(0, 10).join(', ')} và ${names.length - 10} học sinh khác` : names.join(', ');
-    audit(req, cls, 'add_students', `Thêm ${names.length} học sinh vào lớp "${cls.name}": ${shown}`);
+    audit(
+      req, cls, fileName ? 'import_students' : 'add_students',
+      `${fileName ? `Nhập từ file Excel "${fileName}"` : 'Thêm'} ${names.length} học sinh vào lớp "${cls.name}": ${shown}`
+    );
     res.status(201).json({ ids, students: loadStudents(db, cls) });
+  });
+
+  // ----- Nhập / xuất Excel -----
+
+  // Đọc file Excel danh sách lớp: trả về các cột (đã đoán loại) + các dòng để trình duyệt cho giáo viên xem lại.
+  // ?sheet=n: đọc trang khác của file. KHÔNG lưu gì.
+  router.post(
+    '/:id/import/preview',
+    (req, res, next) => uploadExcel(req, res, (err) => (err ? res.status(400).json({ error: importUploadError(err, config) }) : next())),
+    async (req, res) => {
+      const cls = loadClass(req, res);
+      if (!cls) return;
+      if (!req.file) return res.status(400).json({ error: 'Chưa chọn file Excel.' });
+      if (!signatureMatches('xlsx', req.file.buffer)) {
+        return res.status(400).json({ error: 'File không phải file Excel (.xlsx) hợp lệ.' });
+      }
+      try {
+        const sheet = Number.parseInt(req.query.sheet, 10);
+        const result = await readRosterWorkbook(req.file.buffer, { sheetIndex: Number.isInteger(sheet) ? sheet : undefined });
+        res.json({ fileName: originalName(req.file), ...result });
+      } catch (err) {
+        if (err instanceof RosterFileError) return res.status(400).json({ error: err.message });
+        throw err;
+      }
+    }
+  );
+
+  // Tải danh sách lớp về Excel: trang 1 = danh sách + thống kê, trang 2 = điểm danh từng buổi
+  router.get('/:id/export', async (req, res) => {
+    const cls = loadClass(req, res);
+    if (!cls) return;
+    const students = loadStudents(db, cls);
+    const sessions = db
+      .prepare('SELECT * FROM class_sessions WHERE class_id = ? AND attendance_at IS NOT NULL ORDER BY starts_at')
+      .all(cls.id);
+    const marks = new Map(
+      db.prepare(
+        `SELECT a.session_id, a.student_id, a.status, a.bonus FROM attendance a
+           JOIN class_sessions s ON s.id = a.session_id WHERE s.class_id = ?`
+      ).all(cls.id).map((a) => [`${a.session_id}:${a.student_id}`, a])
+    );
+    const feeText = (fee) => {
+      if (fee.state === 'due') return fee.owed > 1 ? `Đến hạn (${fee.owed} đợt)` : 'Đến hạn';
+      if (fee.state === 'soon' || fee.state === 'ok') return `Còn ${fee.remaining} buổi tới hạn`;
+      return '';
+    };
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Seamark';
+
+    // Trang 1: tên cột trùng với lúc nhập (Họ và tên, SĐT, Ngày vào học, Ghi chú) để nhập lại được
+    const ws = wb.addWorksheet('Danh sách lớp', { views: [{ state: 'frozen', ySplit: 1 }] });
+    ws.columns = [
+      { header: 'STT', key: 'stt', width: 6 },
+      { header: 'Họ và tên', key: 'name', width: 28 },
+      { header: 'SĐT', key: 'phone', width: 14, style: { numFmt: '@' } },
+      { header: 'Ngày vào học', key: 'joined', width: 13, style: { numFmt: 'dd/mm/yyyy' } },
+      { header: 'Trạng thái', key: 'status', width: 11 },
+      { header: 'Tổng số buổi', key: 'sessions', width: 9 },
+      { header: 'Có mặt', key: 'present', width: 8 },
+      { header: 'Đi muộn', key: 'late', width: 8 },
+      { header: 'Vắng có phép', key: 'excused', width: 9 },
+      { header: 'Vắng không phép', key: 'absent', width: 10 },
+      { header: 'Điểm cộng', key: 'bonus', width: 9 },
+      { header: 'Học phí', key: 'fee', width: 20 },
+      { header: 'Ghi chú', key: 'note', width: 40 },
+    ];
+    students.forEach((s, i) => {
+      ws.addRow({
+        stt: i + 1,
+        name: s.fullName,
+        phone: s.phone,
+        joined: excelDate(s.joinedOn),
+        status: s.isActive ? 'Đang học' : 'Đã nghỉ',
+        sessions: s.stats.sessions,
+        present: s.stats.present,
+        late: s.stats.late,
+        excused: s.stats.excused,
+        absent: s.stats.absent,
+        bonus: s.stats.bonus,
+        fee: s.isActive ? feeText(s.fee) : '',
+        note: s.note,
+      });
+    });
+    styleHeader(ws.getRow(1));
+
+    // Trang 2: mỗi học sinh một dòng, mỗi buổi đã điểm danh một cột
+    const LETTER = { present: 'C', late: 'M', excused: 'P', absent: 'V' };
+    const FILL = { present: 'FFE3F6EA', late: 'FFFFF2CF', excused: 'FFE6EFFF', absent: 'FFFDEAEA' };
+    const att = wb.addWorksheet('Điểm danh', { views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }] });
+    att.addRow(['Họ và tên', ...sessions.map((s) => `${WEEKDAY_SHORT[weekdayOf(s.date)]} ${s.date.slice(8, 10)}/${s.date.slice(5, 7)}
+${s.start_time}`)]);
+    for (const st of students) {
+      const row = att.addRow([st.fullName, ...sessions.map((s) => {
+        const m = marks.get(`${s.id}:${st.id}`);
+        return m ? `${LETTER[m.status]}${m.bonus ? ` +${m.bonus}` : ''}` : '';
+      })]);
+      sessions.forEach((s, i) => {
+        const m = marks.get(`${s.id}:${st.id}`);
+        const cell = row.getCell(i + 2);
+        cell.alignment = { horizontal: 'center' };
+        if (m) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL[m.status] } };
+      });
+    }
+    att.getColumn(1).width = 28;
+    for (let i = 2; i <= sessions.length + 1; i++) att.getColumn(i).width = 9;
+    styleHeader(att.getRow(1));
+    att.getRow(1).height = 36;
+    att.addRow([]);
+    att.addRow(['C = Có mặt · M = Đi muộn · P = Vắng có phép · V = Vắng không phép · +n = điểm cộng · ô trống = chưa vào lớp / đã nghỉ']).font = { italic: true };
+
+    logAudit(db, {
+      adminId: req.admin.id, action: 'export_class', classId: cls.id,
+      detail: `Tải danh sách lớp "${cls.name}" về Excel (${students.length} học sinh, ${sessions.length} buổi đã điểm danh)`,
+    });
+    await sendWorkbook(res, wb, `Lop ${cls.name} ${vnDate().split('-').reverse().join('-')}.xlsx`);
   });
 
   // Lịch sử đi học của một học sinh (mới nhất trước) + các lần thu học phí

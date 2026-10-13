@@ -51,7 +51,7 @@ function createApp({ db, config }) {
   admin.use('/templates', templatesRouter(db));
   admin.use('/ai', aiRouter(db, config));
   // Lớp học, thời khóa biểu, điểm danh. Phân quyền chi tiết (chỉ admin chính xếp lịch...) nằm trong từng router.
-  admin.use('/classes', classesRouter(db));
+  admin.use('/classes', classesRouter(db, config));
   admin.use('/schedule', scheduleRouter(db));
   admin.use('/notifications', notificationsRouter(db));
   // Tải file Excel mẫu (docs/mau-de-toeic.xlsx)
