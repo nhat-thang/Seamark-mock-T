@@ -96,8 +96,9 @@ test('Chu kỳ kế tiếp chưa xếp đủ lịch: chưa thu, không cảnh b�
   assert.equal(T.scheduleGap(T.classTimeline(ss, settings, at(day(5), '21:00'))), null);
   // Chu kỳ hiện tại còn chưa xếp đủ thì nhắc ngay
   assert.deepEqual(T.scheduleGap(T.classTimeline(daily(10), settings, at(day(2), '21:00'))), { cycleNo: 1, scheduled: 10, needed: 25 });
-  // Hết lịch hơn 14 ngày (khóa học đã kết thúc) thì thôi nhắc
-  assert.equal(T.scheduleGap(T.classTimeline(daily(10), settings, at(day(30), '21:00'))), null);
+  // Hết lịch chưa quá 30 ngày: vẫn nhắc; quá 30 ngày (khóa học đã kết thúc) thì thôi nhắc
+  assert.deepEqual(T.scheduleGap(T.classTimeline(daily(10), settings, at(day(35), '21:00'))), { cycleNo: 1, scheduled: 10, needed: 25 });
+  assert.equal(T.scheduleGap(T.classTimeline(daily(10), settings, at(day(45), '21:00'))), null);
 });
 
 test('Lớp chưa cài học phí: không có chu kỳ, không cảnh báo, không nhãn', () => {

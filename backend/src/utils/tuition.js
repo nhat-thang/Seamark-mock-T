@@ -195,12 +195,12 @@ function studentMonth(tl, student, cycles, month) {
  * Lớp chưa xếp đủ lịch của chu kỳ cần thu: { cycleNo, scheduled, needed } hoặc null.
  * - Chu kỳ hiện tại chưa đủ X buổi (học sinh chưa thu được chu kỳ này) -> nhắc ngay.
  * - Chu kỳ sau chưa đủ X buổi và chu kỳ hiện tại chỉ còn ≤ 4 buổi -> nhắc.
- * Lớp đã hết lịch hơn 14 ngày (coi như khóa học đã kết thúc) thì thôi nhắc.
+ * Lớp đã hết lịch hơn 30 ngày (coi như khóa học đã kết thúc) thì thôi nhắc (đã chốt với người dùng).
  */
 function scheduleGap(tl) {
   if (!tl.configured || tl.total === 0) return null;
   const last = tl.sessions[tl.total - 1];
-  if (last.passed && last.date < addDaysVn(tl.today, -14)) return null;
+  if (last.passed && last.date < addDaysVn(tl.today, -30)) return null;
   const c = tl.currentCycle;
   const gap = (k) => ({ cycleNo: k, scheduled: scheduledInCycle(tl, k), needed: tl.cycleSessions });
   if (!cycleScheduled(tl, c)) return gap(c);
