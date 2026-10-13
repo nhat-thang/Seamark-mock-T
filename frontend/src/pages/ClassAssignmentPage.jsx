@@ -10,25 +10,8 @@ import './StartPage.css';
 import './ClassAssignmentPage.css';
 
 const STEPS = ['Chọn lớp', 'Chọn tên', 'Làm bài'];
-const PICKED_KEY = 'seamark_class_student'; // học sinh vừa bấm tên (mất khi đóng tab)
 const AVATAR_COLORS = ['#2f6fe0', '#12998f', '#ec6a35', '#8358e8', '#d94585', '#3a9d4f', '#1f9bd4', '#d69a00'];
 const BOOK_ICON = 'M4 19.5V5a2 2 0 0 1 2-2h12v15H6a2 2 0 0 0-2 2zm0 0A2 2 0 0 0 6 22h12v-4M9 8h6M9 12h4';
-
-function readPicked() {
-  try {
-    return JSON.parse(sessionStorage.getItem(PICKED_KEY) || 'null');
-  } catch {
-    return null;
-  }
-}
-function writePicked(value) {
-  try {
-    if (value) sessionStorage.setItem(PICKED_KEY, JSON.stringify(value));
-    else sessionStorage.removeItem(PICKED_KEY);
-  } catch {
-    // Trình duyệt chặn bộ nhớ: bấm lại tên là được
-  }
-}
 
 /** Chữ cái đầu của tên (tên tiếng Việt: chữ cuối) + màu cố định theo tên */
 function avatarOf(name) {
@@ -50,7 +33,8 @@ const shortDate = (iso) => {
  */
 export default function ClassAssignmentPage() {
   const { classId } = useParams();
-  return classId ? <ClassRoom classId={Number(classId)} /> : <ClassPicker />;
+  // key: đổi lớp thì làm lại từ bước chọn tên
+  return classId ? <ClassRoom key={classId} classId={Number(classId)} /> : <ClassPicker />;
 }
 
 /** Bước 1: các lớp đang có */
@@ -86,35 +70,29 @@ function ClassPicker() {
   );
 }
 
-/** Bước 2 + 3: bấm tên mình, rồi chọn bài của lớp */
+/**
+ * Bước 2 + 3: bấm tên mình, rồi chọn bài của lớp.
+ * KHÔNG nhớ tên đã chọn (đã chốt với người dùng): mỗi lần vào lớp đều phải bấm tên,
+ * để học sinh sau dùng chung máy không làm nhầm bài dưới tên học sinh trước.
+ */
 function ClassRoom({ classId }) {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
-  const [picked, setPicked] = useState(() => {
-    const p = readPicked();
-    return p && p.classId === classId ? p : null;
-  });
+  const [picked, setPicked] = useState(null); // học sinh vừa bấm tên (chỉ trong lần mở trang này)
   const [search, setSearch] = useState('');
 
   useEffect(() => {
     apiGet(`/classes/${classId}`)
-      .then((d) => {
-        setData(d);
-        // Tên đã chọn lúc trước không còn trong lớp (đã nghỉ...) -> chọn lại
-        setPicked((p) => (p && d.students.some((s) => s.id === p.id) ? p : null));
-      })
+      .then(setData)
       .catch((err) => setError(err.message));
   }, [classId]);
 
   function pick(student) {
-    const p = { classId, id: student.id, fullName: student.fullName };
-    writePicked(p);
-    setPicked(p);
+    setPicked({ classId, id: student.id, fullName: student.fullName });
     window.scrollTo({ top: 0 });
   }
   function unpick() {
-    writePicked(null);
     setPicked(null);
   }
 
