@@ -6,8 +6,8 @@
 //  3. Trả về để giáo viên xem lại, đổi nếu đoán sai. Việc ghép cột + kiểm tra từng dòng làm ở trình duyệt
 //     (frontend/src/utils/rosterImport.js); lưu thì đi qua API thêm học sinh như bình thường.
 //
-// Loại cột (field): fullName | lastName | firstName | phone | joinedOn | priorSessions | note
-//                   | extra (cột lạ: gộp vào ghi chú, kèm tên cột) | skip (bỏ qua)
+// Loại cột (field): fullName | lastName | firstName | parentName | phone (SĐT phụ huynh) | parentIdNumber (CCCD phụ huynh)
+//                   | joinedOn | note | extra (cột lạ: gộp vào ghi chú, kèm tên cột) | skip (bỏ qua)
 const ExcelJS = require('exceljs');
 const { stripComments } = require('../exam/excelImport');
 
@@ -29,14 +29,18 @@ const tokensOf = (s) => fold(s).split(/[^a-z0-9]+/).filter(Boolean);
 // Tên cột (viết liền, không dấu) -> loại cột
 const SKIP_EXACT = ['stt', 'tt', 'sott', 'sothutu', 'no', 'so', 'number', 'order',
   // các cột thống kê trong file "Tải danh sách lớp" của web -> nhập lại thì bỏ qua
-  'trangthai', 'tongsobuoi', 'comat', 'dimuon', 'vangcophep', 'vangkhongphep', 'diemcong', 'hocphi'];
+  'trangthai', 'tongsobuoi', 'comat', 'dimuon', 'vangcophep', 'vangkhongphep', 'diemcong', 'hocphi',
+  'buoibatdau', 'tinhtranghocphi', 'canhbao', 'giamgia'];
 const PHONE_WORDS = ['sdt', 'sodienthoai', 'dienthoai', 'phone', 'mobile', 'tel', 'zalo', 'didong', 'lienhe', 'contact', 'sodt'];
 const JOINED_WORDS = ['vaohoc', 'nhaphoc', 'batdauhoc', 'ngaybatdau', 'ngayvao', 'startdate', 'joindate', 'joined', 'enroll'];
-const PRIOR_WORDS = ['buoidahoc', 'sobuoi', 'dahoc'];
+const ID_WORDS = ['cccd', 'cmnd', 'cmt', 'cancuoc', 'chungminh', 'dinhdanh', 'idcard', 'idnumber', 'nationalid'];
 const NOTE_WORDS = ['ghichu', 'note', 'notes', 'remark', 'remarks'];
 // Cột về NGƯỜI KHÁC hoặc thứ khác có chữ "tên": tên phụ huynh, tên lớp, tên trường, tên giáo viên -> không phải họ tên học sinh
-const OTHER_TOKENS = ['ph', 'phuhuynh', 'parent', 'parents', 'bo', 'me', 'cha', 'father', 'mother', 'guardian', 'giamho',
-  'lop', 'class', 'truong', 'school', 'khoa', 'course', 'giaovien', 'gv', 'teacher'];
+const PARENT_TOKENS = ['ph', 'phuhuynh', 'parent', 'parents', 'bo', 'me', 'cha', 'father', 'mother', 'guardian', 'giamho'];
+const OTHER_TOKENS = ['lop', 'class', 'truong', 'school', 'khoa', 'course', 'giaovien', 'gv', 'teacher'];
+// "Tên phụ huynh", "Họ tên bố/mẹ", "Phụ huynh", "Parent name": bỏ các từ chỉ phụ huynh, phần còn lại là "tên"
+const PARENT_NAME_REST = ['', 'ten', 'hoten', 'hovaten', 'name', 'fullname', 'tendaydu'];
+const LINK_TOKENS = ['cua', 'va', 'hoac', 'of', 'or', 'and', 'hs', 'hv'];
 const LAST_NAME_EXACT = ['ho', 'hodem', 'holot', 'hovadem', 'hovatendem', 'hochulot', 'hovachulot', 'lastname', 'surname', 'familyname'];
 const FIRST_NAME_EXACT = ['ten', 'firstname', 'givenname', 'tenrieng', 'tengoi'];
 const FULL_NAME_EXACT = ['name', 'ten', 'tenhs', 'tenhv', 'tenhocsinh', 'tenhocvien', 'hocsinh', 'hocvien', 'hs', 'hv', 'student',
@@ -49,10 +53,14 @@ function fieldFromHeader(header) {
   if (!compact) return null;
   if (SKIP_EXACT.includes(compact)) return 'skip';
   if (PHONE_WORDS.some((w) => compact.includes(w)) || tokens.includes('dt')) return 'phone';
+  if (ID_WORDS.some((w) => compact.includes(w))) return 'parentIdNumber';
   if (JOINED_WORDS.some((w) => compact.includes(w))) return 'joinedOn';
-  if (PRIOR_WORDS.some((w) => compact.includes(w))) return 'priorSessions';
   if (NOTE_WORDS.some((w) => compact.includes(w))) return 'note';
-  if (tokens.some((t) => OTHER_TOKENS.includes(t)) || compact.includes('phuhuynh')) return 'extra';
+  if (tokens.some((t) => PARENT_TOKENS.includes(t)) || compact.includes('phuhuynh')) {
+    const rest = tokens.filter((t) => !PARENT_TOKENS.includes(t) && !LINK_TOKENS.includes(t)).join('').replace('phuhuynh', '');
+    return PARENT_NAME_REST.includes(rest) ? 'parentName' : 'extra'; // "Nghề nghiệp phụ huynh" -> ghi chú
+  }
+  if (tokens.some((t) => OTHER_TOKENS.includes(t))) return 'extra';
   if (LAST_NAME_EXACT.includes(compact)) return 'lastName';
   if (FIRST_NAME_EXACT.includes(compact)) return 'firstName';
   if (FULL_NAME_EXACT.includes(compact)) return 'fullName';
@@ -70,8 +78,9 @@ const looksLikeName = (v) => {
 };
 const looksLikePhone = (v) => {
   const digits = v.replace(/\D/g, '');
-  return /^[+\d\s.()/-]+$/.test(v.trim()) && digits.length >= 9 && digits.length <= 12;
+  return /^[+\d\s.()/-]+$/.test(v.trim()) && digits.length >= 9 && digits.length <= 11;
 };
+const looksLikeIdNumber = (v) => /^\d{12}$/.test(v.replace(/[\s.]/g, ''));
 const isSingleWord = (v) => NAME_RE.test(v.trim()) && !/\s/.test(v.trim());
 
 /** Tỉ lệ ô (khác trống) thỏa điều kiện; cột gần như trống -> 0 */
@@ -113,7 +122,7 @@ function guessColumns(headers, dataRows) {
   if (count('fullName')) out.filter((c) => c.field === 'lastName' || c.field === 'firstName').forEach((c) => { c.field = 'skip'; });
 
   // Mỗi loại chỉ một cột (trừ ghi chú / cột lạ): cột sau cùng loại -> gộp vào ghi chú
-  for (const f of ['fullName', 'lastName', 'firstName', 'phone', 'joinedOn', 'priorSessions']) {
+  for (const f of ['fullName', 'lastName', 'firstName', 'parentName', 'phone', 'parentIdNumber', 'joinedOn']) {
     out.filter((c) => c.field === f).slice(1).forEach((c) => { c.field = 'extra'; });
   }
 
@@ -124,6 +133,7 @@ function guessColumns(headers, dataRows) {
     const values = valuesOf(i);
     if (values.every((v) => v === '')) c.field = 'skip';
     else if (!hasName() && ratio(values, looksLikeName) >= 0.6) Object.assign(c, { field: 'fullName', by: 'content' });
+    else if (!count('parentIdNumber') && ratio(values, looksLikeIdNumber) >= 0.6) Object.assign(c, { field: 'parentIdNumber', by: 'content' });
     else if (!count('phone') && ratio(values, looksLikePhone) >= 0.6) Object.assign(c, { field: 'phone', by: 'content' });
     else if (ratio(values, (v) => /^\d{1,3}$/.test(v)) === 1 && i === 0) c.field = 'skip'; // cột số thứ tự không tên
     else c.field = 'extra';

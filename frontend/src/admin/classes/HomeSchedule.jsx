@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiGet } from '../../utils/api.js';
-import { STATE_LABELS, classStyle, durationText, feeBadge, relativeDay, sessionState, useNow } from '../../utils/schedule.js';
+import { ALERT_LEVELS, STATE_LABELS, alertText, classStyle, durationText, formatDate, formatMoney, relativeDay, sessionState, useNow } from '../../utils/schedule.js';
 import LineIcon from '../../components/brand/LineIcon.jsx';
+import { ExcelLink, toggleSnooze } from './TuitionBits.jsx';
 import './classes.css';
 
 /** Nút / nhãn hành động của một buổi dạy trên trang chính (cả dòng đã là liên kết nên ở đây chỉ là chữ) */
@@ -46,8 +47,119 @@ function SessionLine({ s, now, showTeacher = false, showDay = true }) {
   );
 }
 
+/** Gom cảnh báo theo một khóa, giữ thứ tự (server đã xếp đỏ → cam → vàng) */
+function groupBy(items, keyOf) {
+  const groups = [];
+  const byKey = new Map();
+  for (const a of items) {
+    const key = keyOf(a);
+    if (!byKey.has(key)) {
+      const g = { key, first: a, items: [] };
+      byKey.set(key, g);
+      groups.push(g);
+    }
+    byKey.get(key).items.push(a);
+  }
+  return groups;
+}
+
 /**
- * Trang chính: lịch dạy 7 ngày tới của tôi, buổi chưa điểm danh, nhắc học phí,
+ * Cảnh báo học phí trên trang chính. Màu luôn kèm chữ.
+ * - Giáo viên: gom theo lớp + mức ("Lớp X — Còn 4 buổi đến hạn đóng: 5 học sinh"), không có số tiền.
+ * - Admin chính: gom theo mức trên mọi lớp ("Còn 4 buổi đến hạn đóng: 7 học sinh (3 lớp)"), có tên lớp, học sinh,
+ *   số tiền, nút "Tắt cảnh báo"; nhắc lớp chưa xếp đủ lịch / chưa cài học phí.
+ */
+function TuitionAlerts({ tuition, isOwner, onChanged }) {
+  const [open, setOpen] = useState({});
+  const [error, setError] = useState('');
+  const { items } = tuition;
+  const toggle = (key) => setOpen((o) => ({ ...o, [key]: !o[key] }));
+
+  async function snooze(a) {
+    try {
+      const r = await toggleSnooze({ id: a.studentId, fullName: a.fullName }, a.cycleNo, false);
+      if (r) onChanged();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  const groups = isOwner
+    ? groupBy(items, (a) => `${a.level}|${a.kind}|${a.remaining}`)
+    : groupBy(items, (a) => `${a.classId}|${a.level}|${a.kind}|${a.remaining}`);
+
+  return (
+    <section className="hs-card">
+      <header className="hs-head">
+        <h2><LineIcon name="money" size={22} /> Cảnh báo học phí</h2>
+        {items.length > 0 && <span className="cl-tab-badge">{items.length}</span>}
+      </header>
+      {error && <p className="alert-error admin-message">{error}</p>}
+      {items.length === 0 && <p className="muted">Hiện chưa có học sinh nào cần nhắc học phí.</p>}
+      <ul className="tu-groups">
+        {groups.map((g) => {
+          const a = g.first;
+          const classes = new Set(g.items.map((x) => x.classId)).size;
+          const title = isOwner
+            ? `${alertText(a)}: ${g.items.length} học sinh${classes > 1 ? ` (${classes} lớp)` : ` (lớp ${a.className})`}`
+            : `Lớp ${a.className} — ${alertText(a)}: ${g.items.length} học sinh`;
+          return (
+            <li key={g.key} className={`tu-group is-${a.level}`}>
+              <button type="button" className="tu-group-head" aria-expanded={Boolean(open[g.key])} onClick={() => toggle(g.key)}>
+                <span className={`tu-alert is-${a.level}`}><span className="tu-dot" aria-hidden="true" />{ALERT_LEVELS[a.level].label}</span>
+                <span className="tu-group-title">{title}</span>
+                <LineIcon name={open[g.key] ? 'up' : 'down'} size={18} />
+              </button>
+              {open[g.key] && (
+                <ul className="tu-group-list">
+                  {g.items.map((x) => (
+                    <li key={`${x.studentId}-${x.cycleNo}`}>
+                      <Link to={`/admin/lop-hoc/${x.classId}?tab=${isOwner ? 'hoc-phi' : 'hoc-sinh'}`} className="tu-group-name" style={classStyle(x.classColor)}>
+                        <strong>{x.fullName}</strong>
+                        <span className="muted small-text">{x.className} · kì {x.cycleNo}{x.dueDate && ` · hạn ${formatDate(x.dueDate)}`}</span>
+                      </Link>
+                      {isOwner && <strong className="tu-money">{formatMoney(x.amount)}</strong>}
+                      {isOwner && (
+                        <button type="button" className="btn btn-link btn-small" onClick={() => snooze(x)}>Tắt cảnh báo</button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      {isOwner && tuition.gaps?.length > 0 && (
+        <div className="tu-gaps">
+          <p><strong>Lớp chưa xếp đủ lịch để thu học phí:</strong></p>
+          <ul>
+            {tuition.gaps.map((g) => (
+              <li key={g.classId}>
+                <Link to={`/admin/lop-hoc/${g.classId}?tab=lich-hoc`}>Lớp {g.className}</Link> mới xếp {g.scheduled}/{g.needed} buổi của kì {g.cycleNo}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {isOwner && tuition.unconfigured?.length > 0 && (
+        <p className="muted small-text">
+          Chưa cài học phí: {tuition.unconfigured.map((c, i) => (
+            <span key={c.classId}>{i > 0 && ', '}<Link to={`/admin/lop-hoc/${c.classId}?tab=hoc-phi`}>{c.className}</Link> ({c.students} HS)</span>
+          ))}
+        </p>
+      )}
+      <div className="tu-card-foot">
+        {items.length > 0 && <ExcelLink small href="/admin/schedule/alerts/export">Tải danh sách cảnh báo (Excel)</ExcelLink>}
+        {isOwner && <Link to="/admin/hoc-phi" className="btn btn-link small-text">Mở Quản lý học phí</Link>}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Trang chính: ngày hôm nay, lịch dạy 7 ngày tới của tôi, buổi chưa điểm danh, cảnh báo học phí,
  * và (admin chính) toàn bộ lịch hôm nay của trung tâm.
  */
 export default function HomeSchedule({ admin }) {
@@ -55,11 +167,12 @@ export default function HomeSchedule({ admin }) {
   const [error, setError] = useState('');
   const now = useNow(30000);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     apiGet('/admin/schedule/overview')
       .then(setData)
       .catch((err) => setError(err.message));
   }, []);
+  useEffect(load, [load]);
 
   if (error) return <p className="alert-error admin-message">{error}</p>;
   if (!data) return null;
@@ -74,6 +187,8 @@ export default function HomeSchedule({ admin }) {
   }
 
   return (
+    <>
+    <p className="hs-today"><LineIcon name="calendar" size={20} /> Hôm nay: <strong>{data.todayLabel}</strong></p>
     <div className="hs-grid">
       <div className="hs-col">
         <section className="hs-card">
@@ -117,30 +232,9 @@ export default function HomeSchedule({ admin }) {
           </section>
         )}
 
-        <section className="hs-card">
-          <header className="hs-head">
-            <h2><LineIcon name="money" size={22} /> Nhắc học phí</h2>
-            {data.feeReminders.length > 0 && <span className="cl-tab-badge">{data.feeReminders.length}</span>}
-          </header>
-          {data.feeReminders.length === 0 && <p className="muted">Hiện chưa có học sinh nào tới hạn học phí.</p>}
-          <ul className="hs-fee-list">
-            {data.feeReminders.map((st) => {
-              const badge = feeBadge(st.fee);
-              return (
-                <li key={st.id}>
-                  <Link to={`/admin/lop-hoc/${st.classId}?tab=hoc-phi`} className="hs-fee" style={classStyle(st.classColor)}>
-                    <span className="hs-text">
-                      <strong>{st.fullName}</strong>
-                      <span className="muted small-text">{st.className} · đã học {st.stats.sessions} buổi</span>
-                    </span>
-                    <span className={`cl-pill is-${badge.tone}`}>{badge.tone === 'due' ? 'Đến hạn' : 'Buổi sau'}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+        <TuitionAlerts tuition={data.tuition} isOwner={isOwner} onChanged={load} />
       </div>
     </div>
+    </>
   );
 }

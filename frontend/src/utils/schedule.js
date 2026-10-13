@@ -115,12 +115,24 @@ export const ATTENDANCE = [
 ];
 export const ATTENDANCE_LABELS = Object.fromEntries(ATTENDANCE.map((a) => [a.key, a.label]));
 
-/** Nhãn học phí ngắn gọn cho một học sinh: { tone: 'due' | 'soon' | 'ok', text } hoặc null */
-export function feeBadge(fee) {
-  if (!fee || fee.state === 'off') return null;
-  if (fee.state === 'due') {
-    return { tone: 'due', text: fee.owed > 1 ? `Đến hạn học phí (${fee.owed} đợt)` : 'Đến hạn học phí' };
-  }
-  if (fee.state === 'soon') return { tone: 'soon', text: 'Còn 1 buổi tới hạn' };
-  return { tone: 'ok', text: `Còn ${fee.remaining} buổi tới hạn` };
+// ----- Học phí theo buổi (cách tính ở backend/src/utils/tuition.js) -----
+
+/** 1500000 -> "1.500.000đ" */
+export const formatMoney = (n) => `${Number(n || 0).toLocaleString('vi-VN')}đ`;
+
+export const METHOD_LABELS = { cash: 'Tiền mặt', transfer: 'Chuyển khoản' };
+export const FEE_STATUS_LABELS = { paid: 'Đã thu', unpaid: 'Chưa đóng', not_started: 'Chưa bắt đầu', not_due: 'Chưa đến hạn' };
+
+// Mức cảnh báo học phí: luôn có chữ đi kèm màu (người không phân biệt màu vẫn đọc được)
+export const ALERT_LEVELS = {
+  red: { label: 'Đỏ', rank: 0 },
+  orange: { label: 'Cam', rank: 1 },
+  yellow: { label: 'Vàng', rank: 2 },
+};
+
+/** "Còn 3 buổi đến hạn đóng" / "Hôm nay là hạn đóng" / "Đã tới hạn, chưa đóng" */
+export function alertText(a) {
+  if (a.kind === 'due_today') return 'Hôm nay là hạn đóng';
+  if (a.kind === 'overdue') return 'Đã tới hạn, chưa đóng';
+  return `Còn ${a.remaining} buổi đến hạn đóng`;
 }

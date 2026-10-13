@@ -13,12 +13,14 @@ async function setupCenter() {
   const lanId = (await owner.post('/api/admin/accounts', { username: 'lan', displayName: 'Cô Lan', password: 'matkhau-lan' })).body.account.id;
   const lan = createClient(ctx.base);
   await lan.login('lan', 'matkhau-lan');
-  const k1 = (await lan.post('/api/admin/classes', { name: 'Lớp 1A' })).body.class;
-  const k2 = (await lan.post('/api/admin/classes', { name: 'Lớp 2B' })).body.class;
-  const ids1 = (await lan.post(`/api/admin/classes/${k1.id}/students`, {
-    students: [{ fullName: 'Nguyễn Văn An', phone: '0901234567', note: 'Dị ứng hải sản' }, { fullName: 'Trần Thị Bình' }, { fullName: 'Lê Châu' }],
+  // Admin chính tạo lớp + thêm học sinh; Cô Lan là giáo viên phụ trách hai lớp
+  const k1 = (await owner.post('/api/admin/classes', { name: 'Lớp 1A', teacherIds: [lanId] })).body.class;
+  const k2 = (await owner.post('/api/admin/classes', { name: 'Lớp 2B', teacherIds: [lanId] })).body.class;
+  const ids1 = (await owner.post(`/api/admin/classes/${k1.id}/students`, {
+    fileName: 'ds.xlsx',
+    students: [{ fullName: 'Nguyễn Văn An', parentPhone: '0901234567', parentName: 'Mẹ An', parentIdNumber: '001203004005', note: 'Dị ứng hải sản' }, { fullName: 'Trần Thị Bình' }, { fullName: 'Lê Châu' }],
   })).body.ids;
-  const ids2 = (await lan.post(`/api/admin/classes/${k2.id}/students`, { students: [{ fullName: 'Phạm Huy' }] })).body.ids;
+  const ids2 = (await owner.post(`/api/admin/classes/${k2.id}/students`, { fileName: 'ds.xlsx', students: [{ fullName: 'Phạm Huy' }] })).body.ids;
   return { ...ctx, owner, lan, lanId, k1, k2, ids1, ids2 };
 }
 
@@ -102,7 +104,7 @@ test('Training Test: chỉ cần họ tên (không SĐT), chỉ thấy đề Tra
 
 test('Class Assignment phía học sinh: thấy lớp + họ tên (không lộ SĐT / ghi chú), bấm tên làm bài, mật khẩu đề', async () => {
   const ctx = await setupCenter();
-  const { base, lan, k1, k2, ids1, ids2, close } = ctx;
+  const { base, owner, k1, k2, ids1, ids2, close } = ctx;
   const examId = await makeAssignment(ctx, [k1.id], 'Abc123');
 
   const classes = (await (await fetch(`${base}/api/classes`)).json()).classes;
@@ -139,7 +141,7 @@ test('Class Assignment phía học sinh: thấy lớp + họ tên (không lộ S
   assert.deepEqual([after.doneCount, after.lastCorrect, after.inProgress], [1, 1, false]);
 
   // Học sinh đã nghỉ không còn trong danh sách, không làm bài được; có bài làm nên chỉ ẩn (không xóa)
-  const removed = await lan.post(`/api/admin/classes/${k1.id}/students/${ids1[0]}/remove`);
+  const removed = await owner.post(`/api/admin/classes/${k1.id}/students/${ids1[0]}/remove`);
   assert.equal(removed.body.deleted, false);
   assert.equal((await (await fetch(`${base}/api/classes/${k1.id}`)).json()).students.length, 2);
   assert.equal((await startClass(base, { classStudentId: ids1[0], examId, password: 'Abc123' })).status, 404);
@@ -175,8 +177,30 @@ test('Giáo viên: hoạt động của đề (ai làm, lúc nào, mấy lần, 
   assert.ok(results.every((r) => r.student.className === 'Lớp 1A' && r.student.phone === ''));
 
   // Đổi tên học sinh: tên trong kết quả đổi theo
-  await lan.post(`/api/admin/classes/${k1.id}/students/${ids1[1]}/update`, { fullName: 'Trần Thị Bình Minh' });
+  await owner.post(`/api/admin/classes/${k1.id}/students/${ids1[1]}/update`, { fullName: 'Trần Thị Bình Minh' });
   const renamed = (await owner.get('/api/admin/results?category=homework')).body.items.find((r) => r.student.classStudentId === ids1[1]);
   assert.deepEqual([renamed.student.lastName, renamed.student.firstName], ['Trần Thị Bình', 'Minh']);
+
+  // Tải tab Hoạt động về Excel
+  const login = await fetch(`${base}/api/auth/login`, json({ username: 'lan', password: 'matkhau-lan' }));
+  const file = await fetch(`${base}/api/admin/exams/${examId}/activity/export`, { headers: { cookie: login.headers.get('set-cookie').split(';')[0] } });
+  assert.equal(file.status, 200);
+  const wb = new (require('exceljs').Workbook)();
+  await wb.xlsx.load(Buffer.from(await file.arrayBuffer()));
+  const text = [];
+  wb.getWorksheet('Hoạt động').eachRow((r) => text.push(r.values.slice(1).join(' | ')));
+  assert.match(text.join('\n'), /Lớp 1A \| Nguyễn Văn An \| 2/);
+  assert.match(text.join('\n'), /Lê Châu \| Chưa làm/);
+
+  // Giáo viên khác (không phụ trách Lớp 1A): không thấy học sinh của lớp trong hoạt động, không giao đề cho lớp đó
+  await owner.post('/api/admin/accounts', { username: 'minh', displayName: 'Thầy Minh', password: 'matkhau-minh' });
+  const minh = createClient(base);
+  await minh.login('minh', 'matkhau-minh');
+  const minhAct = (await minh.get(`/api/admin/exams/${examId}/activity`)).body;
+  assert.deepEqual([minhAct.classes.length, minhAct.others.length, minhAct.hiddenClasses], [0, 0, 1]);
+  const k3 = (await owner.post('/api/admin/classes', { name: 'Lớp 3C' })).body.class;
+  const bad = await lan.post(`/api/admin/exams/${examId}/assignment`, { classIds: [k1.id, k3.id] });
+  assert.equal(bad.status, 400);
+  assert.match(bad.body.error, /lớp mình phụ trách/);
   await close();
 });

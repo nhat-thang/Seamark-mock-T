@@ -7,6 +7,8 @@ node_modules/
 # Dữ liệu thật: database + file audio/ảnh upload
 data/*
 !data/.gitkeep
+# Dữ liệu mẫu học phí (npm run demo:hoc-phi) — chỉ trên máy dev
+data-demo/
 
 # Build
 frontend/dist/

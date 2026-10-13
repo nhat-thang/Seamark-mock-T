@@ -38,10 +38,15 @@ const fieldsOf = (p) => p.columns.map((c) => c.field);
 test('Nhận cột họ tên với nhiều cách đặt tên cột', () => {
   const names = ['Họ và tên', 'HỌ TÊN', 'Ho ten', 'Name', 'Full name', 'Student Name', 'Tên học sinh', 'Học sinh', 'Tên HS', 'Họ và tên học viên', 'Tên bé'];
   for (const h of names) assert.equal(fieldFromHeader(h), 'fullName', h);
-  // Có chữ "tên" nhưng là của người / thứ khác -> cột lạ (gộp vào ghi chú)
-  for (const h of ['Tên phụ huynh', 'Họ tên mẹ', 'Họ tên PH', 'Parent name', 'Tên lớp', 'Tên trường', 'School name', 'Ngày sinh', 'Giới tính']) {
+  // Tên phụ huynh, CCCD phụ huynh
+  for (const h of ['Tên phụ huynh', 'Họ tên mẹ', 'Họ tên PH', 'Parent name', 'Phụ huynh', 'Họ tên bố/mẹ']) assert.equal(fieldFromHeader(h), 'parentName', h);
+  for (const h of ['CCCD phụ huynh', 'Số CMND', 'Căn cước công dân', 'CCCD']) assert.equal(fieldFromHeader(h), 'parentIdNumber', h);
+  // Có chữ "tên" nhưng là của thứ khác, hoặc thông tin khác của phụ huynh -> cột lạ (gộp vào ghi chú)
+  for (const h of ['Tên lớp', 'Tên trường', 'School name', 'Ngày sinh', 'Giới tính', 'Nghề nghiệp phụ huynh', 'Số buổi đã học']) {
     assert.equal(fieldFromHeader(h), 'extra', h);
   }
+  // Cột thống kê trong file web tải về -> bỏ qua khi nhập lại
+  for (const h of ['Buổi bắt đầu', 'Tình trạng học phí', 'Cảnh báo', 'Giảm giá (%)', 'Tổng số buổi']) assert.equal(fieldFromHeader(h), 'skip', h);
   assert.deepEqual(
     ['SĐT', 'Số ĐT mẹ', 'Điện thoại', 'Phone', 'Zalo', 'Ngày nhập học', 'Ngày vào học', 'Ghi chú', 'STT', 'Họ đệm', 'Tên'].map(fieldFromHeader),
     ['phone', 'phone', 'phone', 'phone', 'phone', 'joinedOn', 'joinedOn', 'note', 'skip', 'lastName', 'firstName']
@@ -73,7 +78,7 @@ test('File có dòng tiêu đề, tên cột lạ, SĐT bị mất số 0, ô ng
   const { buildStudents } = await loadImport();
   const out = buildStudents({ columns: p.columns, rows: p.rows, fields: fieldsOf(p), defaultJoinedOn: '2026-10-13', existing: [] });
   assert.deepEqual(
-    out.map((s) => [s.fullName, s.phone, s.joinedOn, s.note, s.include]),
+    out.map((s) => [s.fullName, s.parentPhone, s.joinedOn, s.note, s.include]),
     [
       ['Nguyễn Văn An', '0912345678', '2026-09-07', 'Học bù; Ngày sinh: 02/05/2012; Trường: THCS Lê Lợi', true],
       ['Trần Thị Bình', '0987654321', '2026-09-15', '', true],
@@ -120,7 +125,7 @@ test('Không có dòng tên cột / tên cột không nhận ra: đoán cột h�
 });
 
 test('Ghép cột: bắt buộc có cột họ tên; mỗi loại một cột; báo trùng với học sinh đã có và trùng trong file', async () => {
-  const { mappingError, buildStudents, normalizePhone, parseDate, tidyName } = await loadImport();
+  const { mappingError, buildStudents, normalizePhone, normalizeIdNumber, parseDate, tidyName } = await loadImport();
   assert.match(mappingError(['phone', 'extra']), /Họ và tên/);
   assert.match(mappingError(['fullName', 'phone', 'phone']), /2 cột/);
   assert.equal(mappingError(['lastName', 'firstName', 'note', 'note', 'extra']), '');
@@ -136,7 +141,7 @@ test('Ghép cột: bắt buộc có cột họ tên; mỗi loại một cột; b
     rows,
     fields: ['fullName', 'phone'],
     defaultJoinedOn: '2026-10-13',
-    existing: [{ fullName: 'Nguyễn Văn An', phone: '0901234567' }],
+    existing: [{ fullName: 'Nguyễn Văn An', parentPhone: '0901234567' }],
   });
   assert.deepEqual(out.map((s) => [s.duplicate, s.include]), [
     ['Đã có trong lớp', false],
@@ -149,6 +154,9 @@ test('Ghép cột: bắt buộc có cột họ tên; mỗi loại một cột; b
   assert.deepEqual(normalizePhone('0901234567 0912345678'), { phone: '0901234567', others: ['0912345678'], invalid: '' });
   assert.equal(normalizePhone('2838123456').phone, '02838123456');
   assert.equal(normalizePhone('chưa có').invalid, 'chưa có');
+  assert.equal(normalizePhone('12345678').invalid, '12345678', 'SĐT phải 10 số (máy bàn 11 số)');
+  assert.deepEqual(['001 203 004 005', '1203004005', '012345678', '12345', ''].map((v) => normalizeIdNumber(v).value), ['001203004005', '', '012345678', '', '']);
+  assert.equal(normalizeIdNumber('12345').invalid, '12345');
   assert.deepEqual(['13/10/2026', '1/2/26', '2026-10-13', '31/02/2026', '46308'].map(parseDate), ['2026-10-13', '2026-02-01', '2026-10-13', null, '2026-10-13']);
   assert.deepEqual(['LÊ THỊ HỒNG ĐÀO', '1. Phạm Huy', 'McDonald Anh'].map(tidyName), ['Lê Thị Hồng Đào', 'Phạm Huy', 'McDonald Anh']);
 });
@@ -173,22 +181,23 @@ test('Nhập: lưu kèm tên file vào lịch sử; file .xls / không phải Ex
   await close();
 });
 
-test('Tải danh sách lớp về Excel; file tải về nhập lại được (đúng cột, bỏ qua cột thống kê)', async () => {
+test('Tải danh sách lớp về Excel (admin chính: đủ cột); file tải về nhập lại được (đúng cột, bỏ qua cột thống kê)', async () => {
   const { owner, cls, preview, base, close } = await setupClass();
   const lan = (await owner.get('/api/admin/schedule/teachers')).body.teachers[0];
   await owner.post(`/api/admin/classes/${cls.id}/students`, {
+    fileName: 'ds.xlsx',
     students: [
-      { fullName: 'Nguyễn Văn An', phone: '0901234567', joinedOn: '2026-09-01', note: 'Học bù' },
+      { fullName: 'Nguyễn Văn An', parentName: 'Nguyễn Thị Mai', parentPhone: '0901234567', parentIdNumber: '001203004005', joinedOn: '2026-09-01', note: 'Học bù' },
       { fullName: 'Trần Bình', joinedOn: '2026-09-01' },
     ],
   });
-  const sid = (await owner.post('/api/admin/schedule', { classId: cls.id, date: '2026-09-02', startTime: '18:00', endTime: '19:30', teacherId: lan.id })).body.ids[0];
+  const sid = (await owner.post('/api/admin/schedule', { classId: cls.id, date: '2026-09-02', startTime: '18:00', endTime: '19:30', teacherIds: [lan.id], force: true })).body.ids[0];
   const roster = (await owner.get(`/api/admin/schedule/${sid}`)).body.students;
   await owner.post(`/api/admin/schedule/${sid}/attendance`, {
     records: roster.map((s, i) => ({ studentId: s.id, status: i === 0 ? 'present' : 'absent', bonus: i === 0 ? 2 : 0 })),
   });
 
-  // Tải về bằng cookie đăng nhập của admin
+  // Tải về bằng cookie đăng nhập của admin chính
   const login = await fetch(`${base}/api/auth/login`, {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ username: testConfig.ownerUsername, password: testConfig.ownerPassword }),
@@ -202,25 +211,29 @@ test('Tải danh sách lớp về Excel; file tải về nhập lại được (
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buf);
   const ws = wb.getWorksheet('Danh sách lớp');
+  const col = (name) => ws.getRow(1).values.indexOf(name);
   assert.equal(ws.getRow(1).getCell(2).value, 'Họ và tên');
   assert.equal(ws.getRow(2).getCell(2).value, 'Nguyễn Văn An');
-  assert.equal(ws.getRow(2).getCell(3).value, '0901234567');
-  assert.equal(ws.getRow(2).getCell(11).value, 2); // điểm cộng
-  assert.equal(ws.getRow(3).getCell(10).value, 1); // vắng không phép
+  assert.equal(ws.getRow(2).getCell(col('Tên phụ huynh')).value, 'Nguyễn Thị Mai');
+  assert.equal(ws.getRow(2).getCell(col('SĐT phụ huynh')).value, '0901234567');
+  assert.equal(ws.getRow(2).getCell(col('CCCD phụ huynh')).value, '001203004005');
+  assert.equal(ws.getRow(2).getCell(col('Điểm cộng')).value, 2);
+  assert.equal(ws.getRow(3).getCell(col('Vắng không phép')).value, 1);
   const att = wb.getWorksheet('Điểm danh');
   assert.deepEqual([att.getRow(2).getCell(2).value, att.getRow(3).getCell(2).value], ['C +2', 'V']);
 
   // Nhập lại chính file vừa tải về
   const p = (await preview(buf, 'tai-ve.xlsx')).body;
-  assert.equal(p.columns.find((c) => c.header === 'Họ và tên').field, 'fullName');
-  assert.equal(p.columns.find((c) => c.header === 'Ngày vào học').field, 'joinedOn');
-  assert.equal(p.columns.find((c) => c.header === 'Tổng số buổi').field, 'skip');
-  assert.equal(p.columns.find((c) => c.header === 'Ghi chú').field, 'note');
+  const fieldOf = (header) => p.columns.find((c) => c.header === header).field;
+  assert.deepEqual(
+    ['Họ và tên', 'Tên phụ huynh', 'SĐT phụ huynh', 'CCCD phụ huynh', 'Buổi bắt đầu', 'Tổng số buổi', 'Tình trạng học phí', 'Ghi chú'].map(fieldOf),
+    ['fullName', 'parentName', 'phone', 'parentIdNumber', 'skip', 'skip', 'skip', 'note']
+  );
   const { buildStudents } = await loadImport();
   const out = buildStudents({ ...p, fields: fieldsOf(p), defaultJoinedOn: '2026-10-13', existing: [] });
-  assert.deepEqual(out.map((s) => [s.fullName, s.phone, s.joinedOn, s.note]), [
-    ['Nguyễn Văn An', '0901234567', '2026-09-01', 'Học bù'],
-    ['Trần Bình', '', '2026-09-01', ''],
+  assert.deepEqual(out.map((s) => [s.fullName, s.parentName, s.parentPhone, s.parentIdNumber, s.note]), [
+    ['Nguyễn Văn An', 'Nguyễn Thị Mai', '0901234567', '001203004005', 'Học bù'],
+    ['Trần Bình', '', '', '', ''],
   ]);
 
   const log = (await owner.get(`/api/admin/history/audit?classId=${cls.id}`)).body.items[0];

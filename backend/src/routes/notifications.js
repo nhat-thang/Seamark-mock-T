@@ -5,6 +5,7 @@ const express = require('express');
 const { requireJson } = require('../auth/middleware');
 const { SESSION_SELECT, toSession } = require('../classes/sessions');
 const { DAY_MS } = require('../classes/time');
+const { accessOf } = require('../classes/access');
 
 function notificationsRouter(db) {
   const router = express.Router();
@@ -14,19 +15,24 @@ function notificationsRouter(db) {
     const now = Date.now();
     const nowIso = new Date(now).toISOString();
     const me = req.admin.id;
+    const access = accessOf(db, req.admin);
     const list = (sql, ...params) =>
-      db.prepare(`${SESSION_SELECT} WHERE c.deleted_at IS NULL AND ${sql} ORDER BY s.starts_at`).all(...params).map((r) => toSession(r, req.admin, now));
+      db.prepare(`${SESSION_SELECT} WHERE c.deleted_at IS NULL AND ${sql} ORDER BY s.starts_at`).all(...params).map((r) => toSession(r, req.admin, now, access));
 
+    const mine = 'EXISTS (SELECT 1 FROM session_teachers x WHERE x.session_id = s.id AND x.admin_id = ?)';
     // Buổi mình dạy trong 24 giờ tới (kể cả đang diễn ra) mà chưa điểm danh
     const upcoming = list(
-      's.teacher_admin_id = ? AND s.attendance_at IS NULL AND s.ends_at > ? AND s.starts_at < ?',
+      `${mine} AND s.attendance_at IS NULL AND s.ends_at > ? AND s.starts_at < ?`,
       me, nowIso, new Date(now + DAY_MS).toISOString()
     );
-    // Buổi đã kết thúc, chưa điểm danh, còn sửa được. Admin chính thêm các buổi của giáo viên ngoài ("Khác").
-    const teacherSql = req.admin.role === 'owner' ? '(s.teacher_admin_id = ? OR s.teacher_admin_id IS NULL)' : 's.teacher_admin_id = ?';
+    // Buổi đã kết thúc, chưa điểm danh, còn sửa được: buổi mình dạy + buổi của lớp mình phụ trách.
+    // Admin chính thêm các buổi chỉ có giáo viên ngoài ("Khác").
+    const teacherSql = req.admin.role === 'owner'
+      ? `(${mine} OR NOT EXISTS (SELECT 1 FROM session_teachers x WHERE x.session_id = s.id))`
+      : `(${mine} OR s.class_id IN (SELECT class_id FROM class_teachers WHERE admin_id = ?))`;
     const pending = list(
       `${teacherSql} AND s.attendance_at IS NULL AND s.ends_at <= ? AND s.starts_at >= ?`,
-      me, nowIso, new Date(now - 3 * DAY_MS).toISOString()
+      ...(req.admin.role === 'owner' ? [me] : [me, me]), nowIso, new Date(now - 3 * DAY_MS).toISOString()
     ).filter((s) => req.admin.role === 'owner' || Date.parse(s.editUntil) > now);
 
     const items = db

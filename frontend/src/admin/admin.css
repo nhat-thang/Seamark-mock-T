@@ -1130,3 +1130,10 @@ fieldset.exam-settings:disabled {
   border-color: #f1d48a;
   background: #fffbf0;
 }
+
+/* Tiêu đề nhỏ trong một mục của trang Hướng dẫn */
+.guide-sub {
+  margin: 1.2rem 0 0.4rem;
+  font-size: 1.05rem;
+  color: var(--color-primary);
+}

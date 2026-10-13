@@ -34,7 +34,9 @@ function repeatDates(from, until, weekdays) {
 
 /**
  * Xếp lịch học (mode="create") hoặc sửa lịch một buổi (mode="edit") — chỉ admin chính.
- * Bắt buộc chọn giáo viên: một tài khoản admin, hoặc "Khác" rồi gõ tên.
+ * Bắt buộc có giáo viên: một hoặc nhiều tài khoản, và / hoặc giáo viên ngoài (gõ tên).
+ * Buổi đã điểm danh: không đổi được ngày giờ (chỉ giáo viên, phòng, ghi chú).
+ * Server hỏi lại (reason 'confirm') khi trùng giờ, buổi đã qua (sẽ được tính tiền), kì học phí đã thu bị lệch.
  */
 export default function SessionDialog({ mode, session, defaults = {}, onClose, onSaved }) {
   const isEdit = mode === 'edit';
@@ -46,8 +48,8 @@ export default function SessionDialog({ mode, session, defaults = {}, onClose, o
     date: startDate,
     startTime: isEdit ? session.startTime : defaults.startTime || '18:00',
     endTime: isEdit ? session.endTime : addMinutes(defaults.startTime || '18:00', 90),
-    teacher: isEdit ? (session.teacher.isOther ? 'other' : String(session.teacher.id)) : '',
-    otherName: isEdit && session.teacher.isOther ? session.teacher.name : '',
+    teacherIds: isEdit ? session.teacher.ids.map(String) : [],
+    otherName: isEdit ? session.teacher.otherName || '' : '',
     room: isEdit ? session.room : '',
     note: isEdit ? session.note : '',
     repeat: false,
@@ -56,7 +58,8 @@ export default function SessionDialog({ mode, session, defaults = {}, onClose, o
     scope: 'one',
   }));
   const [error, setError] = useState('');
-  const [conflicts, setConflicts] = useState(null);
+  const [confirm, setConfirm] = useState(null); // điều server hỏi lại trước khi lưu
+  const locked = isEdit && Boolean(session.attendanceAt);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -65,7 +68,7 @@ export default function SessionDialog({ mode, session, defaults = {}, onClose, o
   }, [isEdit]);
 
   const set = (name, value) => {
-    setConflicts(null);
+    setConfirm(null);
     setForm((f) => {
       const next = { ...f, [name]: value };
       // Đổi ngày bắt đầu: thứ lặp lại đi theo nếu đang chỉ chọn một thứ
@@ -88,16 +91,20 @@ export default function SessionDialog({ mode, session, defaults = {}, onClose, o
     if (!form.date) return setError('Vui lòng chọn ngày học.');
     if (!form.startTime || !form.endTime) return setError('Vui lòng chọn giờ bắt đầu và giờ kết thúc.');
     if (form.endTime <= form.startTime) return setError('Giờ kết thúc phải sau giờ bắt đầu.');
-    if (!form.teacher) return setError('Vui lòng chọn giáo viên dạy buổi học này.');
-    if (form.teacher === 'other' && !form.otherName.trim()) return setError('Vui lòng gõ tên giáo viên.');
+    if (form.teacherIds.length === 0 && !form.otherName.trim()) {
+      return setError('Vui lòng chọn giáo viên dạy buổi học này (hoặc gõ tên giáo viên ngoài).');
+    }
+    const moved = isEdit && (form.date !== session.date || form.startTime !== session.startTime || form.endTime !== session.endTime);
+    const when = `${WEEKDAY_LONG[weekdayOf(form.date)]}, ${formatDate(form.date)} ${form.startTime}–${form.endTime}`;
+    if (!force && moved && !window.confirm(`Đổi buổi học sang ${when}?\n\nGiáo viên sẽ nhận được thông báo.`)) return;
     if (form.repeat && form.weekdays.length === 0) return setError('Hãy chọn ít nhất một thứ trong tuần.');
     if (form.repeat && dates.length === 0) return setError('Không có ngày nào khớp. Kiểm tra lại "Lặp lại đến ngày".');
 
     const body = {
       startTime: form.startTime,
       endTime: form.endTime,
-      teacherId: form.teacher === 'other' ? null : Number(form.teacher),
-      teacherName: form.teacher === 'other' ? form.otherName : '',
+      teacherIds: form.teacherIds.map(Number),
+      teacherName: form.otherName.trim(),
       room: form.room,
       note: form.note,
       force,
@@ -121,7 +128,7 @@ export default function SessionDialog({ mode, session, defaults = {}, onClose, o
       }
       onSaved(result);
     } catch (err) {
-      if (err.data?.reason === 'conflict') setConflicts(err.data);
+      if (err.data?.reason === 'confirm') setConfirm(err.data);
       else setError(err.message);
       setSaving(false);
     }
@@ -169,10 +176,15 @@ export default function SessionDialog({ mode, session, defaults = {}, onClose, o
           </fieldset>
         )}
 
+        {locked && (
+          <p className="cl-alert-warn">
+            Buổi này đã điểm danh nên không đổi được ngày giờ (giữ đúng số buổi đã học và học phí). Bạn vẫn đổi được giáo viên, phòng học, ghi chú.
+          </p>
+        )}
         <div className="cl-dialog-row">
           <div className="field">
             <label htmlFor="sd-date">{form.repeat ? 'Bắt đầu từ ngày' : 'Ngày học'}</label>
-            <input id="sd-date" className="input" type="date" value={form.date} onChange={onInput('date')} disabled={followingScope} />
+            <input id="sd-date" className="input" type="date" value={form.date} onChange={onInput('date')} disabled={followingScope || locked} />
             {followingScope ? (
               <p className="field-hint">Đổi ngày chỉ làm được khi sửa riêng một buổi.</p>
             ) : (
@@ -181,55 +193,57 @@ export default function SessionDialog({ mode, session, defaults = {}, onClose, o
           </div>
           <div className="field">
             <label htmlFor="sd-start">Giờ bắt đầu</label>
-            <input id="sd-start" className="input" type="time" value={form.startTime} onChange={onInput('startTime')} />
+            <input id="sd-start" className="input" type="time" value={form.startTime} onChange={onInput('startTime')} disabled={locked} />
           </div>
           <div className="field">
             <label htmlFor="sd-end">Giờ kết thúc</label>
-            <input id="sd-end" className="input" type="time" value={form.endTime} onChange={onInput('endTime')} />
-            <div className="cl-chips">
-              {DURATIONS.map((d) => (
-                <button key={d.minutes} type="button" className="cl-chip" onClick={() => set('endTime', addMinutes(form.startTime, d.minutes))}>
-                  {d.label}
-                </button>
-              ))}
-            </div>
+            <input id="sd-end" className="input" type="time" value={form.endTime} onChange={onInput('endTime')} disabled={locked} />
+            {!locked && (
+              <div className="cl-chips">
+                {DURATIONS.map((d) => (
+                  <button key={d.minutes} type="button" className="cl-chip" onClick={() => set('endTime', addMinutes(form.startTime, d.minutes))}>
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="cl-dialog-row">
-          <div className="field">
-            <label htmlFor="sd-teacher">Giáo viên dạy <span className="cl-required">(bắt buộc)</span></label>
-            <select id="sd-teacher" className="input" value={form.teacher} onChange={onInput('teacher')}>
-              <option value="">— Chọn giáo viên —</option>
-              {teachers.map((t) => (
-                <option key={t.id} value={t.id}>{t.displayName}{t.role === 'owner' ? ' (Admin chính)' : ''}</option>
-              ))}
-              {/* Giáo viên đã bị vô hiệu hóa vẫn hiện nếu đang dạy buổi này */}
-              {isEdit && !session.teacher.isOther && !teachers.some((t) => t.id === session.teacher.id) && (
-                <option value={session.teacher.id} disabled>{session.teacher.name} (đã vô hiệu hóa)</option>
-              )}
-              <option value="other">Khác (giáo viên không có tài khoản)…</option>
-            </select>
+        <fieldset className="cl-teacher-pick">
+          <legend>Giáo viên dạy <span className="cl-required">(bắt buộc, chọn được nhiều)</span></legend>
+          <div className="cl-chip-list">
+            {teachers.map((t) => {
+              const on = form.teacherIds.includes(String(t.id));
+              return (
+                <label key={t.id} className={`cl-chip ${on ? 'is-on' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={() => set('teacherIds', on ? form.teacherIds.filter((x) => x !== String(t.id)) : [...form.teacherIds, String(t.id)])}
+                  />
+                  {t.displayName}{t.role === 'owner' ? ' (Admin chính)' : ''}
+                </label>
+              );
+            })}
+            {/* Giáo viên đã bị vô hiệu hóa vẫn hiện nếu đang dạy buổi này */}
+            {isEdit && session.teacher.list.filter((t) => !teachers.some((x) => x.id === t.id)).map((t) => (
+              <span key={t.id} className="cl-chip is-on is-disabled">{t.name} (đã vô hiệu hóa)</span>
+            ))}
           </div>
-          {form.teacher === 'other' ? (
-            <div className="field">
-              <label htmlFor="sd-other">Tên giáo viên</label>
-              <input id="sd-other" className="input" value={form.otherName} onChange={onInput('otherName')} placeholder="Ví dụ: Thầy Tom" maxLength={60} />
-              <p className="field-hint">Buổi của giáo viên ngoài do admin chính điểm danh.</p>
-            </div>
-          ) : (
-            <div className="field">
-              <label htmlFor="sd-room">Phòng học (không bắt buộc)</label>
-              <input id="sd-room" className="input" value={form.room} onChange={onInput('room')} placeholder="Ví dụ: P.2" maxLength={40} />
-            </div>
-          )}
+          <div className="field cl-other-teacher">
+            <label htmlFor="sd-other">Giáo viên ngoài (không có tài khoản)</label>
+            <input id="sd-other" className="input" value={form.otherName} onChange={onInput('otherName')} placeholder="Để trống nếu không có. Ví dụ: Thầy Tom" maxLength={60} />
+            <p className="field-hint">
+              Giáo viên được chọn tự thành giáo viên phụ trách lớp. Buổi chỉ có giáo viên ngoài thì admin chính hoặc giáo viên phụ trách lớp điểm danh.
+            </p>
+          </div>
+        </fieldset>
+
+        <div className="field">
+          <label htmlFor="sd-room">Phòng học (không bắt buộc)</label>
+          <input id="sd-room" className="input" value={form.room} onChange={onInput('room')} placeholder="Ví dụ: P.2" maxLength={40} />
         </div>
-        {form.teacher === 'other' && (
-          <div className="field">
-            <label htmlFor="sd-room2">Phòng học (không bắt buộc)</label>
-            <input id="sd-room2" className="input" value={form.room} onChange={onInput('room')} placeholder="Ví dụ: P.2" maxLength={40} />
-          </div>
-        )}
 
         {!isEdit && (
           <div className={`cl-repeat ${form.repeat ? 'is-on' : ''}`}>
@@ -276,19 +290,46 @@ export default function SessionDialog({ mode, session, defaults = {}, onClose, o
           <input id="sd-note" className="input" value={form.note} onChange={onInput('note')} placeholder="Ví dụ: Kiểm tra giữa kỳ" maxLength={200} />
         </div>
 
-        {conflicts && (
-          <div className="cl-conflict" role="alert">
-            <p><strong>Lịch bị trùng giờ:</strong></p>
-            <ul>
-              {conflicts.conflicts.map((c, i) => <li key={i}>{c}</li>)}
-              {conflicts.more > 0 && <li>… và {conflicts.more} buổi khác</li>}
-            </ul>
-            <p>Hãy đổi giờ / giáo viên, hoặc bấm "Vẫn xếp lịch" nếu bạn chắc chắn.</p>
-            <button type="button" className="btn btn-danger btn-small" disabled={saving} onClick={() => submit(true)}>Vẫn xếp lịch</button>
-          </div>
-        )}
+        {confirm && <ConfirmBox data={confirm} saving={saving} onConfirm={() => submit(true)} label={isEdit ? 'Vẫn lưu thay đổi' : 'Vẫn xếp lịch'} />}
         {error && <p className="alert-error admin-message" role="alert">{error}</p>}
       </div>
     </Modal>
+  );
+}
+
+/**
+ * Hộp hỏi lại trước khi lưu thay đổi lịch (server báo trước — reason 'confirm'):
+ * trùng giờ, buổi đã qua giờ học (sẽ được tính tiền), kì học phí đã thu bị lệch do đánh số lại các buổi.
+ */
+export function ConfirmBox({ data, saving, onConfirm, label }) {
+  return (
+    <div className="cl-conflict" role="alert">
+      {data.conflicts?.length > 0 && (
+        <>
+          <p><strong>Lịch bị trùng giờ:</strong></p>
+          <ul>
+            {data.conflicts.map((c, i) => <li key={i}>{c}</li>)}
+            {data.more > 0 && <li>… và {data.more} buổi khác</li>}
+          </ul>
+        </>
+      )}
+      {data.past > 0 && (
+        <p>
+          <strong>{data.past === 1 ? 'Buổi này' : `${data.past} buổi`} đã qua giờ học.</strong> Buổi đã qua được tính là đã học —{' '}
+          <strong>buổi này sẽ được tính tiền</strong> (kể cả học sinh vắng). Giáo viên điểm danh bổ sung được tới hết ngày mai.
+        </p>
+      )}
+      {data.cycles?.length > 0 && (
+        <>
+          <p><strong>Các buổi sẽ được đánh số lại, làm lệch {data.cycles.length + (data.moreCycles || 0)} kì học phí đã thu:</strong></p>
+          <ul>
+            {data.cycles.map((c, i) => <li key={i}>{c.fullName} — kì {c.cycleNo}</li>)}
+            {data.moreCycles > 0 && <li>… và {data.moreCycles} kì khác</li>}
+          </ul>
+          <p className="small-text">Số tiền đã thu giữ nguyên; trang học phí đánh dấu các kì này là "lịch đã đổi sau khi thu" để bạn kiểm tra.</p>
+        </>
+      )}
+      <button type="button" className="btn btn-danger btn-small" disabled={saving} onClick={onConfirm}>{label}</button>
+    </div>
   );
 }
