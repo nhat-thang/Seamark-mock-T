@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { apiGet, apiPost } from '../utils/api.js';
 import { ExamStatusTag } from './ExamListPage.jsx';
 import SettingsTab from './exam/SettingsTab.jsx';
@@ -9,6 +9,7 @@ import QuestionsTab from './exam/QuestionsTab.jsx';
 import FilesTab from './exam/FilesTab.jsx';
 import PublishTab from './exam/PublishTab.jsx';
 import CustomBuilderTab from './exam/CustomBuilderTab.jsx';
+import ActivityTab from './exam/ActivityTab.jsx';
 import './exam/exam-edit.css';
 
 const SAVE_DELAY_MS = 2000; // tự lưu 2 giây sau lần thay đổi cuối
@@ -22,6 +23,7 @@ const CUSTOM_TABS = [
   { id: 'builder', label: 'Soạn đề' },
   { id: 'files', label: 'Ảnh & audio' },
   { id: 'publish', label: 'Kiểm tra & xuất bản' },
+  { id: 'activity', label: 'Hoạt động' },
 ];
 
 const TABS = [
@@ -31,6 +33,7 @@ const TABS = [
   { id: 'questions', label: 'Câu hỏi & đoạn văn' },
   { id: 'files', label: 'Ảnh & audio' },
   { id: 'publish', label: 'Kiểm tra & xuất bản' },
+  { id: 'activity', label: 'Hoạt động' },
 ];
 
 const timeHHmm = (iso) =>
@@ -90,7 +93,9 @@ export default function ExamEditPage() {
 function ExamEditor({ examId, initial }) {
   const isCustom = initial.exam.examType === 'CUSTOM';
   const tabs = isCustom ? CUSTOM_TABS : TABS;
-  const [tab, setTab] = useState(isCustom ? 'builder' : 'info');
+  // Mở từ nút "Hoạt động" ở danh sách đề: /admin/de-thi/:id?tab=activity
+  const [params] = useSearchParams();
+  const [tab, setTab] = useState(params.get('tab') === 'activity' ? 'activity' : isCustom ? 'builder' : 'info');
 
   // ---------- Dữ liệu đang sửa ----------
   const [meta, setMeta] = useState(initial); // thông tin xuất bản, lịch sử
@@ -410,7 +415,7 @@ function ExamEditor({ examId, initial }) {
           <h1 className="admin-title">{settings.title || exam.title}</h1>
           <div className="exam-edit-status">
             {exam.category === 'homework' && (
-              <span className="tag tag-hw">Bài tập về nhà{exam.author ? ` · ${exam.author}` : ''}</span>
+              <span className="tag tag-hw">Class Assignment{exam.author ? ` · ${exam.author}` : ''}</span>
             )}
             <ExamStatusTag exam={{ status: exam.status, hasUnpublishedChanges: meta.hasUnpublishedChanges, everPublished: !!meta.published }} />
             <span className="muted small-text">{content.questions.length} {isCustom ? 'question' : 'câu'}</span>
@@ -510,6 +515,7 @@ function ExamEditor({ examId, initial }) {
         {tab === 'questions' && <QuestionsTab {...tabProps} />}
         {tab === 'files' && <FilesTab {...tabProps} />}
         {tab === 'publish' && <PublishTab {...tabProps} />}
+        {tab === 'activity' && <ActivityTab examId={examId} />}
         {tab === 'builder' && <CustomBuilderTab {...tabProps} />}
       </div>
     </>

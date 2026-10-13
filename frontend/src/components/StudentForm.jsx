@@ -4,14 +4,13 @@ import { validateStudent } from '../utils/validation.js';
 import './StudentForm.css';
 
 /**
- * Form nhập Họ, Tên, Số điện thoại.
+ * Form Training Test: chỉ nhập Họ và Tên (không cần số điện thoại — đã chốt với người dùng).
  * Bấm "Tiếp tục" -> kiểm tra -> hợp lệ thì gọi onSubmit(values).
  */
 export default function StudentForm({ initialValues, onSubmit }) {
   const [form, setForm] = useState({
     lastName: initialValues?.lastName || '',
     firstName: initialValues?.firstName || '',
-    phone: initialValues?.phone || '',
   });
   const [errors, setErrors] = useState({});
 
@@ -51,18 +50,6 @@ export default function StudentForm({ initialValues, onSubmit }) {
           placeholder="Ví dụ: An"
         />
       </div>
-      <Field
-        id="phone"
-        label="Số điện thoại"
-        type="tel"
-        inputMode="numeric"
-        value={form.phone}
-        error={errors.phone}
-        onChange={handleChange}
-        autoComplete="tel"
-        placeholder="Ví dụ: 0901234567"
-        hint="Gồm 10 chữ số, bắt đầu bằng số 0."
-      />
       <button type="submit" className="btn btn-sun student-submit">
         Tiếp tục: chọn đề
         <ArrowIcon />

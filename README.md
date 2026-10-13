@@ -11,8 +11,8 @@ Website cho học viên của trung tâm tiếng Anh làm đề TOEIC thử và 
 ## Tính năng
 
 ### Học viên
-1. Trang chủ: nút **Bắt đầu làm bài** và **Đăng nhập admin**.
-2. Nhập họ, tên, số điện thoại (kiểm tra số Việt Nam).
+1. Trang chủ: 2 cách làm bài **Training Test** và **Class Assignment**, và nút **Đăng nhập admin**.
+2. Training Test: chỉ nhập họ và tên (không cần số điện thoại) rồi chọn đề. Class Assignment: chọn lớp → bấm vào tên mình → chọn bài của lớp (đề có thể có mật khẩu).
 3. Danh sách đề đã xuất bản.
 4. Làm bài:
    - Listening: phát audio, ảnh Part 1, mặc định không cho tua (admin bật được cho từng đề).
@@ -35,7 +35,7 @@ Website cho học viên của trung tâm tiếng Anh làm đề TOEIC thử và 
    - Kéo thả nhiều file ảnh/audio cùng lúc, tự khớp theo tên file.
    - Đoạn văn Part 6, 7 có thể upload bằng ảnh thay vì gõ chữ.
 4. **Kết quả:** danh sách lượt làm bài (lọc theo tên, SĐT, đề, loại đề, giáo viên ra đề, ngày), mỗi dòng có các câu làm sai, chi tiết từng câu, xuất Excel.
-   - **Bài tập về nhà (Homework):** tạo như đề thường, tên tự có "Homework - " ở đầu, ghi giáo viên ra đề; học viên chọn mục "Bài tập về nhà" để làm.
+   - **Training Test / Class Assignment:** Training Test cho mọi người (học viên chỉ nhập họ tên). Class Assignment là đề riêng của lớp: giao cho một hay nhiều lớp, mật khẩu đề không bắt buộc; học sinh chọn lớp → bấm tên mình → làm bài. Tab "Hoạt động" của đề cho biết ai đã làm, lúc nào, mấy lần, ai chưa làm.
 5. Lịch sử ai sửa đề lúc nào.
 6. **Lớp học + điểm danh:**
    - Mọi admin tạo / xóa lớp, thêm / sửa / cho nghỉ học sinh (học sinh không cần tài khoản; dán cả danh sách từ Excel / Zalo được).

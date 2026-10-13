@@ -20,14 +20,16 @@ const FROM = `FROM attempts a
   JOIN students s ON s.id = a.student_id
   JOIN exam_versions v ON v.id = a.exam_version_id
   JOIN exams e ON e.id = v.exam_id
-  LEFT JOIN admins au ON au.id = e.created_by`;
+  LEFT JOIN admins au ON au.id = e.created_by
+  LEFT JOIN class_students cst ON cst.id = s.class_student_id
+  LEFT JOIN classes cl ON cl.id = cst.class_id`;
 
 const SELECT = `SELECT a.id, a.status, a.started_at, a.submitted_at, a.deadline_at, a.answers_json, a.exam_version_id,
   a.listening_correct, a.reading_correct, a.listening_score, a.reading_score, a.total_score,
   a.correct_count, a.question_total, a.score10, e.exam_type,
   s.id AS student_id, s.last_name, s.first_name, s.phone,
   e.id AS exam_id, e.code AS exam_code, v.title AS exam_title, v.version_no, v.question_count,
-  e.category, au.display_name AS author_name`;
+  e.category, au.display_name AS author_name, cl.id AS class_id, cl.name AS class_name, cst.id AS class_student_id`;
 
 // Giờ Việt Nam dạng "08/10/2026 14:05" (dùng trong file Excel)
 const VN_FORMAT = new Intl.DateTimeFormat('en-GB', {
@@ -113,7 +115,11 @@ function resultsRouter(db) {
       startedAt: r.started_at,
       submittedAt: r.submitted_at,
       minutesUsed: end ? Math.max(1, Math.round((Date.parse(end) - Date.parse(r.started_at)) / 60000)) : null,
-      student: { id: r.student_id, lastName: r.last_name, firstName: r.first_name, phone: r.phone },
+      student: {
+        id: r.student_id, lastName: r.last_name, firstName: r.first_name, phone: r.phone,
+        // Học sinh làm Class Assignment: thuộc lớp nào (thay cho SĐT)
+        classId: r.class_id ?? null, className: r.class_name ?? null, classStudentId: r.class_student_id ?? null,
+      },
       exam: {
         id: r.exam_id, code: r.exam_code, title: r.exam_title, versionNo: r.version_no, examType: r.exam_type,
         category: r.category, author: r.author_name,
@@ -167,6 +173,7 @@ function resultsRouter(db) {
       { header: 'Họ', key: 'last', width: 18 },
       { header: 'Tên', key: 'first', width: 12 },
       { header: 'SĐT', key: 'phone', width: 13 },
+      { header: 'Lớp', key: 'className', width: 16 },
       { header: 'Mã đề', key: 'code', width: 14 },
       { header: 'Tên đề', key: 'title', width: 30 },
       { header: 'Loại', key: 'category', width: 11 },
@@ -192,9 +199,10 @@ function resultsRouter(db) {
         last: r.last_name,
         first: r.first_name,
         phone: r.phone, // giữ dạng chữ để không mất số 0 ở đầu
+        className: r.class_name || '',
         code: r.exam_code,
         title: r.exam_title,
-        category: r.category === 'homework' ? 'Homework' : 'Đề thi thử',
+        category: r.category === 'homework' ? 'Class Assignment' : 'Training Test',
         author: r.author_name || '',
         wrong: item.wrong.join(', '),
         blank: item.blank.join(', '),

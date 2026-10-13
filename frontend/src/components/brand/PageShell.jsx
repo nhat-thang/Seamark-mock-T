@@ -7,10 +7,10 @@ const STEPS = ['Thông tin học viên', 'Chọn đề', 'Làm bài'];
 
 /**
  * Khung trang học viên: dải xanh biển (logo, tiêu đề, sóng) phía trên, thẻ nội dung trắng bên dưới.
- * step: 1 | 2 | 3 -> hiện thanh các bước; bỏ trống thì không hiện.
+ * step: 1 | 2 | 3 -> hiện thanh các bước; bỏ trống thì không hiện. steps: tên các bước (mặc định của Training Test).
  * action: nút bên phải thanh đầu trang (mặc định "Trang chủ"). narrow / wide: thẻ nội dung hẹp / rộng.
  */
-export default function PageShell({ title, subtitle, step, action, narrow = false, wide = false, children }) {
+export default function PageShell({ title, subtitle, step, steps = STEPS, action, narrow = false, wide = false, children }) {
   return (
     <div className="shell">
       <div className="shell-top">
@@ -33,7 +33,7 @@ export default function PageShell({ title, subtitle, step, action, narrow = fals
           {subtitle && <p className="shell-subtitle">{subtitle}</p>}
           {step && (
             <ol className="shell-steps" aria-label="Các bước">
-              {STEPS.map((s, i) => (
+              {steps.map((s, i) => (
                 <li
                   key={s}
                   className={i + 1 < step ? 'is-done' : i + 1 === step ? 'is-current' : ''}

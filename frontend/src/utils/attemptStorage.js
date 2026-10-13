@@ -3,6 +3,8 @@
 // - bản sao câu trả lời, dự phòng khi mất mạng
 const tokenKey = (id) => `seamark_attempt_${id}_token`;
 const answersKey = (id) => `seamark_attempt_${id}_answers`;
+// Training Test chỉ nhập tên nên server không tự mở lại bài dở: trình duyệt nhớ bài đang làm của từng đề
+const ongoingKey = (examId) => `seamark_ongoing_${examId}`;
 
 function read(key) {
   try {
@@ -23,6 +25,17 @@ function write(key, value) {
 
 export const saveAttemptToken = (id, token) => write(tokenKey(id), token);
 export const getAttemptToken = (id) => read(tokenKey(id));
+
+/** { attemptId, name } — bài Training Test đang làm dở của đề examId trên máy này */
+export const saveOngoing = (examId, value) => write(ongoingKey(examId), value);
+export const getOngoing = (examId) => read(ongoingKey(examId));
+export function clearOngoing(examId) {
+  try {
+    localStorage.removeItem(ongoingKey(examId));
+  } catch {
+    // bỏ qua
+  }
+}
 
 /** { answers, flagged, dirty } — dirty = true nghĩa là còn thay đổi chưa lên server */
 export const loadLocalAnswers = (id) => read(answersKey(id));

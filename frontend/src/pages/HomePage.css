@@ -156,23 +156,56 @@
   box-shadow: 0 4px 12px rgba(242, 104, 58, 0.45);
 }
 
-/* ---------- Nút chính ---------- */
-.home-cta {
+/* ---------- 2 cách làm bài: Training Test (vàng) và Class Assignment (trắng viền tím) ---------- */
+.home-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  max-width: 600px;
+}
+.home-choice {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 0.6rem;
+  gap: 0.3rem;
+  padding: 1.1rem 1.3rem;
+  border-radius: 22px;
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
-.home-start {
-  min-width: 300px;
-  font-size: 1.25rem;
-  font-weight: 800;
-  border-radius: 999px;
-  animation: home-pulse 2.8s ease-in-out infinite;
+.home-choice:hover {
+  transform: translateY(-3px);
 }
-.home-start:focus-visible {
+.home-choice:focus-visible {
   outline: 3px solid #fff;
   outline-offset: 4px;
+}
+.home-choice-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: clamp(1.05rem, 1.7vw, 1.3rem);
+  font-weight: 800;
+  white-space: nowrap;
+}
+.home-choice-text {
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+.home-choice.is-training {
+  background: var(--brand-yellow);
+  color: var(--brand-navy);
+  animation: home-pulse 2.8s ease-in-out infinite;
+}
+.home-choice.is-training .home-choice-text {
+  color: rgba(22, 35, 95, 0.85);
+}
+.home-choice.is-class {
+  background: #fff;
+  color: #5a2fc4;
+  box-shadow: 0 10px 24px rgba(20, 30, 90, 0.25);
+}
+.home-choice.is-class .home-choice-text {
+  color: var(--color-text-muted);
 }
 @keyframes home-pulse {
   0%,
@@ -182,11 +215,6 @@
   50% {
     box-shadow: 0 10px 24px rgba(255, 170, 0, 0.35), 0 0 0 14px rgba(255, 198, 46, 0);
   }
-}
-.home-cta-note {
-  margin: 0 0 0 1.4rem;
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.8);
 }
 
 /* ---------- Hình minh hoạ (logo cá heo + hải đăng) ---------- */
@@ -446,11 +474,9 @@
   .home-points li {
     text-align: left;
   }
-  .home-cta {
-    align-items: center;
-  }
-  .home-cta-note {
-    margin: 0;
+  .home-choices {
+    margin: 0 auto;
+    text-align: left;
   }
   .home-stripes,
   .home-spark-1,
@@ -473,13 +499,15 @@
     font-size: 0.8rem;
     white-space: nowrap;
   }
-  /* Nút "Bắt đầu làm bài" lên ngay dưới tiêu đề để thấy được mà không cần cuộn */
+  /* 2 nút làm bài lên ngay dưới tiêu đề để thấy được mà không cần cuộn */
   .home-copy {
     display: flex;
     flex-direction: column;
   }
-  .home-cta {
+  .home-choices {
     order: 1;
+    grid-template-columns: 1fr;
+    width: 100%;
     margin-bottom: 1.4rem;
   }
   .home-points {
@@ -514,13 +542,6 @@
   .home-points li {
     font-size: 0.95rem;
   }
-  .home-start {
-    min-width: 0;
-    width: 100%;
-  }
-  .home-cta {
-    align-items: stretch;
-  }
   .home-dots {
     display: none;
   }
@@ -530,7 +551,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-start {
+  .home-choice.is-training {
     animation: none;
   }
 }

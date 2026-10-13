@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage.jsx';
 import StartPage from './pages/StartPage.jsx';
+import ClassAssignmentPage from './pages/ClassAssignmentPage.jsx';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import AdminLayout, { OwnerOnly } from './admin/AdminLayout.jsx';
@@ -26,7 +27,11 @@ export default function App() {
     <Routes>
       {/* Học viên */}
       <Route path="/" element={<HomePage />} />
+      {/* Training Test: nhập họ tên rồi chọn đề */}
       <Route path="/bat-dau" element={<StartPage />} />
+      {/* Class Assignment: chọn lớp -> bấm tên mình -> chọn bài của lớp */}
+      <Route path="/lop" element={<ClassAssignmentPage />} />
+      <Route path="/lop/:classId" element={<ClassAssignmentPage />} />
       <Route path="/lam-bai/:attemptId" element={<TestPage />} />
 
       {/* Admin */}

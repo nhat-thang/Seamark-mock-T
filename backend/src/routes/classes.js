@@ -454,7 +454,24 @@ ${s.start_time}`)]);
       )
       .all(st.id)
       .map((p) => ({ cycleNo: p.cycle_no, sessionsAt: p.sessions_at, note: p.note, by: p.display_name, createdAt: p.created_at }));
-    res.json({ student: loadStudent(db, cls, st.id), history, payments });
+    // Các bài học sinh đã làm (Class Assignment: học sinh bấm tên mình trong lớp), mới nhất trước
+    const attempts = db
+      .prepare(
+        `SELECT a.id, a.status, a.started_at, a.submitted_at, a.correct_count, a.question_total, a.score10, a.total_score,
+                v.title, e.id AS exam_id, e.code
+           FROM attempts a
+           JOIN students s ON s.id = a.student_id
+           JOIN exam_versions v ON v.id = a.exam_version_id
+           JOIN exams e ON e.id = v.exam_id
+          WHERE s.class_student_id = ?
+          ORDER BY a.started_at DESC`
+      )
+      .all(st.id)
+      .map((a) => ({
+        id: a.id, status: a.status, startedAt: a.started_at, submittedAt: a.submitted_at, examId: a.exam_id, examTitle: a.title,
+        examCode: a.code, correct: a.correct_count, total: a.question_total, score10: a.score10, totalScore: a.total_score,
+      }));
+    res.json({ student: loadStudent(db, cls, st.id), history, payments, attempts });
   });
 
   router.post('/:id/students/:sid/update', (req, res) => {
@@ -468,6 +485,11 @@ ${s.start_time}`)]);
     db.prepare(
       `UPDATE class_students SET full_name = ?, phone = ?, note = ?, joined_on = ?, prior_sessions = ?, updated_at = ? WHERE id = ?`
     ).run(v.fullName, v.phone, v.note, v.joinedOn, v.priorSessions, nowIso(), st.id);
+    if (v.fullName !== st.full_name) {
+      // Tên hiện ở trang Kết quả / Hoạt động của các bài học sinh này đã làm
+      const words = v.fullName.split(' ');
+      db.prepare('UPDATE students SET last_name = ?, first_name = ? WHERE class_student_id = ?').run(words.slice(0, -1).join(' '), words.at(-1), st.id);
+    }
     const changes = [];
     if (v.fullName !== st.full_name) changes.push(`tên "${st.full_name}" → "${v.fullName}"`);
     if (v.phone !== st.phone) changes.push(`SĐT "${st.phone || 'trống'}" → "${v.phone || 'trống'}"`);
@@ -486,9 +508,13 @@ ${s.start_time}`)]);
     if (!st) return;
     const hasHistory =
       db.prepare('SELECT 1 FROM attendance WHERE student_id = ?').get(st.id) ||
-      db.prepare('SELECT 1 FROM fee_payments WHERE student_id = ?').get(st.id);
+      db.prepare('SELECT 1 FROM fee_payments WHERE student_id = ?').get(st.id) ||
+      db.prepare('SELECT 1 FROM attempts a JOIN students s ON s.id = a.student_id WHERE s.class_student_id = ?').get(st.id);
     if (!hasHistory) {
-      db.prepare('DELETE FROM class_students WHERE id = ?').run(st.id);
+      db.transaction(() => {
+        db.prepare('DELETE FROM students WHERE class_student_id = ?').run(st.id); // người làm bài chưa có bài nào
+        db.prepare('DELETE FROM class_students WHERE id = ?').run(st.id);
+      })();
       audit(req, cls, 'delete_student', `Xóa học sinh "${st.full_name}" khỏi lớp "${cls.name}" (chưa học buổi nào)`);
       return res.json({ deleted: true });
     }

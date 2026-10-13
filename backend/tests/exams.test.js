@@ -53,7 +53,7 @@ test('GET /api/exams trả các đề đã xuất bản, không lộ ghi chú n�
   assert.equal(de2.questionCount, 30);
   // Bảo mật: chỉ có đúng các trường công khai
   for (const ex of body.exams) {
-    assert.deepEqual(Object.keys(ex).sort(), ['category', 'code', 'durationMinutes', 'id', 'publishedAt', 'questionCount', 'teacherName', 'title']);
+    assert.deepEqual(Object.keys(ex).sort(), ['code', 'durationMinutes', 'id', 'questionCount', 'title']);
   }
   await close();
 });

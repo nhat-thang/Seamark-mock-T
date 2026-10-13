@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { FileSelect } from './FileSelect.jsx';
 import { partsOf, TOEIC_PART_DEFAULTS } from '../../utils/parts.js';
-import { HOMEWORK_PREFIX, homeworkName, homeworkTitle } from '../../utils/homework.js';
+import { ASSIGNMENT_PREFIX, assignmentName, assignmentTitle } from '../../utils/assignment.js';
+import { AssignmentCard } from './AssignmentFields.jsx';
 
 // Tab "Thông tin đề": mã, tên, thời gian, cài đặt hiển thị, ghi chú nội bộ, audio phần nghe.
 export default function SettingsTab(props) {
@@ -17,12 +18,12 @@ export default function SettingsTab(props) {
             <input id="e-code" className="input" value={form.code} onChange={(e) => update('code', e.target.value.toUpperCase())} />
           </div>
           <div className="field exam-settings-title">
-            <label htmlFor="e-title">{isHomework ? 'Tên bài tập về nhà (học viên nhìn thấy)' : 'Tên đề (học viên nhìn thấy)'}</label>
+            <label htmlFor="e-title">Tên đề (học viên nhìn thấy)</label>
             {isHomework ? (
-              // Bài tập về nhà: chữ "Homework -" cố định ở đầu, giáo viên chỉ sửa phần tên phía sau
+              // Class Assignment: chữ "Class Assignment -" cố định ở đầu, giáo viên chỉ sửa phần tên phía sau
               <div className="hw-title-input">
-                <span className="hw-prefix" aria-hidden="true">{HOMEWORK_PREFIX.trim()}</span>
-                <input id="e-title" className="input" value={homeworkName(form.title)} onChange={(e) => update('title', homeworkTitle(e.target.value))} />
+                <span className="hw-prefix" aria-hidden="true">{ASSIGNMENT_PREFIX.trim()}</span>
+                <input id="e-title" className="input" value={assignmentName(form.title)} onChange={(e) => update('title', assignmentTitle(e.target.value))} />
               </div>
             ) : (
               <input id="e-title" className="input" value={form.title} onChange={(e) => update('title', e.target.value)} />
@@ -72,6 +73,8 @@ export default function SettingsTab(props) {
         bạn bấm "{meta.published ? 'Xuất bản lại' : 'Xuất bản'}" ở tab "Kiểm tra & xuất bản".
       </p>
     </section>
+
+    {isHomework && <AssignmentCard examId={props.examId} exam={meta.exam} readOnly={readOnly} />}
 
     {props.content.examType === 'CUSTOM' ? (
       <CustomSettings {...props} />

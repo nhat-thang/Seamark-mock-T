@@ -5,8 +5,8 @@ import PageShell from '../components/brand/PageShell.jsx';
 import { loadStudent, saveStudent } from '../utils/studentStorage.js';
 import './StartPage.css';
 
-// Màn hình sau khi bấm "Bắt đầu làm bài":
-// bước 1 nhập thông tin -> bước 2 chọn đề.
+// Training Test (cho mọi người): bước 1 nhập họ tên (không cần SĐT) -> bước 2 chọn đề.
+// Đề riêng của lớp (Class Assignment) ở trang /lop.
 export default function StartPage() {
   // Nếu học viên đã nhập trước đó (cùng tab) thì điền sẵn
   const [student, setStudent] = useState(() => loadStudent());
@@ -20,7 +20,7 @@ export default function StartPage() {
 
   if (step === 'form') {
     return (
-      <PageShell title="Thông tin học viên" subtitle="Vui lòng nhập thông tin trước khi chọn đề thi." step={1} narrow>
+      <PageShell title="Training Test" subtitle="Nhập họ và tên của bạn để bắt đầu luyện tập." step={1} narrow>
         <div className="card">
           <StudentForm initialValues={student} onSubmit={handleSubmit} />
         </div>
@@ -32,7 +32,7 @@ export default function StartPage() {
     <PageShell title={`Xin chào ${student.lastName} ${student.firstName}!`} subtitle="Chọn một đề để bắt đầu. Chúc bạn làm bài thật tốt!" step={2}>
       <div className="card">
         <div className="start-card-head">
-          <h2 className="start-card-title">Chọn bài để làm</h2>
+          <h2 className="start-card-title">Đề Training Test</h2>
           <button type="button" className="btn btn-link" onClick={() => setStep('form')}>
             Sửa thông tin
           </button>
