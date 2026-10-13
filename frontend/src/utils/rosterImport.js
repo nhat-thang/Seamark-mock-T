@@ -6,15 +6,16 @@ export const FIELD_OPTIONS = [
   { key: 'fullName', label: 'Họ và tên' },
   { key: 'lastName', label: 'Họ (họ và tên đệm)' },
   { key: 'firstName', label: 'Tên' },
-  { key: 'phone', label: 'Số điện thoại' },
+  { key: 'parentName', label: 'Tên phụ huynh' },
+  { key: 'phone', label: 'SĐT phụ huynh' },
+  { key: 'parentIdNumber', label: 'CCCD phụ huynh' },
   { key: 'joinedOn', label: 'Ngày vào học' },
-  { key: 'priorSessions', label: 'Số buổi đã học trước đó' },
   { key: 'note', label: 'Ghi chú' },
   { key: 'extra', label: 'Gộp vào ghi chú' },
   { key: 'skip', label: 'Bỏ qua cột này' },
 ];
 // Mỗi loại này chỉ được một cột
-const SINGLE = ['fullName', 'lastName', 'firstName', 'phone', 'joinedOn', 'priorSessions'];
+const SINGLE = ['fullName', 'lastName', 'firstName', 'parentName', 'phone', 'parentIdNumber', 'joinedOn'];
 
 const NOTE_MAX = 500;
 const NAME_MAX = 80;
@@ -61,10 +62,20 @@ export function normalizePhone(raw) {
     if (d.startsWith('84') && d.length === 11) d = `0${d.slice(2)}`; // 84 912 345 678
     if (/^[35789]\d{8}$/.test(d)) d = `0${d}`; // di động mất số 0
     if (/^2\d{9}$/.test(d)) d = `0${d}`; // số bàn (02x...) mất số 0
-    if (/^\d{8,15}$/.test(d)) out.push(d);
+    // Di động 10 số, máy bàn 11 số (02x...) — giống kiểm tra ở server (routes/classes.js cleanPhone)
+    if (/^0\d{9}$/.test(d) || /^02\d{9}$/.test(d)) out.push(d);
   }
   if (out.length === 0) return { phone: '', others: [], invalid: text };
   return { phone: out[0], others: out.slice(1), invalid: '' };
+}
+
+/** Số CCCD (12 số) / CMND cũ (9 số). Excel làm mất số 0 ở đầu CCCD (còn 11 số) thì thêm lại. { value, invalid } */
+export function normalizeIdNumber(raw) {
+  const text = String(raw ?? '').trim();
+  if (!text) return { value: '', invalid: '' };
+  let d = text.replace(/[\s.-]/g, '');
+  if (/^\d{11}$/.test(d)) d = `0${d}`;
+  return /^(\d{9}|\d{12})$/.test(d) ? { value: d, invalid: '' } : { value: '', invalid: text };
 }
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -113,11 +124,12 @@ export function mappingError(fields) {
  * Ghép các cột thành danh sách học sinh.
  * columns: [{ header, letter }]; fields: loại của từng cột; rows: [{ rowNumber, cells }]
  * existing: học sinh đang học trong lớp (để báo trùng); defaultJoinedOn: ngày vào học khi file không có
- * Trả về [{ rowNumber, fullName, phone, joinedOn, priorSessions, note, problems: [], warnings: [], duplicate, include }]
+ * Trả về [{ rowNumber, fullName, parentName, parentPhone, parentIdNumber, joinedOn, note, problems: [], warnings: [], duplicate, include }]
+ * Nhập từ Excel chỉ bắt buộc họ tên (đã chốt); thiếu thông tin phụ huynh thì bổ sung sau (lớp hiện nhãn "Thiếu thông tin").
  */
 export function buildStudents({ columns, rows, fields, defaultJoinedOn, existing = [] }) {
   const idx = (f) => fields.indexOf(f);
-  const existingKeys = existing.map((s) => ({ name: fold(s.fullName), phone: s.phone }));
+  const existingKeys = existing.map((s) => ({ name: fold(s.fullName), phone: s.parentPhone ?? s.phone ?? '' }));
   const seen = new Map(); // tên + SĐT -> số dòng đầu tiên trong file
   const out = [];
 
@@ -148,20 +160,21 @@ export function buildStudents({ columns, rows, fields, defaultJoinedOn, existing
     }
     if (p.others.length) noteParts.push(`SĐT khác: ${p.others.join(', ')}`);
 
+    let parentName = tidyName(cell(idx('parentName')));
+    if (parentName.length > NAME_MAX) parentName = parentName.slice(0, NAME_MAX).trim();
+
+    const id = normalizeIdNumber(cell(idx('parentIdNumber')));
+    if (id.invalid) {
+      warnings.push(`CCCD "${id.invalid}" không đúng (CCCD gồm 12 số), đã đưa vào ghi chú`);
+      noteParts.push(`CCCD: ${id.invalid}`);
+    }
+
     let joinedOn = defaultJoinedOn;
     const joinedRaw = cell(idx('joinedOn'));
     if (joinedRaw) {
       const parsed = parseDate(joinedRaw);
       if (parsed) joinedOn = parsed;
       else warnings.push(`Không hiểu ngày vào học "${joinedRaw}", dùng ngày mặc định`);
-    }
-
-    let priorSessions = 0;
-    const priorRaw = cell(idx('priorSessions'));
-    if (priorRaw) {
-      const n = Number(priorRaw);
-      if (Number.isInteger(n) && n >= 0 && n <= 500) priorSessions = n;
-      else warnings.push(`Số buổi đã học "${priorRaw}" không đúng, tính là 0`);
     }
 
     // Cột lạ: "Tên cột: giá trị"
@@ -190,9 +203,10 @@ export function buildStudents({ columns, rows, fields, defaultJoinedOn, existing
     out.push({
       rowNumber: row.rowNumber,
       fullName,
-      phone: p.phone,
+      parentName,
+      parentPhone: p.phone,
+      parentIdNumber: id.value,
       joinedOn,
-      priorSessions,
       note,
       problems,
       warnings,

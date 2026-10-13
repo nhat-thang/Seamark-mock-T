@@ -17,7 +17,7 @@
 // - Tắt cảnh báo: theo từng (học sinh, chu kỳ) — tắt chu kỳ nào thì ẩn luôn cảnh báo của chu kỳ đó;
 //   chu kỳ sau cảnh báo bình thường.
 // Ngày ("hôm nay", ngày của buổi) luôn theo giờ Việt Nam; thời điểm (startsAt, endsAt, now) là UTC.
-const { vnDate } = require('../classes/time');
+const { vnDate, addDays: addDaysVn } = require('../classes/time');
 
 /** Số buổi trong chu kỳ hiện tại còn lại từ đây trở xuống thì bắt đầu cảnh báo */
 const WARN_FROM_REMAINING = 4;
@@ -81,7 +81,7 @@ function studentSessions(tl, student) {
  * Các chu kỳ của một học sinh (từ chu kỳ của buổi bắt đầu học), chỉ những chu kỳ đã xếp đủ lịch.
  * payments: { [cycleNo]: { amount, sessionIds: [...], paidOn, method, note, ... } }
  * Trả về [{ cycleNo, sessions, sessionCount, amount, dueDate, payment, mismatch }]
- *   amount: số tiền đã chốt nếu đã thu, ngược lại số tiền tính theo lịch + giá hiện tại
+ *   amount: số tiền phải thu (đã thu thì là số đã chốt lúc thu, ngược lại tính theo lịch + giá hiện tại)
  *   mismatch: đã thu nhưng các buổi của chu kỳ trên lịch hiện tại khác lúc thu (do thêm / xóa buổi)
  */
 function studentCycles(tl, student, payments = {}) {
@@ -102,7 +102,8 @@ function studentCycles(tl, student, payments = {}) {
       lastNo: k * X,
       sessions,
       sessionCount: sessions.length,
-      amount: payment ? payment.amount : amountFor(sessions.length, tl.pricePerSession, student.discountPercent),
+      // Đã thu: số tiền phải thu đã chốt lúc thu (dueAmount); chưa thu: tính theo lịch + giá hiện tại
+      amount: payment ? payment.dueAmount ?? payment.amount : amountFor(sessions.length, tl.pricePerSession, student.discountPercent),
       // Hạn đóng: chu kỳ đầu của học sinh = ngày buổi bắt đầu học; còn lại = ngày buổi cuối chu kỳ trước
       dueDate: k === firstCycle ? mine[0].date : tl.sessions[(k - 1) * X - 1].date,
       payment,
@@ -190,13 +191,22 @@ function studentMonth(tl, student, cycles, month) {
   };
 }
 
-/** Lớp sắp sang chu kỳ mới mà chưa xếp đủ lịch chu kỳ đó: { cycleNo, scheduled, needed } hoặc null */
+/**
+ * Lớp chưa xếp đủ lịch của chu kỳ cần thu: { cycleNo, scheduled, needed } hoặc null.
+ * - Chu kỳ hiện tại chưa đủ X buổi (học sinh chưa thu được chu kỳ này) -> nhắc ngay.
+ * - Chu kỳ sau chưa đủ X buổi và chu kỳ hiện tại chỉ còn ≤ 4 buổi -> nhắc.
+ * Lớp đã hết lịch hơn 14 ngày (coi như khóa học đã kết thúc) thì thôi nhắc.
+ */
 function scheduleGap(tl) {
   if (!tl.configured || tl.total === 0) return null;
-  const n = tl.currentCycle + 1;
-  if (cycleScheduled(tl, n)) return null;
+  const last = tl.sessions[tl.total - 1];
+  if (last.passed && last.date < addDaysVn(tl.today, -14)) return null;
+  const c = tl.currentCycle;
+  const gap = (k) => ({ cycleNo: k, scheduled: scheduledInCycle(tl, k), needed: tl.cycleSessions });
+  if (!cycleScheduled(tl, c)) return gap(c);
+  if (cycleScheduled(tl, c + 1)) return null;
   if (tl.remainingInCurrent > WARN_FROM_REMAINING) return null; // còn xa, chưa cần nhắc
-  return { cycleNo: n, scheduled: scheduledInCycle(tl, n), needed: tl.cycleSessions };
+  return gap(c + 1);
 }
 
 module.exports = {

@@ -1,27 +1,5 @@
-// Học sinh của lớp: đọc kèm số buổi đã học, điểm cộng, và trạng thái nhắc học phí.
-//
-// NHẮC HỌC PHÍ (đã chốt với người dùng): tính theo số buổi học của TỪNG học sinh, không theo số buổi của lớp.
-// - Một buổi được tính cho học sinh khi buổi đó đã điểm danh và học sinh có tên trong điểm danh,
-//   KỂ CẢ khi vắng (có phép hay không phép).
-// - Học sinh vào lớp muộn chỉ có tên trong các buổi từ ngày vào học -> chỉ tính các buổi đó.
-//   Ví dụ lớp đã học 3 buổi rồi bạn B mới vào: lớp học tới buổi 10 thì B mới được tính 7 buổi.
-// - Cộng thêm "số buổi đã học trước đó" (prior_sessions) nhập tay khi đưa lớp đang học dở lên web.
-// - Nhắc mỗi N buổi (classes.fee_every). Mỗi lần bấm "Đã thu học phí" là xong một đợt;
-//   đợt tiếp theo nhắc khi học đủ N buổi nữa (mốc 10, 20, 30... dù thu sớm hay muộn).
-
-/** Trạng thái học phí. sessions: số buổi đã tính; paidCycles: số đợt đã thu; every: N buổi / đợt */
-function feeInfo({ sessions, paidCycles, every }) {
-  if (!every) return { state: 'off', sessions, paidCycles };
-  const nextAt = (paidCycles + 1) * every; // mốc nhắc tiếp theo
-  // Số buổi đã học trong đợt hiện tại (để hiện thanh tiến độ "7/10")
-  const progress = Math.max(0, sessions - paidCycles * every);
-  if (sessions >= nextAt) {
-    return { state: 'due', sessions, paidCycles, every, nextAt, progress, owed: Math.floor(sessions / every) - paidCycles, remaining: 0 };
-  }
-  const remaining = nextAt - sessions;
-  // Còn 1 buổi nữa là tới hạn: báo trước để giáo viên kịp nhắc phụ huynh
-  return { state: remaining === 1 ? 'soon' : 'ok', sessions, paidCycles, every, nextAt, progress, owed: 0, remaining };
-}
+// Học sinh của lớp: đọc kèm thống kê điểm danh, và lọc thông tin theo vai trò.
+// Học phí (chu kỳ, cảnh báo, số tiền) tính ở utils/tuition.js, ghép dữ liệu ở classes/tuitionData.js.
 
 const STUDENT_SELECT = `
   SELECT st.*,
@@ -30,26 +8,26 @@ const STUDENT_SELECT = `
          (SELECT COUNT(*) FROM attendance a WHERE a.student_id = st.id AND a.status = 'late') AS n_late,
          (SELECT COUNT(*) FROM attendance a WHERE a.student_id = st.id AND a.status = 'excused') AS n_excused,
          (SELECT COUNT(*) FROM attendance a WHERE a.student_id = st.id AND a.status = 'absent') AS n_absent,
-         (SELECT COALESCE(SUM(a.bonus), 0) FROM attendance a WHERE a.student_id = st.id) AS bonus_total,
-         (SELECT COALESCE(MAX(p.cycle_no), 0) FROM fee_payments p WHERE p.student_id = st.id) AS paid_cycles,
-         (SELECT MAX(p.created_at) FROM fee_payments p WHERE p.student_id = st.id) AS last_paid_at
+         (SELECT COALESCE(SUM(a.bonus), 0) FROM attendance a WHERE a.student_id = st.id) AS bonus_total
     FROM class_students st`;
 
-/** Chuyển một dòng (từ STUDENT_SELECT) sang dữ liệu trả về cho trình duyệt */
-function toStudent(row, every) {
-  const sessions = row.prior_sessions + row.attended;
+/** Một dòng database -> học sinh (ĐỦ thông tin; gửi cho trình duyệt phải qua studentView) */
+function toStudent(row) {
   return {
     id: row.id,
     classId: row.class_id,
     fullName: row.full_name,
-    phone: row.phone,
+    parentName: row.parent_name,
+    parentPhone: row.phone, // cột phone cũ = SĐT phụ huynh
+    parentIdNumber: row.parent_id_number,
     note: row.note,
+    startAt: row.start_at,
     joinedOn: row.joined_on,
-    priorSessions: row.prior_sessions,
+    discountPercent: row.discount_percent,
+    discountNote: row.discount_note,
     isActive: !row.removed_at,
     removedAt: row.removed_at,
     stats: {
-      sessions,
       attended: row.attended,
       present: row.n_present,
       late: row.n_late,
@@ -57,7 +35,6 @@ function toStudent(row, every) {
       absent: row.n_absent,
       bonus: row.bonus_total,
     },
-    fee: { ...feeInfo({ sessions, paidCycles: row.paid_cycles, every }), lastPaidAt: row.last_paid_at },
   };
 }
 
@@ -71,20 +48,19 @@ function loadStudents(db, cls) {
   return db
     .prepare(`${STUDENT_SELECT} WHERE st.class_id = ?`)
     .all(cls.id)
-    .map((r) => toStudent(r, cls.fee_every))
+    .map(toStudent)
     .sort((a, b) => Number(!a.isActive) - Number(!b.isActive) || byGivenName(a, b));
 }
 
 function loadStudent(db, cls, studentId) {
   const row = db.prepare(`${STUDENT_SELECT} WHERE st.class_id = ? AND st.id = ?`).get(cls.id, studentId);
-  return row ? toStudent(row, cls.fee_every) : null;
+  return row ? toStudent(row) : null;
 }
 
 /**
  * Danh sách học sinh của MỘT BUỔI HỌC (để điểm danh):
  * - học sinh đã có tên trong điểm danh buổi này (kể cả đã nghỉ học sau đó), và
- * - học sinh vào học từ ngày học trở về trước, chưa nghỉ trước giờ học.
- * Nhờ vậy học sinh vào lớp muộn không bị tính các buổi trước khi vào.
+ * - học sinh có buổi bắt đầu học từ buổi này trở về trước, chưa nghỉ trước giờ học.
  */
 function loadRoster(db, cls, session) {
   return db
@@ -92,33 +68,57 @@ function loadRoster(db, cls, session) {
       `${STUDENT_SELECT}
         WHERE st.class_id = ?
           AND (st.id IN (SELECT student_id FROM attendance WHERE session_id = ?)
-               OR (st.joined_on <= ? AND (st.removed_at IS NULL OR st.removed_at > ?)))`
+               OR ((st.start_at IS NULL OR st.start_at <= ?) AND (st.removed_at IS NULL OR st.removed_at > ?)))`
     )
-    .all(cls.id, session.id, session.date, session.starts_at)
-    .map((r) => toStudent(r, cls.fee_every))
+    .all(cls.id, session.id, session.starts_at, session.starts_at)
+    .map(toStudent)
     .sort(byGivenName);
 }
 
+/** Owner: học sinh còn thiếu thông tin bắt buộc (nhập từ Excel thiếu cột...) */
+const missingInfo = (s) => !s.parentName || !s.parentPhone || !s.parentIdNumber;
+
 /**
- * Học sinh đang học có học phí tới hạn / sắp tới hạn, ở mọi lớp chưa xóa.
- * Dùng cho trang chính và chuông thông báo.
+ * Dữ liệu học sinh gửi cho trình duyệt THEO VAI TRÒ — lọc ngay ở server (đã chốt):
+ * admin (giáo viên) chỉ nhận họ tên, thống kê điểm danh, số buổi đã học, nhãn Đã thu / Chưa đóng, mức cảnh báo.
+ * KHÔNG có tên phụ huynh, SĐT, CCCD, ghi chú (có thể chứa thông tin cá nhân từ Excel), số tiền, giảm giá.
+ * tuition: kết quả tuitionOf() (classes/tuitionData.js) hoặc undefined.
  */
-function feeReminders(db) {
-  const classes = db.prepare('SELECT * FROM classes WHERE deleted_at IS NULL AND fee_every > 0').all();
-  const out = [];
-  for (const cls of classes) {
-    const rows = db.prepare(`${STUDENT_SELECT} WHERE st.class_id = ? AND st.removed_at IS NULL`).all(cls.id);
-    for (const r of rows) {
-      const s = toStudent(r, cls.fee_every);
-      if (s.fee.state === 'due' || s.fee.state === 'soon') {
-        out.push({ ...s, className: cls.name, classColor: cls.color });
+function studentView(s, isOwner, tuition) {
+  const t = tuition
+    ? {
+        sessionsDone: tuition.sessionsDone,
+        startNo: tuition.startNo,
+        startDate: tuition.startDate,
+        labels: tuition.labels,
+        alert: tuition.alert ? { level: tuition.alert.level, cycleNo: tuition.alert.cycleNo, remaining: tuition.alert.remaining, kind: tuition.alert.kind } : null,
       }
-    }
+    : undefined;
+  if (!isOwner) {
+    return { id: s.id, classId: s.classId, fullName: s.fullName, isActive: s.isActive, stats: s.stats, tuition: t };
   }
-  // Tới hạn trước, sắp tới hạn sau; trong nhóm thì theo tên lớp, tên học sinh
-  const rank = { due: 0, soon: 1 };
-  out.sort((a, b) => rank[a.fee.state] - rank[b.fee.state] || viCompare(a.className, b.className) || byGivenName(a, b));
-  return out;
+  return {
+    ...s,
+    missingInfo: missingInfo(s),
+    tuition: t && {
+      ...t,
+      alert: t.alert && { ...t.alert, amount: tuition.alertAmount, snoozed: false },
+      snoozedCycles: tuition.snoozedCycles,
+      cycles: tuition.cycles.map((cy) => ({
+        cycleNo: cy.cycleNo,
+        firstNo: cy.firstNo,
+        lastNo: cy.lastNo,
+        sessionCount: cy.sessionCount,
+        amount: cy.amount,
+        dueDate: cy.dueDate,
+        mismatch: cy.mismatch,
+        snoozed: tuition.snoozedCycles.includes(cy.cycleNo),
+        payment: cy.payment && {
+          amount: cy.payment.amount, paidOn: cy.payment.paidOn, method: cy.payment.method, note: cy.payment.note, by: cy.payment.by,
+        },
+      })),
+    },
+  };
 }
 
-module.exports = { feeInfo, loadStudents, loadStudent, loadRoster, feeReminders, byGivenName };
+module.exports = { STUDENT_SELECT, loadStudents, loadStudent, loadRoster, studentView, missingInfo, byGivenName };

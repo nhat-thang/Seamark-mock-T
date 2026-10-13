@@ -55,8 +55,6 @@ const ADMIN_ROUTES = [
   ['POST', '/api/admin/classes/1/students/1/update'],
   ['POST', '/api/admin/classes/1/students/1/remove'],
   ['POST', '/api/admin/classes/1/students/1/restore'],
-  ['POST', '/api/admin/classes/1/students/1/fee-paid'],
-  ['POST', '/api/admin/classes/1/students/1/fee-undo'],
   ['GET', '/api/admin/schedule/teachers'],
   ['GET', '/api/admin/schedule/overview'],
   ['GET', '/api/admin/schedule?from=2026-01-01&to=2026-01-07'],
@@ -71,6 +69,17 @@ const ADMIN_ROUTES = [
   ['GET', '/api/admin/classes/1/export'],
   ['GET', '/api/admin/notifications'],
   ['POST', '/api/admin/notifications/read'],
+  ['GET', '/api/admin/schedule/alerts/export'],
+  ['GET', '/api/admin/schedule/1/export'],
+  ['GET', '/api/admin/exams/1/activity/export'],
+  ['GET', '/api/admin/tuition'],
+  ['GET', '/api/admin/tuition/export'],
+  ['GET', '/api/admin/tuition/students/1'],
+  ['GET', '/api/admin/tuition/students/1/export'],
+  ['POST', '/api/admin/tuition/students/1/pay'],
+  ['POST', '/api/admin/tuition/students/1/unpay'],
+  ['POST', '/api/admin/tuition/students/1/snooze'],
+  ['POST', '/api/admin/tuition/students/1/unsnooze'],
 ];
 
 test('Mọi API admin đều từ chối khi chưa đăng nhập (401)', async () => {

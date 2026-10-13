@@ -1,29 +1,46 @@
 // API thời khóa biểu + buổi học + điểm danh (requireAdmin gắn ở app.js).
 //   GET  /api/admin/schedule/teachers        danh sách giáo viên (tài khoản đang hoạt động)
-//   GET  /api/admin/schedule/overview        dữ liệu trang chính: lịch dạy của tôi, buổi chưa điểm danh, nhắc học phí
+//   GET  /api/admin/schedule/overview        trang chính: hôm nay, lịch dạy của tôi, buổi chưa điểm danh, cảnh báo học phí
+//   GET  /api/admin/schedule/alerts/export   tải danh sách cảnh báo học phí (owner có số tiền, giáo viên không)
 //   GET  /api/admin/schedule?from&to         các buổi học trong khoảng ngày (lọc classId, teacherId, mine=1)
 //   POST /api/admin/schedule                 xếp lịch (CHỈ admin chính), có "lặp lại hằng tuần"
-//   GET  /api/admin/schedule/:id             chi tiết buổi học + danh sách điểm danh (giáo viên của buổi / admin chính)
+//   GET  /api/admin/schedule/:id             chi tiết buổi học + danh sách điểm danh
+//   GET  /api/admin/schedule/:id/export      tải chi tiết một buổi học (điểm danh) về Excel
 //   POST /api/admin/schedule/:id/update      sửa lịch (CHỈ admin chính): buổi này hoặc cả các buổi sau
 //   POST /api/admin/schedule/:id/delete      xóa buổi (CHỈ admin chính): buổi này hoặc cả các buổi sau
 //   POST /api/admin/schedule/:id/start       giáo viên bấm "Bắt đầu buổi học" (từ 30 phút trước giờ học)
 //   POST /api/admin/schedule/:id/attendance  lưu điểm danh + điểm cộng
+//
+// Quy tắc thời khóa biểu (đã chốt, chặn ở đây chứ không chỉ ở giao diện):
+// - Một buổi có thể nhiều giáo viên. Giáo viên được xếp dạy một buổi tự thành giáo viên phụ trách lớp đó.
+// - Buổi ĐÃ điểm danh: không xóa được, không đổi được ngày giờ; chỉ đổi giáo viên / phòng / ghi chú.
+// - Buổi chưa điểm danh: sửa / xóa được (giao diện hỏi lại trước).
+// - Thêm buổi vào quá khứ được nhưng phải xác nhận ("buổi này sẽ được tính tiền").
+// - Thêm / xóa / dời buổi làm đánh số lại các buổi -> chu kỳ học phí đã thu có thể bị lệch: server báo trước
+//   (reason 'confirm') để hộp xác nhận nêu rõ; gửi lại với force: true mới lưu. Số tiền đã thu giữ nguyên.
 const crypto = require('crypto');
 const express = require('express');
+const ExcelJS = require('exceljs');
 const { requireJson } = require('../auth/middleware');
 const { logAudit } = require('../audit');
 const time = require('../classes/time');
-const { sessionPermissions, describeSession } = require('../classes/rules');
-const { loadRoster, feeReminders } = require('../classes/students');
-const { SESSION_SELECT, teacherName, toSession, findSession, notify } = require('../classes/sessions');
+const { sessionPermissions, describeSession, teacherIdsOf } = require('../classes/rules');
+const { loadRoster, studentView } = require('../classes/students');
+const { SESSION_SELECT, teacherName, teachersOf, toSession, findSession, notify } = require('../classes/sessions');
+const { accessOf, addClassTeachers } = require('../classes/access');
+const { classTuition, paidCyclesAffected } = require('../classes/tuitionData');
+const { collectAlerts, LEVEL_LABELS } = require('../classes/alerts');
+const { styleHeader, fillRow, sendWorkbook, excelDate, MONEY_FMT } = require('../utils/excel');
 
-const { vnDate, isValidDate, isValidTime, toInstant, addDays, weekdayOf, daysBetween, formatDate, WEEKDAY_SHORT } = time;
+const { vnDate, isValidDate, isValidTime, toInstant, addDays, weekdayOf, daysBetween, formatDate, WEEKDAY_SHORT, WEEKDAY_LONG } = time;
 
 const STATUSES = ['present', 'late', 'excused', 'absent'];
 const STATUS_LABELS = { present: 'Có mặt', late: 'Đi muộn', excused: 'Vắng có phép', absent: 'Vắng không phép' };
+const FEE_LABELS = { paid: 'Đã thu', unpaid: 'Chưa đóng', not_started: 'Chưa bắt đầu' };
 const MAX_BONUS = 50;
 const MAX_SESSIONS_PER_REQUEST = 300; // "lặp lại hằng tuần" tối đa ~ 1 năm, 6 buổi / tuần
 const MAX_RANGE_DAYS = 62; // xem tối đa 2 tháng một lần
+const MAX_TEACHERS = 6;
 
 const nowIso = () => new Date().toISOString();
 const toInt = (v) => Number.parseInt(v, 10);
@@ -41,10 +58,14 @@ function scheduleRouter(db) {
   }
 
   const activeTeacher = (id) => db.prepare('SELECT id, display_name FROM admins WHERE id = ? AND is_active = 1').get(id);
+  /** "Cô Lan, Thầy Nam" (+ "Cô Hà (giáo viên ngoài)") */
+  const teacherLabel = (teachers, otherName) =>
+    [...teachers.map((t) => t.display_name), ...(otherName ? [`${otherName} (giáo viên ngoài)`] : [])].join(', ');
 
   /**
-   * Đọc giờ học + giáo viên từ dữ liệu gửi lên. Bắt buộc chọn giáo viên:
-   * teacherId = id tài khoản, hoặc để trống teacherId và gõ teacherName ("Khác").
+   * Đọc giờ học + giáo viên từ dữ liệu gửi lên. Bắt buộc có ít nhất một giáo viên:
+   * teacherIds = các tài khoản giáo viên, và / hoặc teacherName = giáo viên ngoài ("Khác").
+   * (teacherId đơn lẻ vẫn nhận, cho bản giao diện cũ.)
    */
   function readSlot(body) {
     const startTime = String(body?.startTime || '');
@@ -52,57 +73,79 @@ function scheduleRouter(db) {
     if (!isValidTime(startTime) || !isValidTime(endTime)) return { error: 'Vui lòng chọn giờ bắt đầu và giờ kết thúc.' };
     if (endTime <= startTime) return { error: 'Giờ kết thúc phải sau giờ bắt đầu (buổi học không kéo qua nửa đêm).' };
 
-    let teacher = null;
-    let otherName = '';
-    if (body?.teacherId !== undefined && body?.teacherId !== null && body?.teacherId !== '') {
-      teacher = activeTeacher(toInt(body.teacherId) || 0);
-      if (!teacher) return { error: 'Giáo viên đã chọn không tồn tại hoặc tài khoản đã bị vô hiệu hóa.' };
-    } else {
-      otherName = cleanText(body?.teacherName, 60);
-      if (!otherName) return { error: 'Vui lòng chọn giáo viên dạy buổi học (hoặc chọn "Khác" rồi gõ tên giáo viên).' };
+    let rawIds = Array.isArray(body?.teacherIds) ? body.teacherIds : [];
+    if (!rawIds.length && body?.teacherId !== undefined && body?.teacherId !== null && body?.teacherId !== '') rawIds = [body.teacherId];
+    const ids = [...new Set(rawIds.map((v) => toInt(v)).filter(Boolean))];
+    if (ids.length > MAX_TEACHERS) return { error: `Một buổi tối đa ${MAX_TEACHERS} giáo viên.` };
+    const teachers = [];
+    for (const id of ids) {
+      const t = activeTeacher(id);
+      if (!t) return { error: 'Giáo viên đã chọn không tồn tại hoặc tài khoản đã bị vô hiệu hóa.' };
+      teachers.push(t);
     }
+    const otherName = cleanText(body?.teacherName, 60);
+    if (!teachers.length && !otherName) return { error: 'Vui lòng chọn giáo viên dạy buổi học (hoặc chọn "Khác" rồi gõ tên giáo viên).' };
     return {
       value: {
         startTime,
         endTime,
-        teacherId: teacher ? teacher.id : null,
+        teacherIds: teachers.map((t) => t.id),
         otherName,
-        teacherName: teacher ? teacher.display_name : otherName,
-        teacherLabel: teacher ? teacher.display_name : `${otherName} (giáo viên ngoài)`,
+        teacherLabel: teacherLabel(teachers, otherName),
         room: cleanText(body?.room, 40),
         note: cleanText(body?.note, 200),
       },
     };
   }
 
+  /** Ghi các giáo viên của buổi + tự thêm họ vào giáo viên phụ trách lớp */
+  function setSessionTeachers(sessionId, classId, teacherIds) {
+    db.prepare('DELETE FROM session_teachers WHERE session_id = ?').run(sessionId);
+    const add = db.prepare('INSERT OR IGNORE INTO session_teachers (session_id, admin_id) VALUES (?, ?)');
+    for (const id of teacherIds) add.run(sessionId, id);
+    addClassTeachers(db, classId, teacherIds);
+  }
+
   /**
-   * Tìm buổi học trùng giờ: cùng lớp, hoặc cùng giáo viên (có tài khoản). Bỏ qua các buổi trong exceptIds.
+   * Tìm buổi học trùng giờ: cùng lớp, hoặc có cùng giáo viên (có tài khoản). Bỏ qua các buổi trong exceptIds.
    * Trả về danh sách câu mô tả để admin chính đọc và quyết định "Vẫn xếp".
    */
-  function findConflicts({ classId, teacherId, dates, startTime, endTime, exceptIds = [] }) {
+  function findConflicts({ classId, teacherIds, dates, startTime, endTime, exceptIds = [] }) {
+    const inIds = teacherIds.length ? teacherIds.map(() => '?').join(',') : 'NULL';
     const q = db.prepare(
       `${SESSION_SELECT}
         WHERE c.deleted_at IS NULL AND s.date = ? AND s.start_time < ? AND s.end_time > ?
-          AND (s.class_id = ? OR (? IS NOT NULL AND s.teacher_admin_id = ?))`
+          AND (s.class_id = ? OR EXISTS (SELECT 1 FROM session_teachers x WHERE x.session_id = s.id AND x.admin_id IN (${inIds})))`
     );
     const out = [];
     for (const date of dates) {
-      for (const r of q.all(date, endTime, startTime, classId, teacherId, teacherId)) {
+      for (const r of q.all(date, endTime, startTime, classId, ...teacherIds)) {
         if (exceptIds.includes(r.id)) continue;
-        const who = r.class_id === classId ? `lớp "${r.class_name}" đã có buổi học` : `${teacherName(r)} đang dạy lớp "${r.class_name}"`;
+        const busy = teachersOf(r).filter((t) => teacherIds.includes(t.id)).map((t) => t.name).join(', ');
+        const who = r.class_id === classId ? `lớp "${r.class_name}" đã có buổi học` : `${busy} đang dạy lớp "${r.class_name}"`;
         out.push(`${describeSession(r)}: ${who}`);
       }
     }
     return out;
   }
 
-  function conflictResponse(res, conflicts) {
-    return res.status(409).json({
-      reason: 'conflict',
-      error: 'Lịch bị trùng giờ với buổi học khác.',
+  /**
+   * Hỏi lại trước khi lưu (trùng giờ, buổi đã qua sẽ được tính tiền, chu kỳ đã thu bị lệch).
+   * Trả true nếu đã gửi 409 cho trình duyệt.
+   */
+  function needsConfirm(req, res, { conflicts = [], past = 0, cycles = [] }) {
+    if (req.body?.force) return false;
+    if (!conflicts.length && !past && !cycles.length) return false;
+    res.status(409).json({
+      reason: 'confirm',
+      error: conflicts.length ? 'Lịch bị trùng giờ với buổi học khác.' : 'Vui lòng xác nhận thay đổi này.',
       conflicts: conflicts.slice(0, 8),
       more: Math.max(0, conflicts.length - 8),
+      past, // số buổi đã qua giờ học: sẽ được tính tiền
+      cycles: cycles.slice(0, 20).map((c) => ({ fullName: c.fullName, cycleNo: c.cycleNo })),
+      moreCycles: Math.max(0, cycles.length - 20),
     });
+    return true;
   }
 
   /** Buổi học theo :id. Gửi lỗi 404 và trả null nếu không có. */
@@ -118,26 +161,48 @@ function scheduleRouter(db) {
     return db.prepare(`${SESSION_SELECT} WHERE s.series_id = ? AND s.date >= ? ORDER BY s.starts_at`).all(s.series_id, s.date);
   }
 
-  /** Chi tiết buổi học + danh sách học sinh (kèm điểm danh đã lưu) */
-  function sessionDetail(req, s) {
-    const now = Date.now();
-    const p = sessionPermissions(req.admin, s, now);
-    const cls = db.prepare('SELECT * FROM classes WHERE id = ?').get(s.class_id);
+  /** Học sinh của buổi (để điểm danh) kèm điểm danh đã lưu, số buổi đã học, nhãn học phí — đã lọc theo vai trò */
+  function rosterOf(req, s, cls, access) {
     const marks = new Map(
       db.prepare('SELECT student_id, status, bonus FROM attendance WHERE session_id = ?').all(s.id).map((a) => [a.student_id, a])
     );
-    const students = loadRoster(db, cls, s).map((st) => {
+    const roster = loadRoster(db, cls, s);
+    const { tl, map } = classTuition(db, cls, roster);
+    const students = roster.map((st) => {
       const a = marks.get(st.id);
-      return { ...st, attendance: a ? { status: a.status, bonus: a.bonus } : null };
+      return { ...studentView(st, access.isOwner, map.get(st.id)), attendance: a ? { status: a.status, bonus: a.bonus } : null };
     });
+    return { tl, students };
+  }
+
+  /** Chi tiết buổi học + danh sách học sinh (kèm điểm danh đã lưu) */
+  function sessionDetail(req, s) {
+    const now = Date.now();
+    const access = accessOf(db, req.admin);
+    const p = sessionPermissions(req.admin, s, now, access);
+    const cls = db.prepare('SELECT * FROM classes WHERE id = ?').get(s.class_id);
+    const { tl, students } = rosterOf(req, s, cls, access);
+    const info = tl.sessions.find((x) => x.id === s.id);
     const following = s.series_id
       ? db.prepare('SELECT COUNT(*) AS n FROM class_sessions WHERE series_id = ? AND date >= ?').get(s.series_id, s.date).n
       : 1;
     const by = (id) => (id ? db.prepare('SELECT display_name FROM admins WHERE id = ?').get(id)?.display_name ?? null : null);
     return {
-      session: { ...toSession(s, req.admin, now), startedBy: by(s.started_by), attendanceBy: by(s.attendance_by), followingCount: following },
-      class: { id: cls.id, name: cls.name, color: cls.color, feeEvery: cls.fee_every },
-      permissions: { isOwner: p.isOwner, canStart: p.canStart, canEdit: p.canEdit, reason: p.reason },
+      session: {
+        ...toSession(s, req.admin, now, access),
+        no: info?.no ?? null, // buổi thứ mấy của lớp trên thời khóa biểu
+        totalSessions: tl.total,
+        cycleNo: info?.cycle ?? null,
+        startedBy: by(s.started_by),
+        attendanceBy: by(s.attendance_by),
+        followingCount: following,
+      },
+      class: { id: cls.id, name: cls.name, color: cls.color },
+      permissions: {
+        isOwner: p.isOwner, canStart: p.canStart, canEdit: p.canEdit, reason: p.reason,
+        // Buổi đã điểm danh: không xóa, không đổi ngày giờ (đã chốt)
+        locked: Boolean(s.attendance_at),
+      },
       students,
     };
   }
@@ -155,24 +220,68 @@ function scheduleRouter(db) {
     const now = Date.now();
     const today = vnDate(now);
     const me = req.admin.id;
-    const owner = isOwner(req);
-    const list = (sql, ...params) => db.prepare(`${SESSION_SELECT} WHERE c.deleted_at IS NULL AND ${sql} ORDER BY s.starts_at`).all(...params).map((r) => toSession(r, req.admin, now));
+    const access = accessOf(db, req.admin);
+    const owner = access.isOwner;
+    const list = (sql, ...params) =>
+      db.prepare(`${SESSION_SELECT} WHERE c.deleted_at IS NULL AND ${sql} ORDER BY s.starts_at`).all(...params).map((r) => toSession(r, req.admin, now, access));
+    const mine = 'EXISTS (SELECT 1 FROM session_teachers x WHERE x.session_id = s.id AND x.admin_id = ?)';
 
     // Lịch dạy của tôi: từ đầu hôm nay tới hết 7 ngày tới
-    const mySessions = list(
-      's.teacher_admin_id = ? AND s.starts_at >= ? AND s.starts_at < ?',
-      me, toInstant(today, '00:00'), toInstant(addDays(today, 7), '00:00')
-    );
-    // Buổi đã kết thúc mà chưa điểm danh (14 ngày gần đây).
-    // Admin chính thấy của mọi giáo viên (để nhắc), admin thấy của mình.
+    const mySessions = list(`${mine} AND s.starts_at >= ? AND s.starts_at < ?`, me, toInstant(today, '00:00'), toInstant(addDays(today, 7), '00:00'));
+    // Buổi đã kết thúc mà chưa điểm danh (14 ngày gần đây). Admin chính thấy của mọi giáo viên (để nhắc);
+    // giáo viên thấy buổi mình dạy + buổi của lớp mình phụ trách (cũng điểm danh được).
     const since = new Date(now - 14 * time.DAY_MS).toISOString();
+    const endedSql = 's.attendance_at IS NULL AND s.ends_at <= ? AND s.starts_at >= ?';
     const pending = owner
-      ? list('s.attendance_at IS NULL AND s.ends_at <= ? AND s.starts_at >= ?', new Date(now).toISOString(), since)
-      : list('s.teacher_admin_id = ? AND s.attendance_at IS NULL AND s.ends_at <= ? AND s.starts_at >= ?', me, new Date(now).toISOString(), since);
+      ? list(endedSql, new Date(now).toISOString(), since)
+      : list(`${endedSql} AND (${mine} OR s.class_id IN (SELECT class_id FROM class_teachers WHERE admin_id = ?))`, new Date(now).toISOString(), since, me, me);
     // Admin chính: toàn bộ lịch hôm nay của trung tâm
     const todayAll = owner ? list('s.date = ?', today) : [];
 
-    res.json({ today, mySessions, pending: pending.reverse(), todayAll, feeReminders: feeReminders(db).slice(0, 60) });
+    res.json({
+      today,
+      todayLabel: `${WEEKDAY_LONG[weekdayOf(today)]}, ${formatDate(today)}`,
+      mySessions,
+      pending: pending.reverse(),
+      todayAll,
+      tuition: collectAlerts(db, access, now), // giáo viên: lớp mình phụ trách, không có số tiền
+    });
+  });
+
+  // Tải danh sách cảnh báo học phí về Excel (owner có số tiền, giáo viên không)
+  router.get('/alerts/export', async (req, res) => {
+    const access = accessOf(db, req.admin);
+    const { items, gaps } = collectAlerts(db, access);
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Seamark';
+    const ws = wb.addWorksheet('Cảnh báo học phí', { views: [{ state: 'frozen', ySplit: 1 }] });
+    ws.columns = [
+      { header: 'STT', key: 'stt', width: 6 },
+      { header: 'Mức', key: 'level', width: 8 },
+      { header: 'Cảnh báo', key: 'text', width: 26 },
+      { header: 'Lớp', key: 'className', width: 20 },
+      { header: 'Học sinh', key: 'fullName', width: 26 },
+      { header: 'Kì học phí', key: 'cycleNo', width: 10 },
+      { header: 'Hạn đóng', key: 'dueDate', width: 12, style: { numFmt: 'dd/mm/yyyy' } },
+      ...(access.isOwner ? [{ header: 'Số tiền', key: 'amount', width: 14, style: { numFmt: MONEY_FMT } }] : []),
+    ];
+    const FILL = { red: 'FFFDE2E2', orange: 'FFFFE8D1', yellow: 'FFFFF6CC' };
+    items.forEach((a, i) => {
+      const row = ws.addRow({ ...a, stt: i + 1, level: LEVEL_LABELS[a.level], dueDate: a.dueDate ? excelDate(a.dueDate) : null });
+      row.getCell('level').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL[a.level] } };
+    });
+    styleHeader(ws.getRow(1));
+    if (access.isOwner && items.length) {
+      const total = ws.addRow({ fullName: 'Tổng', amount: items.reduce((n, a) => n + (a.amount || 0), 0) });
+      fillRow(total, 'FFF1F5F9', true);
+    }
+    if (access.isOwner && gaps?.length) {
+      ws.addRow([]);
+      ws.addRow(['', 'Lớp chưa xếp đủ lịch:']).font = { bold: true };
+      for (const g of gaps) ws.addRow(['', '', `Lớp ${g.className} mới xếp ${g.scheduled}/${g.needed} buổi của kì ${g.cycleNo}`]);
+    }
+    logAudit(db, { adminId: req.admin.id, action: 'export_alerts', detail: `Tải danh sách cảnh báo học phí về Excel (${items.length} học sinh)` });
+    await sendWorkbook(res, wb, `Canh bao hoc phi ${vnDate().split('-').reverse().join('-')}.xlsx`);
   });
 
   router.get('/', (req, res) => {
@@ -185,18 +294,20 @@ function scheduleRouter(db) {
     const params = [from, to];
     const classId = toInt(req.query.classId);
     if (classId) { where.push('s.class_id = ?'); params.push(classId); }
+    const teaches = 'EXISTS (SELECT 1 FROM session_teachers x WHERE x.session_id = s.id AND x.admin_id = ?)';
     if (req.query.mine === '1') {
-      where.push('s.teacher_admin_id = ?');
+      where.push(teaches);
       params.push(req.admin.id);
     } else if (req.query.teacherId === 'other') {
-      where.push('s.teacher_admin_id IS NULL');
+      where.push('NOT EXISTS (SELECT 1 FROM session_teachers x WHERE x.session_id = s.id)');
     } else if (toInt(req.query.teacherId)) {
-      where.push('s.teacher_admin_id = ?');
+      where.push(teaches);
       params.push(toInt(req.query.teacherId));
     }
     const rows = db.prepare(`${SESSION_SELECT} WHERE ${where.join(' AND ')} ORDER BY s.starts_at, c.name`).all(...params);
     const now = Date.now();
-    res.json({ sessions: rows.map((r) => toSession(r, req.admin, now)) });
+    const access = accessOf(db, req.admin);
+    res.json({ sessions: rows.map((r) => toSession(r, req.admin, now, access)) });
   });
 
   // ----- Xếp lịch (admin chính) -----
@@ -228,10 +339,15 @@ function scheduleRouter(db) {
       repeatText = `${weekdays.sort().map((d) => WEEKDAY_SHORT[d]).join(', ')} ${v.startTime}–${v.endTime}, từ ${formatDate(dates[0])} đến ${formatDate(dates.at(-1))}`;
     }
 
-    if (!body.force) {
-      const conflicts = findConflicts({ classId: cls.id, teacherId: v.teacherId, dates, startTime: v.startTime, endTime: v.endTime });
-      if (conflicts.length) return conflictResponse(res, conflicts);
-    }
+    const nowMs = Date.now();
+    const slots = dates.map((d, i) => ({ id: -1 - i, date: d, startsAt: toInstant(d, v.startTime), endsAt: toInstant(d, v.endTime) }));
+    const past = slots.filter((x) => Date.parse(x.endsAt) <= nowMs).length;
+    const confirm = {
+      conflicts: findConflicts({ classId: cls.id, teacherIds: v.teacherIds, dates, startTime: v.startTime, endTime: v.endTime }),
+      past,
+      cycles: paidCyclesAffected(db, cls, (rows) => rows.concat(slots), nowMs),
+    };
+    if (needsConfirm(req, res, confirm)) return;
 
     const now = nowIso();
     const seriesId = dates.length > 1 ? crypto.randomBytes(8).toString('hex') : null;
@@ -241,22 +357,33 @@ function scheduleRouter(db) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
     const ids = db.transaction(() =>
-      dates.map((d) =>
-        insert.run(cls.id, d, v.startTime, v.endTime, toInstant(d, v.startTime), toInstant(d, v.endTime), v.teacherId, v.otherName,
-          v.room, v.note, seriesId, req.admin.id, now, now).lastInsertRowid
-      )
+      slots.map((x) => {
+        const id = insert.run(cls.id, x.date, v.startTime, v.endTime, x.startsAt, x.endsAt, v.teacherIds[0] ?? null, v.otherName,
+          v.room, v.note, seriesId, req.admin.id, now, now).lastInsertRowid;
+        setSessionTeachers(id, cls.id, v.teacherIds);
+        return id;
+      })
     )();
 
     const what = dates.length > 1
       ? `${dates.length} buổi học lớp "${cls.name}": ${repeatText}`
       : `buổi học lớp "${cls.name}": ${describeSession({ date, start_time: v.startTime, end_time: v.endTime })}`;
-    logAudit(db, { adminId: req.admin.id, action: 'create_sessions', classId: cls.id, detail: `Xếp ${what}, giáo viên ${v.teacherLabel}` });
-    notify(db, {
-      adminId: v.teacherId,
-      actorId: req.admin.id,
-      text: `${req.admin.displayName} đã xếp cho bạn ${what}`,
-      link: dates.length > 1 ? `/admin/thoi-khoa-bieu?ngay=${dates[0]}` : `/admin/buoi-hoc/${ids[0]}`,
+    const extra = [
+      past ? `${past} buổi đã qua (được tính học phí)` : '',
+      confirm.cycles.length ? `làm lệch ${confirm.cycles.length} kì học phí đã thu` : '',
+    ].filter(Boolean).join('; ');
+    logAudit(db, {
+      adminId: req.admin.id, action: 'create_sessions', classId: cls.id,
+      detail: `Xếp ${what}, giáo viên ${v.teacherLabel}${extra ? ` (${extra})` : ''}`,
     });
+    for (const teacherId of v.teacherIds) {
+      notify(db, {
+        adminId: teacherId,
+        actorId: req.admin.id,
+        text: `${req.admin.displayName} đã xếp cho bạn ${what}`,
+        link: dates.length > 1 ? `/admin/thoi-khoa-bieu?ngay=${dates[0]}` : `/admin/buoi-hoc/${ids[0]}`,
+      });
+    }
     res.status(201).json({ ids, count: ids.length });
   });
 
@@ -265,9 +392,48 @@ function scheduleRouter(db) {
   router.get('/:id', (req, res) => {
     const s = loadSession(req, res);
     if (!s) return;
-    const p = sessionPermissions(req.admin, s);
+    const p = sessionPermissions(req.admin, s, Date.now(), accessOf(db, req.admin));
     if (!p.canOpen) return res.status(403).json({ error: p.reason });
     res.json(sessionDetail(req, s));
+  });
+
+  // Tải chi tiết một buổi học (danh sách học sinh + điểm danh) về Excel. Không có thông tin riêng tư.
+  router.get('/:id/export', async (req, res) => {
+    const s = loadSession(req, res);
+    if (!s) return;
+    const access = accessOf(db, req.admin);
+    const p = sessionPermissions(req.admin, s, Date.now(), access);
+    if (!p.canOpen) return res.status(403).json({ error: p.reason });
+    const cls = db.prepare('SELECT * FROM classes WHERE id = ?').get(s.class_id);
+    const { tl, students } = rosterOf(req, s, cls, access);
+    const info = tl.sessions.find((x) => x.id === s.id);
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Seamark';
+    const ws = wb.addWorksheet('Buổi học');
+    ws.getColumn(1).width = 6;
+    ws.getColumn(2).width = 28;
+    [3, 4, 5, 6, 7].forEach((c) => (ws.getColumn(c).width = 16));
+    ws.addRow([`Lớp ${cls.name} — buổi ${info?.no ?? '?'}: ${describeSession(s)}`]).font = { bold: true, size: 13 };
+    ws.addRow([`Giáo viên: ${teacherName(s) || '—'}${s.room ? ` · Phòng: ${s.room}` : ''}${s.note ? ` · Ghi chú: ${s.note}` : ''}`]);
+    ws.addRow([s.attendance_at ? `Đã điểm danh: ${students.filter((x) => x.attendance && ['present', 'late'].includes(x.attendance.status)).length}/${students.length} có mặt` : 'Chưa điểm danh']);
+    ws.addRow([]);
+    const head = ws.addRow(['STT', 'Họ và tên', 'Điểm danh', 'Điểm cộng', 'Số buổi đã học', 'Học phí kì này', 'Cảnh báo học phí']);
+    styleHeader(head);
+    students.forEach((st, i) => {
+      const t = st.tuition;
+      ws.addRow([
+        i + 1,
+        st.fullName,
+        st.attendance ? STATUS_LABELS[st.attendance.status] : '',
+        st.attendance?.bonus || '',
+        t?.sessionsDone ?? '',
+        t?.labels?.current ? FEE_LABELS[t.labels.current] : '',
+        t?.alert ? LEVEL_LABELS[t.alert.level] : '',
+      ]);
+    });
+    logAudit(db, { adminId: req.admin.id, action: 'export_session', classId: cls.id, detail: `Tải chi tiết buổi học lớp "${cls.name}" ${describeSession(s)} về Excel` });
+    await sendWorkbook(res, wb, `Buoi hoc ${cls.name} ${s.date.split('-').reverse().join('-')}.xlsx`);
   });
 
   router.post('/:id/update', (req, res) => {
@@ -285,14 +451,34 @@ function scheduleRouter(db) {
       if (!isValidDate(newDate)) return res.status(400).json({ error: 'Ngày học không hợp lệ.' });
     }
     const dateOf = (t) => (targets.length === 1 ? newDate : t.date);
+    const movesTime = (t) => dateOf(t) !== t.date || t.start_time !== v.startTime || t.end_time !== v.endTime;
 
-    if (!req.body?.force) {
-      const conflicts = findConflicts({
-        classId: s.class_id, teacherId: v.teacherId, dates: [...new Set(targets.map(dateOf))],
-        startTime: v.startTime, endTime: v.endTime, exceptIds: targets.map((t) => t.id),
+    // Buổi đã điểm danh: không đổi ngày giờ (đã chốt) — chỉ đổi giáo viên / phòng / ghi chú
+    const lockedMoved = targets.filter((t) => t.attendance_at && movesTime(t));
+    if (lockedMoved.length) {
+      return res.status(400).json({
+        reason: 'locked',
+        error: lockedMoved.length === 1 && targets.length === 1
+          ? 'Buổi này đã điểm danh nên không đổi được ngày giờ. Bạn chỉ đổi được giáo viên, phòng học, ghi chú.'
+          : `Có ${lockedMoved.length} buổi đã điểm danh nên không đổi được ngày giờ. Hãy sửa riêng từng buổi chưa điểm danh.`,
       });
-      if (conflicts.length) return conflictResponse(res, conflicts);
     }
+
+    const nowMs = Date.now();
+    const moved = new Map(
+      targets.filter(movesTime).map((t) => [t.id, { date: dateOf(t), startsAt: toInstant(dateOf(t), v.startTime), endsAt: toInstant(dateOf(t), v.endTime) }])
+    );
+    const cls = db.prepare('SELECT * FROM classes WHERE id = ?').get(s.class_id);
+    const confirm = {
+      conflicts: findConflicts({
+        classId: s.class_id, teacherIds: v.teacherIds, dates: [...new Set(targets.map(dateOf))],
+        startTime: v.startTime, endTime: v.endTime, exceptIds: targets.map((t) => t.id),
+      }),
+      // Dời buổi sắp tới vào thời gian đã qua -> buổi đó được tính là đã học
+      past: targets.filter((t) => moved.has(t.id) && Date.parse(t.ends_at) > nowMs && Date.parse(moved.get(t.id).endsAt) <= nowMs).length,
+      cycles: moved.size ? paidCyclesAffected(db, cls, (rows) => rows.map((r) => (moved.has(r.id) ? { ...r, ...moved.get(r.id) } : r)), nowMs) : [],
+    };
+    if (needsConfirm(req, res, confirm)) return;
 
     const update = db.prepare(
       `UPDATE class_sessions SET date = ?, start_time = ?, end_time = ?, starts_at = ?, ends_at = ?, teacher_admin_id = ?,
@@ -302,33 +488,44 @@ function scheduleRouter(db) {
     db.transaction(() => {
       for (const t of targets) {
         const d = dateOf(t);
-        update.run(d, v.startTime, v.endTime, toInstant(d, v.startTime), toInstant(d, v.endTime), v.teacherId, v.otherName, v.room, v.note, now, t.id);
+        // Buổi đã điểm danh giữ nguyên giờ (ở trên đã chặn đổi); các buổi khác theo giờ mới
+        const st = t.attendance_at ? t.start_time : v.startTime;
+        const et = t.attendance_at ? t.end_time : v.endTime;
+        update.run(d, st, et, toInstant(d, st), toInstant(d, et), v.teacherIds[0] ?? null, v.otherName, v.room, v.note, now, t.id);
+        setSessionTeachers(t.id, t.class_id, v.teacherIds);
       }
     })();
 
     // Mô tả thay đổi cho lịch sử + thông báo
+    const oldIds = teacherIdsOf(s);
     const changes = [];
     if (newDate !== s.date) changes.push(`ngày ${formatDate(s.date)} → ${formatDate(newDate)}`);
     if (s.start_time !== v.startTime || s.end_time !== v.endTime) changes.push(`giờ ${s.start_time}–${s.end_time} → ${v.startTime}–${v.endTime}`);
-    const oldTeacher = teacherName(s);
-    const newTeacher = v.teacherName;
-    if (s.teacher_admin_id !== v.teacherId || (!v.teacherId && s.teacher_name !== v.otherName)) changes.push(`giáo viên ${oldTeacher} → ${newTeacher}`);
+    const sameTeachers = oldIds.length === v.teacherIds.length && oldIds.every((id) => v.teacherIds.includes(id)) && (s.teacher_name || '') === v.otherName;
+    if (!sameTeachers) changes.push(`giáo viên ${teacherName(s) || 'chưa có'} → ${v.teacherLabel}`);
     if (s.room !== v.room) changes.push(`phòng "${s.room || 'trống'}" → "${v.room || 'trống'}"`);
     if (s.note !== v.note) changes.push('ghi chú');
     const which = targets.length > 1
       ? `${targets.length} buổi học lớp "${s.class_name}" (từ ${describeSession(s)} trở về sau)`
       : `buổi học lớp "${s.class_name}" ${describeSession(s)}`;
     if (changes.length) {
-      logAudit(db, { adminId: req.admin.id, action: 'update_session', classId: s.class_id, detail: `Sửa ${which}: ${changes.join('; ')}` });
+      const extra = [
+        confirm.past ? `${confirm.past} buổi dời vào thời gian đã qua` : '',
+        confirm.cycles.length ? `làm lệch ${confirm.cycles.length} kì học phí đã thu` : '',
+      ].filter(Boolean).join('; ');
+      logAudit(db, {
+        adminId: req.admin.id, action: 'update_session', classId: s.class_id,
+        detail: `Sửa ${which}: ${changes.join('; ')}${extra ? ` (${extra})` : ''}`,
+      });
       const link = `/admin/buoi-hoc/${s.id}`;
-      if (s.teacher_admin_id && s.teacher_admin_id !== v.teacherId) {
-        notify(db, { adminId: s.teacher_admin_id, actorId: req.admin.id, text: `${req.admin.displayName} đã chuyển ${which} sang giáo viên ${newTeacher}. Bạn không còn dạy buổi này.`, link: '' });
+      for (const id of oldIds.filter((x) => !v.teacherIds.includes(x))) {
+        notify(db, { adminId: id, actorId: req.admin.id, text: `${req.admin.displayName} đã chuyển ${which} sang giáo viên ${v.teacherLabel}. Bạn không còn dạy buổi này.` });
       }
-      if (v.teacherId) {
-        const text = s.teacher_admin_id === v.teacherId
+      for (const id of v.teacherIds) {
+        const text = oldIds.includes(id)
           ? `${req.admin.displayName} đã sửa lịch ${which}: ${changes.join('; ')}`
           : `${req.admin.displayName} đã xếp cho bạn ${which}${changes.length ? ` (${changes.join('; ')})` : ''}`;
-        notify(db, { adminId: v.teacherId, actorId: req.admin.id, text, link });
+        notify(db, { adminId: id, actorId: req.admin.id, text, link });
       }
     }
     res.json(sessionDetail(req, findSession(db, s.id)));
@@ -339,15 +536,22 @@ function scheduleRouter(db) {
     const s = loadSession(req, res);
     if (!s) return;
     const targets = targetsOf(s, req.body?.scope);
+    // Buổi đã điểm danh: không xóa được (đã chốt) — giữ đúng số buổi đã học và học phí
     const withAttendance = targets.filter((t) => t.attendance_at).length;
-    // Xóa buổi đã điểm danh làm mất điểm danh và thay đổi số buổi tính học phí -> phải xác nhận thêm
-    if (withAttendance && !req.body?.confirmAttendance) {
-      return res.status(409).json({
-        reason: 'has_attendance',
+    if (withAttendance) {
+      return res.status(400).json({
+        reason: 'locked',
         count: withAttendance,
-        error: `Có ${withAttendance} buổi đã điểm danh. Xóa thì mất điểm danh của các buổi đó và số buổi tính học phí của học sinh sẽ giảm.`,
+        error: targets.length === 1
+          ? 'Buổi này đã điểm danh nên không xóa được. Bạn chỉ đổi được giáo viên, phòng học, ghi chú.'
+          : `Có ${withAttendance} buổi đã điểm danh nên không xóa được. Hãy xóa riêng từng buổi chưa điểm danh.`,
       });
     }
+    const cls = db.prepare('SELECT * FROM classes WHERE id = ?').get(s.class_id);
+    const removing = new Set(targets.map((t) => t.id));
+    const cycles = paidCyclesAffected(db, cls, (rows) => rows.filter((r) => !removing.has(r.id)));
+    if (needsConfirm(req, res, { cycles })) return;
+
     const del = db.prepare('DELETE FROM class_sessions WHERE id = ?');
     db.transaction(() => targets.forEach((t) => del.run(t.id)))();
 
@@ -356,11 +560,11 @@ function scheduleRouter(db) {
       : `buổi học lớp "${s.class_name}" ${describeSession(s)}`;
     logAudit(db, {
       adminId: req.admin.id, action: 'delete_session', classId: s.class_id,
-      detail: `Xóa ${which}${withAttendance ? ` (gồm ${withAttendance} buổi đã điểm danh)` : ''}`,
+      detail: `Xóa ${which}${cycles.length ? ` (làm lệch ${cycles.length} kì học phí đã thu)` : ''}`,
     });
     // Báo cho các giáo viên có buổi chưa diễn ra bị xóa
     const nowMs = Date.now();
-    const teachers = new Set(targets.filter((t) => t.teacher_admin_id && Date.parse(t.ends_at) > nowMs).map((t) => t.teacher_admin_id));
+    const teachers = new Set(targets.filter((t) => Date.parse(t.ends_at) > nowMs).flatMap((t) => teacherIdsOf(t)));
     for (const id of teachers) notify(db, { adminId: id, actorId: req.admin.id, text: `${req.admin.displayName} đã xóa ${which} khỏi thời khóa biểu.` });
     res.json({ deleted: targets.length });
   });
@@ -370,7 +574,7 @@ function scheduleRouter(db) {
   router.post('/:id/start', (req, res) => {
     const s = loadSession(req, res);
     if (!s) return;
-    const p = sessionPermissions(req.admin, s);
+    const p = sessionPermissions(req.admin, s, Date.now(), accessOf(db, req.admin));
     if (!p.canStart) return res.status(p.canOpen ? 400 : 403).json({ error: p.reason });
     if (!s.started_at) {
       db.prepare('UPDATE class_sessions SET started_at = ?, started_by = ? WHERE id = ?').run(nowIso(), req.admin.id, s.id);
@@ -386,7 +590,7 @@ function scheduleRouter(db) {
   router.post('/:id/attendance', (req, res) => {
     const s = loadSession(req, res);
     if (!s) return;
-    const p = sessionPermissions(req.admin, s);
+    const p = sessionPermissions(req.admin, s, Date.now(), accessOf(db, req.admin));
     if (!p.canEdit) return res.status(p.canOpen ? 400 : 403).json({ error: p.reason });
 
     const records = Array.isArray(req.body?.records) ? req.body.records : [];

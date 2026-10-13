@@ -1,20 +1,40 @@
-// Đọc buổi học (kèm tên lớp, tên giáo viên, số học sinh đã điểm danh) và đổi sang dữ liệu trả về trình duyệt.
-const { sessionPermissions } = require('./rules');
+// Đọc buổi học (kèm tên lớp, các giáo viên, số học sinh đã điểm danh) và đổi sang dữ liệu trả về trình duyệt.
+const { sessionPermissions, teacherIdsOf } = require('./rules');
 
+// teacher_ids: id các giáo viên có tài khoản dạy buổi (một buổi có thể nhiều giáo viên);
+// teacher_pairs: "id:tên|id:tên" (id và tên trong cùng một chuỗi để không bị lệch cặp).
 const SESSION_SELECT = `
   SELECT s.*, c.name AS class_name, c.color AS class_color,
-         t.display_name AS teacher_display,
+         (SELECT GROUP_CONCAT(st.admin_id) FROM session_teachers st WHERE st.session_id = s.id) AS teacher_ids,
+         (SELECT GROUP_CONCAT(st.admin_id || ':' || a.display_name, '|') FROM session_teachers st
+            JOIN admins a ON a.id = st.admin_id WHERE st.session_id = s.id) AS teacher_pairs,
          (SELECT COUNT(*) FROM attendance a WHERE a.session_id = s.id) AS n_marked,
          (SELECT COUNT(*) FROM attendance a WHERE a.session_id = s.id AND a.status IN ('present', 'late')) AS n_present
     FROM class_sessions s
-    JOIN classes c ON c.id = s.class_id
-    LEFT JOIN admins t ON t.id = s.teacher_admin_id`;
+    JOIN classes c ON c.id = s.class_id`;
 
-/** Tên giáo viên của buổi: tên tài khoản, hoặc tên gõ tay khi chọn "Khác" */
-const teacherName = (row) => (row.teacher_admin_id ? row.teacher_display : row.teacher_name);
+/** Các giáo viên có tài khoản của buổi: [{ id, name }] (sắp theo tên) */
+function teachersOf(row) {
+  if (!row.teacher_pairs) return [];
+  return String(row.teacher_pairs)
+    .split('|')
+    .map((p) => {
+      const i = p.indexOf(':');
+      return { id: Number(p.slice(0, i)), name: p.slice(i + 1) };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+}
 
-function toSession(row, admin, now = Date.now()) {
-  const p = sessionPermissions(admin, row, now);
+/** Tên giáo viên của buổi để hiển thị: "Cô Lan, Thầy Nam" (+ giáo viên ngoài nếu có) */
+function teacherName(row) {
+  const names = teachersOf(row).map((t) => t.name);
+  if (row.teacher_name) names.push(row.teacher_name);
+  return names.join(', ');
+}
+
+function toSession(row, admin, now = Date.now(), access = null) {
+  const p = sessionPermissions(admin, row, now, access);
+  const ids = teacherIdsOf(row);
   return {
     id: row.id,
     classId: row.class_id,
@@ -25,7 +45,15 @@ function toSession(row, admin, now = Date.now()) {
     endTime: row.end_time,
     startsAt: row.starts_at,
     endsAt: row.ends_at,
-    teacher: { id: row.teacher_admin_id, name: teacherName(row), isOther: !row.teacher_admin_id },
+    teacher: {
+      ids, // giáo viên có tài khoản
+      list: teachersOf(row),
+      id: ids[0] ?? null, // (giữ cho phần cũ còn dùng)
+      name: teacherName(row),
+      otherName: row.teacher_name, // giáo viên ngoài (không có tài khoản)
+      isOther: ids.length === 0,
+      isMine: ids.includes(admin.id),
+    },
     room: row.room,
     note: row.note,
     seriesId: row.series_id,
@@ -53,4 +81,4 @@ function notify(db, { adminId, actorId, text, link = '' }) {
   );
 }
 
-module.exports = { SESSION_SELECT, teacherName, toSession, findSession, notify };
+module.exports = { SESSION_SELECT, teacherName, teachersOf, toSession, findSession, notify };

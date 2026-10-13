@@ -17,7 +17,11 @@ const { parseExamWorkbook } = require('../exam/excelImport');
 const { buildFilesMap } = require('../exam/files');
 const { toStructure, fromStructure } = require('../exam/templates');
 const { finalizeExpiredAttempts } = require('../exam/attempts');
+const ExcelJS = require('exceljs');
 const { byGivenName } = require('../classes/students');
+const { accessOf } = require('../classes/access');
+const { styleHeader, fillRow, sendWorkbook } = require('../utils/excel');
+const { vnDate, formatDate } = require('../classes/time');
 const {
   mediaUpload, excelUpload, uploadErrorMessage, requireSameOrigin, signatureMatches, readHead, originalName, extOf,
 } = require('../upload');
@@ -138,14 +142,20 @@ function adminExamsRouter(db, config) {
 
   /**
    * Đọc + kiểm tra lớp được giao và mật khẩu đề từ dữ liệu gửi lên.
+   * Giáo viên (không phải admin chính) chỉ giao / bỏ giao các lớp mình phụ trách; lớp khác đã được giao thì giữ nguyên.
    * Trả về { classIds, accessCode } hoặc { error }.
    */
-  function readAssignment(body) {
-    const ids = [...new Set((Array.isArray(body?.classIds) ? body.classIds : []).map((v) => Number.parseInt(v, 10)).filter(Boolean))];
+  function readAssignment(body, admin, before = []) {
+    let ids = [...new Set((Array.isArray(body?.classIds) ? body.classIds : []).map((v) => Number.parseInt(v, 10)).filter(Boolean))];
     for (const id of ids) {
       if (!db.prepare('SELECT 1 FROM classes WHERE id = ? AND deleted_at IS NULL').get(id)) {
         return { error: 'Có lớp đã chọn không còn tồn tại. Hãy tải lại trang rồi chọn lại.' };
       }
+    }
+    const access = accessOf(db, admin);
+    if (!access.isOwner) {
+      if (ids.some((id) => !access.canSeeClass(id) && !before.includes(id))) return { error: 'Bạn chỉ giao đề được cho lớp mình phụ trách.' };
+      ids = [...new Set([...ids.filter((id) => access.canSeeClass(id)), ...before.filter((id) => !access.canSeeClass(id))])];
     }
     const accessCode = cleanText(body?.accessCode);
     if (accessCode.length > ACCESS_CODE_MAX) return { error: `Mật khẩu đề tối đa ${ACCESS_CODE_MAX} ký tự.` };
@@ -282,7 +292,7 @@ function adminExamsRouter(db, config) {
       body.title = assignmentTitle(req.body?.title);
       if (!body.title) return res.status(400).json({ error: 'Vui lòng đặt tên cho đề Class Assignment (ví dụ: Đề lớp 1A).' });
       if (!cleanText(req.body?.code)) body.code = nextAssignmentCode();
-      assignment = readAssignment(req.body);
+      assignment = readAssignment(req.body, req.admin);
       if (assignment.error) return res.status(400).json({ error: assignment.error });
     }
     // Giáo viên ra đề: mặc định là người tạo; chọn được giáo viên khác (tài khoản đang hoạt động)
@@ -804,10 +814,10 @@ function adminExamsRouter(db, config) {
     if (!exam) return;
     if (exam.category !== 'homework') return res.status(400).json({ error: 'Chỉ đề Class Assignment mới giao cho lớp và đặt mật khẩu.' });
     if (!checkLockHolder(req, res, exam)) return;
-    const a = readAssignment(req.body);
+    const before = classesOf(exam.id).map((c) => c.id);
+    const a = readAssignment(req.body, req.admin, before);
     if (a.error) return res.status(400).json({ error: a.error });
 
-    const before = classesOf(exam.id).map((c) => c.id);
     saveAssignment(exam.id, a);
     const changes = [];
     const added = a.classIds.filter((id) => !before.includes(id));
@@ -825,10 +835,9 @@ function adminExamsRouter(db, config) {
 
   // GET /api/admin/exams/:id/activity
   // Class Assignment: theo từng lớp được giao, đủ mọi học sinh (kể cả chưa làm).
+  // Giáo viên chỉ thấy các lớp mình phụ trách (admin chính thấy mọi lớp).
   // Ngoài ra (Training Test, học sinh lớp khác...): theo từng người làm bài.
-  router.get('/:id/activity', (req, res) => {
-    const exam = loadExam(req, res);
-    if (!exam) return;
+  function activityOf(exam, admin) {
     finalizeExpiredAttempts(db); // bài hết giờ chưa nộp -> chấm luôn để số liệu đúng
     const rows = db
       .prepare(
@@ -858,32 +867,102 @@ function adminExamsRouter(db, config) {
       byClassStudent.get(r.class_student_id).push(view(r));
     }
 
+    const access = accessOf(db, admin);
     const assigned = exam.category === 'homework' ? classesOf(exam.id) : [];
+    const hidden = new Set(); // học sinh của lớp giáo viên này không phụ trách
     const shown = new Set();
-    const classes = assigned.map((c) => {
+    const classes = [];
+    for (const c of assigned) {
       // Học sinh đang học + học sinh đã nghỉ nhưng có làm bài này
       const students = db
         .prepare('SELECT id, full_name AS fullName, removed_at FROM class_students WHERE class_id = ?')
         .all(c.id)
         .filter((st) => !st.removed_at || byClassStudent.has(st.id))
-        .sort(byGivenName) // xếp theo tên như sổ điểm danh
-        .map((st) => {
+        .sort(byGivenName); // xếp theo tên như sổ điểm danh
+      if (!access.canSeeClass(c.id)) {
+        students.forEach((st) => hidden.add(st.id));
+        continue;
+      }
+      classes.push({
+        ...c,
+        students: students.map((st) => {
           shown.add(st.id);
           return { classStudentId: st.id, fullName: st.fullName, isActive: !st.removed_at, attempts: byClassStudent.get(st.id) || [] };
-        });
-      return { ...c, students };
-    });
+        }),
+      });
+    }
 
     // Người làm bài không thuộc các lớp trên: gom theo từng người
     const others = new Map();
     for (const r of rows) {
-      if (r.class_student_id && shown.has(r.class_student_id)) continue;
+      if (r.class_student_id && (shown.has(r.class_student_id) || hidden.has(r.class_student_id))) continue;
       if (!others.has(r.student_id)) {
         others.set(r.student_id, { studentId: r.student_id, name: `${r.last_name} ${r.first_name}`.trim(), phone: r.phone, attempts: [] });
       }
       others.get(r.student_id).attempts.push(view(r));
     }
-    res.json({ category: exam.category, examType: exam.exam_type, classes, others: [...others.values()] });
+    return {
+      category: exam.category,
+      examType: exam.exam_type,
+      classes,
+      others: [...others.values()],
+      hiddenClasses: assigned.length - classes.length, // số lớp được giao mà giáo viên này không phụ trách
+    };
+  }
+
+  router.get('/:id/activity', (req, res) => {
+    const exam = loadExam(req, res);
+    if (!exam) return;
+    res.json(activityOf(exam, req.admin));
+  });
+
+  // GET /api/admin/exams/:id/activity/export — tải tab Hoạt động về Excel
+  router.get('/:id/activity/export', async (req, res) => {
+    const exam = loadExam(req, res);
+    if (!exam) return;
+    const act = activityOf(exam, req.admin);
+    const at = (iso) => (iso ? `${formatDate(vnDate(Date.parse(iso)))} ${new Date(Date.parse(iso) + 7 * 3600e3).toISOString().slice(11, 16)}` : '');
+    const result = (a) => {
+      if (!a) return '';
+      if (a.status !== 'submitted') return 'Đang làm';
+      const score = a.totalScore !== null && a.totalScore !== undefined ? ` · ${a.totalScore} điểm TOEIC` : a.score10 !== null && a.score10 !== undefined ? ` · ${a.score10}/10` : '';
+      return `${a.correct ?? 0}/${a.total ?? 0} câu${score}`;
+    };
+    const best = (list) => list.filter((a) => a.status === 'submitted').sort((a, b) => (b.correct ?? 0) - (a.correct ?? 0))[0];
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Seamark';
+    const ws = wb.addWorksheet('Hoạt động', { views: [{ state: 'frozen', ySplit: 1 }] });
+    ws.columns = [
+      { header: 'Lớp', key: 'cls', width: 16 },
+      { header: 'Học sinh', key: 'name', width: 26 },
+      { header: 'Số lần làm', key: 'count', width: 10 },
+      { header: 'Lần đầu', key: 'first', width: 17 },
+      { header: 'Lần gần nhất', key: 'last', width: 17 },
+      { header: 'Kết quả gần nhất', key: 'result', width: 26 },
+      { header: 'Kết quả cao nhất', key: 'best', width: 26 },
+    ];
+    const add = (cls, name, attempts, inactive = false) =>
+      ws.addRow({
+        cls,
+        name: `${name}${inactive ? ' (đã nghỉ)' : ''}`,
+        count: attempts.length || 'Chưa làm',
+        first: at(attempts[0]?.startedAt),
+        last: at(attempts.at(-1)?.startedAt),
+        result: result(attempts.at(-1)),
+        best: result(best(attempts)),
+      });
+    for (const c of act.classes) {
+      fillRow(ws.addRow({ cls: c.name, name: `${c.students.filter((st) => st.attempts.length).length}/${c.students.length} học sinh đã làm` }), 'FFE6EFFF');
+      for (const st of c.students) add(c.name, st.fullName, st.attempts, !st.isActive);
+    }
+    if (act.others.length) {
+      if (act.classes.length) fillRow(ws.addRow({ cls: 'Người làm khác', name: `${act.others.length} người` }), 'FFE6EFFF');
+      for (const o of act.others) add('', o.name, o.attempts);
+    }
+    styleHeader(ws.getRow(1));
+    logAudit(db, { adminId: req.admin.id, action: 'export_activity', examId: exam.id, detail: `Tải hoạt động của đề "${exam.title}" về Excel` });
+    await sendWorkbook(res, wb, `Hoat dong ${exam.code}.xlsx`);
   });
 
   return router;
