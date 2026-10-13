@@ -1051,3 +1051,20 @@
     font-size: 24px;
   }
 }
+
+/* Thẻ tiêu đề của bài tập về nhà: chữ "Homework -" cố định trước ô tên */
+.fb-hw-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.fb-hw-title .hw-prefix {
+  align-self: center;
+  padding: 0.35rem 0.8rem;
+  border-right: 2px solid #c9b6f5;
+  border-radius: 10px;
+}
+.fb-hw-title .fb-form-title-input {
+  flex: 1;
+  min-width: 0;
+}

@@ -16,6 +16,10 @@ import ExamPreviewPage from './admin/ExamPreviewPage.jsx';
 import ResultsPage from './admin/ResultsPage.jsx';
 import ResultDetailPage from './admin/ResultDetailPage.jsx';
 import GuidePage from './admin/GuidePage.jsx';
+import ClassListPage from './admin/classes/ClassListPage.jsx';
+import ClassDetailPage from './admin/classes/ClassDetailPage.jsx';
+import SchedulePage from './admin/classes/SchedulePage.jsx';
+import SessionPage from './admin/classes/SessionPage.jsx';
 
 export default function App() {
   return (
@@ -35,6 +39,10 @@ export default function App() {
         <Route path="de-thi/:id" element={<ExamEditPage />} />
         <Route path="ket-qua" element={<ResultsPage />} />
         <Route path="ket-qua/:id" element={<ResultDetailPage />} />
+        <Route path="thoi-khoa-bieu" element={<SchedulePage />} />
+        <Route path="lop-hoc" element={<ClassListPage />} />
+        <Route path="lop-hoc/:id" element={<ClassDetailPage />} />
+        <Route path="buoi-hoc/:id" element={<SessionPage />} />
         <Route path="doi-mat-khau" element={<ChangePasswordPage />} />
         <Route path="huong-dan" element={<GuidePage />} />
         {/* Chỉ admin chính */}

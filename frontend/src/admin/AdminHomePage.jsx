@@ -2,13 +2,16 @@ import { Link } from 'react-router-dom';
 import LineIcon from '../components/brand/LineIcon.jsx';
 import { Bubbles, DotGrid, Dolphin, Emblem, Sparkle, Waves } from '../components/brand/SeaArt.jsx';
 import { useAdmin } from './AdminLayout.jsx';
+import HomeSchedule from './classes/HomeSchedule.jsx';
 
 // Các chức năng (mỗi thẻ bấm được cả thẻ). tone: màu ô biểu tượng
 const WORK = [
+  { to: '/admin/thoi-khoa-bieu', icon: 'calendar', tone: 'sky', title: 'Thời khóa biểu', text: 'Xem lịch dạy của bạn và của cả trung tâm. Bấm vào buổi mình dạy để bắt đầu và điểm danh.' },
+  { to: '/admin/lop-hoc', icon: 'board', tone: 'blue', title: 'Lớp học', text: 'Tạo lớp, thêm / bớt học sinh, xem các buổi đã học, điểm cộng và nhắc học phí.' },
   { to: '/admin/de-thi', icon: 'exam', tone: 'blue', title: 'Quản lý đề thi', text: 'Tạo đề, sửa thông tin đề, ghi chú nội bộ, xem trước và xuất bản đề cho học viên.' },
   { to: '/admin/ket-qua', icon: 'chart', tone: 'sky', title: 'Kết quả làm bài', text: 'Xem điểm và bài làm của học viên, lọc theo tên, số điện thoại, đề thi, xuất Excel.' },
   { to: '/admin/doi-mat-khau', icon: 'key', tone: 'yellow', title: 'Đổi mật khẩu', text: 'Đổi mật khẩu đăng nhập của bạn.' },
-  { to: '/admin/huong-dan', icon: 'help', tone: 'orange', title: 'Hướng dẫn sử dụng', text: 'Cách soạn đề, dán đề có sẵn, xuất bản và xem kết quả — từng bước một.' },
+  { to: '/admin/huong-dan', icon: 'help', tone: 'orange', title: 'Hướng dẫn sử dụng', text: 'Cách điểm danh, quản lý lớp, nhắc học phí, soạn đề và xem kết quả — từng bước một.' },
 ];
 const OWNER = [
   { to: '/admin/tai-khoan', icon: 'users', tone: 'navy', title: 'Tài khoản admin', text: 'Tạo tài khoản cho giáo viên, vô hiệu hóa tài khoản, đặt lại mật khẩu khi ai đó quên.' },
@@ -51,19 +54,25 @@ export default function AdminHomePage() {
             <Link to="/admin/huong-dan">Hướng dẫn sử dụng</Link>.
           </p>
           <div className="admin-welcome-actions">
-            <Link to="/admin/de-thi" className="btn btn-sun">
-              <LineIcon name="exam" size={22} />
-              Soạn / quản lý đề thi
+            <Link to="/admin/thoi-khoa-bieu" className="btn btn-sun">
+              <LineIcon name="calendar" size={22} />
+              Thời khóa biểu
             </Link>
-            <Link to="/admin/ket-qua" className="btn btn-ghost-light">
-              <LineIcon name="chart" size={20} />
-              Xem kết quả
+            <Link to="/admin/lop-hoc" className="btn btn-ghost-light">
+              <LineIcon name="board" size={20} />
+              Lớp học
+            </Link>
+            <Link to="/admin/de-thi" className="btn btn-ghost-light">
+              <LineIcon name="exam" size={20} />
+              Đề thi
             </Link>
           </div>
         </div>
         <Emblem className="admin-welcome-emblem sea-float" alt="" />
         <Waves className="admin-welcome-waves" colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.3)', 'rgba(255,255,255,0.5)']} />
       </section>
+
+      <HomeSchedule admin={admin} />
 
       <section className="admin-section">
         <h2 className="admin-section-title">Công việc</h2>

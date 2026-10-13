@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { FileSelect } from './FileSelect.jsx';
 import { partsOf, TOEIC_PART_DEFAULTS } from '../../utils/parts.js';
+import { HOMEWORK_PREFIX, homeworkName, homeworkTitle } from '../../utils/homework.js';
 
 // Tab "Thông tin đề": mã, tên, thời gian, cài đặt hiển thị, ghi chú nội bộ, audio phần nghe.
 export default function SettingsTab(props) {
   const { readOnly, settings: form, updateSetting: update, meta } = props;
+  const isHomework = meta.exam.category === 'homework';
   return (
     <>
     <section className="admin-section">
@@ -15,8 +17,17 @@ export default function SettingsTab(props) {
             <input id="e-code" className="input" value={form.code} onChange={(e) => update('code', e.target.value.toUpperCase())} />
           </div>
           <div className="field exam-settings-title">
-            <label htmlFor="e-title">Tên đề (học viên nhìn thấy)</label>
-            <input id="e-title" className="input" value={form.title} onChange={(e) => update('title', e.target.value)} />
+            <label htmlFor="e-title">{isHomework ? 'Tên bài tập về nhà (học viên nhìn thấy)' : 'Tên đề (học viên nhìn thấy)'}</label>
+            {isHomework ? (
+              // Bài tập về nhà: chữ "Homework -" cố định ở đầu, giáo viên chỉ sửa phần tên phía sau
+              <div className="hw-title-input">
+                <span className="hw-prefix" aria-hidden="true">{HOMEWORK_PREFIX.trim()}</span>
+                <input id="e-title" className="input" value={homeworkName(form.title)} onChange={(e) => update('title', homeworkTitle(e.target.value))} />
+              </div>
+            ) : (
+              <input id="e-title" className="input" value={form.title} onChange={(e) => update('title', e.target.value)} />
+            )}
+            {isHomework && meta.exam.author && <p className="field-hint">Giáo viên ra đề: <strong>{meta.exam.author}</strong></p>}
           </div>
           <div className="field">
             <label htmlFor="e-duration">Thời gian làm bài (phút)</label>

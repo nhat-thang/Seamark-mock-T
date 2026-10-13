@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { apiGet, apiPost } from '../utils/api.js';
 import { formatDateTime } from '../utils/format.js';
+import { HOMEWORK_PREFIX } from '../utils/homework.js';
+import { useAdmin } from './AdminLayout.jsx';
 
 // Danh sách đề thi — mọi admin
 export default function ExamListPage() {
@@ -11,6 +13,9 @@ export default function ExamListPage() {
   const navMessage = useLocation().state?.message; // ví dụ: "Đã xóa đề …" (từ trang sửa đề)
   const [message, setMessage] = useState('');
   const [deleting, setDeleting] = useState(null);
+  const [view, setView] = useState('all'); // 'all' | 'exam' | 'homework'
+  const count = (c) => (exams || []).filter((e) => c === 'all' || e.category === c).length;
+  const shown = (exams || []).filter((e) => view === 'all' || e.category === view);
 
   const load = () =>
     apiGet('/admin/exams')
@@ -70,6 +75,14 @@ export default function ExamListPage() {
 
       {error && <p className="alert-error admin-message">{error}</p>}
 
+      <div className="exam-view-tabs" role="tablist" aria-label="Lọc đề">
+        {[['all', 'Tất cả'], ['exam', 'Đề thi thử'], ['homework', 'Bài tập về nhà (Homework)']].map(([key, label]) => (
+          <button key={key} type="button" role="tab" aria-selected={view === key} className={view === key ? 'is-on' : ''} onClick={() => setView(key)}>
+            {label} <span className="exam-view-count">{count(key)}</span>
+          </button>
+        ))}
+      </div>
+
       <div className="table-wrap">
         <table className="table">
           <thead>
@@ -83,7 +96,7 @@ export default function ExamListPage() {
             </tr>
           </thead>
           <tbody>
-            {(exams || []).map((e) => (
+            {shown.map((e) => (
               <tr key={e.id}>
                 <td className="nowrap">
                   <strong>{e.code}</strong>
@@ -91,6 +104,9 @@ export default function ExamListPage() {
                 </td>
                 <td>
                   {e.title}
+                  {e.category === 'homework' && (
+                    <div className="small-text hw-sub">Bài tập về nhà{e.author ? ` · Giáo viên ra đề: ${e.author}` : ''}</div>
+                  )}
                   {e.editingBy && <div className="muted small-text">{e.editingBy} đang chỉnh sửa</div>}
                 </td>
                 <td>{e.questionCount}</td>
@@ -104,6 +120,11 @@ export default function ExamListPage() {
                     <Link to={`/admin/de-thi/${e.id}`} className="btn btn-secondary btn-small">
                       Mở
                     </Link>
+                    {e.attemptCount > 0 && (
+                      <Link to={`/admin/ket-qua?examId=${e.id}`} className="btn btn-secondary btn-small">
+                        Kết quả ({e.attemptCount})
+                      </Link>
+                    )}
                     <button
                       type="button"
                       className="btn btn-danger btn-small"
@@ -118,7 +139,11 @@ export default function ExamListPage() {
             ))}
           </tbody>
         </table>
-        {exams && exams.length === 0 && <p className="table-empty">Chưa có đề nào. Bấm "Tạo đề mới" để bắt đầu.</p>}
+        {exams && shown.length === 0 && (
+          <p className="table-empty">
+            {view === 'homework' ? 'Chưa có bài tập về nhà nào. Bấm "Tạo đề mới" → chọn "Bài tập về nhà".' : 'Chưa có đề nào. Bấm "Tạo đề mới" để bắt đầu.'}
+          </p>
+        )}
         {!exams && !error && <p className="table-empty">Đang tải…</p>}
       </div>
     </>
@@ -139,9 +164,13 @@ export function ExamStatusTag({ exam }) {
 
 function CreateExamForm({ onCancel }) {
   const navigate = useNavigate();
+  const me = useAdmin();
+  // category: 'exam' (đề thi thử) | 'homework' (bài tập về nhà)
   // choice: 'TOEIC_LR' | 'CUSTOM' | 'tpl:<id>' (tạo từ khung mẫu)
-  const [form, setForm] = useState({ choice: 'TOEIC_LR', code: '', title: '', durationMinutes: '120' });
+  const [form, setForm] = useState({ category: 'exam', choice: 'TOEIC_LR', code: '', title: '', durationMinutes: '120', authorId: String(me.id) });
+  const [teachers, setTeachers] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const isHomework = form.category === 'homework';
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const set = (name) => (e) => setForm((f) => ({ ...f, [name]: e.target.value }));
@@ -152,6 +181,7 @@ function CreateExamForm({ onCancel }) {
       .catch(() => {});
   useEffect(() => {
     loadTemplates();
+    apiGet('/admin/schedule/teachers').then((d) => setTeachers(d.teachers)).catch(() => {});
   }, []);
 
   function choose(choice, durationMinutes) {
@@ -172,14 +202,17 @@ function CreateExamForm({ onCancel }) {
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
-    if (!form.code.trim()) return setError('Vui lòng nhập mã đề.');
-    if (!form.title.trim()) return setError('Vui lòng nhập tên đề.');
+    if (!isHomework && !form.code.trim()) return setError('Vui lòng nhập mã đề.');
+    if (!form.title.trim()) return setError(isHomework ? 'Vui lòng đặt tên cho bài tập (ví dụ: Đề lớp 1A).' : 'Vui lòng nhập tên đề.');
     setLoading(true);
     const fromTemplate = form.choice.startsWith('tpl:');
     try {
       const r = await apiPost('/admin/exams', {
-        code: form.code,
+        category: form.category,
+        // Homework: mã đề web tự đặt (HW-001...), đổi được sau ở tab "Thông tin đề"
+        code: isHomework ? '' : form.code,
         title: form.title,
+        authorId: isHomework ? Number(form.authorId) : undefined,
         durationMinutes: Number(form.durationMinutes),
         examType: fromTemplate ? 'CUSTOM' : form.choice,
         templateId: fromTemplate ? Number(form.choice.slice(4)) : undefined,
@@ -206,6 +239,22 @@ function CreateExamForm({ onCancel }) {
     <section className="admin-section">
       <form className="card create-exam" onSubmit={handleSubmit} noValidate>
         <h2 className="admin-section-title">Tạo đề mới</h2>
+
+        <fieldset className="purpose-list">
+          <legend className="field-label">Bạn muốn tạo gì?</legend>
+          {[
+            { key: 'exam', title: 'Đề thi thử', desc: 'Học viên thấy ở mục "Đề thi thử".' },
+            { key: 'homework', title: 'Bài tập về nhà (Homework)', desc: 'Học viên thấy ở mục "Bài tập về nhà", kèm tên giáo viên ra đề.' },
+          ].map((p) => (
+            <label key={p.key} className={`purpose-card ${form.category === p.key ? 'is-on' : ''} ${p.key === 'homework' ? 'is-hw' : ''}`}>
+              <input type="radio" name="exam-category" checked={form.category === p.key} onChange={() => setForm((f) => ({ ...f, category: p.key }))} />
+              <span>
+                <strong>{p.title}</strong>
+                <span className="type-row-desc">{p.desc}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
 
         <fieldset className="type-list">
           <legend className="field-label">Chọn loại đề</legend>
@@ -235,6 +284,29 @@ function CreateExamForm({ onCancel }) {
           ))}
         </fieldset>
 
+        {isHomework ? (
+          <div className="admin-form-row create-exam-fields hw-fields">
+            <div className="field">
+              <label htmlFor="c-hw-title">Tên bài tập</label>
+              <div className="hw-title-input">
+                <span className="hw-prefix" aria-hidden="true">{HOMEWORK_PREFIX.trim()}</span>
+                <input id="c-hw-title" className="input" value={form.title} onChange={set('title')} placeholder="Ví dụ: Đề lớp 1A" maxLength={180} />
+              </div>
+              <p className="field-hint">Học viên thấy: <strong>{HOMEWORK_PREFIX}{form.title.trim() || '…'}</strong></p>
+            </div>
+            <div className="field">
+              <label htmlFor="c-author">Giáo viên ra đề</label>
+              <select id="c-author" className="input" value={form.authorId} onChange={set('authorId')}>
+                {teachers.length === 0 && <option value={me.id}>{me.displayName}</option>}
+                {teachers.map((t) => <option key={t.id} value={t.id}>{t.displayName}{t.id === me.id ? ' (bạn)' : ''}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="c-hw-duration">Thời gian (phút)</label>
+              <input id="c-hw-duration" className="input" type="number" min="1" max="600" value={form.durationMinutes} onChange={set('durationMinutes')} />
+            </div>
+          </div>
+        ) : (
         <div className="admin-form-row create-exam-fields">
           <div className="field">
             <label htmlFor="c-code">Mã đề</label>
@@ -249,11 +321,16 @@ function CreateExamForm({ onCancel }) {
             <input id="c-duration" className="input" type="number" min="1" max="600" value={form.durationMinutes} onChange={set('durationMinutes')} />
           </div>
         </div>
-        <p className="field-hint create-exam-hint">Mã đề: chữ không dấu, số, dấu gạch ngang, không trùng đề khác.</p>
+        )}
+        {isHomework ? (
+          <p className="field-hint create-exam-hint">Mã đề web tự đặt (HW-001, HW-002…). Bên trong soạn đề giống hệt đề thi thử.</p>
+        ) : (
+          <p className="field-hint create-exam-hint">Mã đề: chữ không dấu, số, dấu gạch ngang, không trùng đề khác.</p>
+        )}
         {error && <p className="alert-error admin-message" role="alert">{error}</p>}
         <div className="admin-form-actions">
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Đang tạo…' : 'Tạo đề'}
+            {loading ? 'Đang tạo…' : isHomework ? 'Tạo bài tập về nhà' : 'Tạo đề'}
           </button>
           <button type="button" className="btn btn-secondary" onClick={onCancel}>
             Hủy

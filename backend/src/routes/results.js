@@ -19,13 +19,15 @@ const EXPORT_LIMIT = 5000;
 const FROM = `FROM attempts a
   JOIN students s ON s.id = a.student_id
   JOIN exam_versions v ON v.id = a.exam_version_id
-  JOIN exams e ON e.id = v.exam_id`;
+  JOIN exams e ON e.id = v.exam_id
+  LEFT JOIN admins au ON au.id = e.created_by`;
 
 const SELECT = `SELECT a.id, a.status, a.started_at, a.submitted_at, a.deadline_at, a.answers_json, a.exam_version_id,
   a.listening_correct, a.reading_correct, a.listening_score, a.reading_score, a.total_score,
   a.correct_count, a.question_total, a.score10, e.exam_type,
   s.id AS student_id, s.last_name, s.first_name, s.phone,
-  e.id AS exam_id, e.code AS exam_code, v.title AS exam_title, v.version_no, v.question_count`;
+  e.id AS exam_id, e.code AS exam_code, v.title AS exam_title, v.version_no, v.question_count,
+  e.category, au.display_name AS author_name`;
 
 // Giờ Việt Nam dạng "08/10/2026 14:05" (dùng trong file Excel)
 const VN_FORMAT = new Intl.DateTimeFormat('en-GB', {
@@ -37,7 +39,7 @@ function vnTime(iso) {
   return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
 }
 
-/** Điều kiện lọc từ query: name, phone, examId, status, from, to */
+/** Điều kiện lọc từ query: name, phone, examId, category (exam | homework), authorId (giáo viên ra đề), status, from, to */
 function buildFilters(q) {
   const where = [];
   const params = [];
@@ -55,6 +57,15 @@ function buildFilters(q) {
   if (examId) {
     where.push('e.id = ?');
     params.push(examId);
+  }
+  if (q.category === 'exam' || q.category === 'homework') {
+    where.push('e.category = ?');
+    params.push(q.category);
+  }
+  const authorId = Number.parseInt(q.authorId, 10);
+  if (authorId) {
+    where.push('e.created_by = ?');
+    params.push(authorId);
   }
   if (q.status === 'submitted' || q.status === 'in_progress') {
     where.push('a.status = ?');
@@ -82,6 +93,16 @@ function resultsRouter(db) {
     return { listening, reading };
   }
 
+  /** Câu làm sai và câu bỏ trống (số câu theo đề gốc), chỉ khi đã nộp bài */
+  function mistakesOf(r, content, answers) {
+    if (r.status !== 'submitted') return { wrong: [], blank: [] };
+    const details = gradeAttempt(content, answers).details;
+    return {
+      wrong: details.filter((d) => d.chosen !== null && !d.isCorrect).map((d) => d.no),
+      blank: details.filter((d) => d.chosen === null).map((d) => d.no),
+    };
+  }
+
   function listItem(r, content) {
     const totals = sectionTotals(content);
     const answers = JSON.parse(r.answers_json || '{}');
@@ -93,7 +114,10 @@ function resultsRouter(db) {
       submittedAt: r.submitted_at,
       minutesUsed: end ? Math.max(1, Math.round((Date.parse(end) - Date.parse(r.started_at)) / 60000)) : null,
       student: { id: r.student_id, lastName: r.last_name, firstName: r.first_name, phone: r.phone },
-      exam: { id: r.exam_id, code: r.exam_code, title: r.exam_title, versionNo: r.version_no, examType: r.exam_type },
+      exam: {
+        id: r.exam_id, code: r.exam_code, title: r.exam_title, versionNo: r.version_no, examType: r.exam_type,
+        category: r.category, author: r.author_name,
+      },
       answered: Object.keys(answers).length,
       questionCount: r.question_count,
       listening: { correct: r.listening_correct, total: totals.listening, score: r.listening_score },
@@ -103,6 +127,7 @@ function resultsRouter(db) {
       correct: r.correct_count,
       total: r.question_total ?? r.question_count,
       score10: r.score10,
+      ...mistakesOf(r, content, answers),
     };
   }
 
@@ -144,6 +169,8 @@ function resultsRouter(db) {
       { header: 'SĐT', key: 'phone', width: 13 },
       { header: 'Mã đề', key: 'code', width: 14 },
       { header: 'Tên đề', key: 'title', width: 30 },
+      { header: 'Loại', key: 'category', width: 11 },
+      { header: 'Giáo viên ra đề', key: 'author', width: 16 },
       { header: 'Lần xuất bản', key: 'ver', width: 8 },
       { header: 'Trạng thái', key: 'status', width: 12 },
       { header: 'Listening đúng', key: 'lc', width: 10 },
@@ -153,6 +180,8 @@ function resultsRouter(db) {
       { header: 'Tổng điểm TOEIC (ước tính)', key: 'ts', width: 12 },
       { header: 'Số câu đúng', key: 'cc', width: 10 },
       { header: 'Điểm thang 10', key: 's10', width: 9 },
+      { header: 'Câu sai', key: 'wrong', width: 30 },
+      { header: 'Câu bỏ trống', key: 'blank', width: 20 },
     ];
     rows.forEach((r, i) => {
       const item = listItem(r, contents.get(r.exam_version_id));
@@ -165,6 +194,10 @@ function resultsRouter(db) {
         phone: r.phone, // giữ dạng chữ để không mất số 0 ở đầu
         code: r.exam_code,
         title: r.exam_title,
+        category: r.category === 'homework' ? 'Homework' : 'Đề thi thử',
+        author: r.author_name || '',
+        wrong: item.wrong.join(', '),
+        blank: item.blank.join(', '),
         ver: r.version_no,
         status: r.status === 'submitted' ? 'Đã nộp' : 'Đang làm',
         lc: item.listening.total ? `${item.listening.correct ?? ''}/${item.listening.total}` : '',

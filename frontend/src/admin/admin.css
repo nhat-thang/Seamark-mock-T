@@ -707,6 +707,12 @@ fieldset.exam-settings:disabled {
   min-width: 220px;
 }
 
+.result-mistakes {
+  max-width: 280px;
+  margin-top: 0.3rem;
+  white-space: normal;
+}
+
 /* ---------- Hướng dẫn ---------- */
 .guide {
   max-width: 900px;
@@ -848,6 +854,125 @@ fieldset.exam-settings:disabled {
 
 .create-exam-hint {
   margin: 0 0 0.9rem;
+}
+
+/* Đề thi thử / bài tập về nhà (homework) */
+.tag-hw {
+  background: #efe9ff;
+  color: #6b3fd8;
+}
+.hw-sub {
+  color: #6b3fd8;
+  font-weight: 600;
+}
+.purpose-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.6rem;
+  margin: 0 0 1.1rem;
+  padding: 0;
+  border: none;
+}
+.purpose-list legend {
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+}
+.purpose-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.85rem 1rem;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+.purpose-card span {
+  display: flex;
+  flex-direction: column;
+}
+.purpose-card input {
+  width: 20px;
+  height: 20px;
+  margin-top: 0.2rem;
+  accent-color: var(--color-primary);
+}
+.purpose-card:hover {
+  border-color: var(--color-accent);
+}
+.purpose-card.is-on {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+.purpose-card.is-hw.is-on {
+  border-color: #8358e8;
+  background: #f4efff;
+}
+.purpose-card.is-hw input {
+  accent-color: #8358e8;
+}
+.exam-settings .admin-form-row.hw-fields,
+.hw-fields {
+  grid-template-columns: 2fr 1fr 1fr;
+}
+.hw-title-input {
+  display: flex;
+  align-items: stretch;
+}
+.hw-prefix {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.9rem;
+  border: 2px solid #c9b6f5;
+  border-right: none;
+  border-radius: var(--radius-small) 0 0 var(--radius-small);
+  background: #efe9ff;
+  color: #6b3fd8;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.hw-title-input .input {
+  border-radius: 0 var(--radius-small) var(--radius-small) 0;
+}
+.exam-view-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 1rem;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+}
+.exam-view-tabs button {
+  min-height: 40px;
+  padding: 0 1.1rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-primary);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.exam-view-tabs button.is-on {
+  background: var(--brand-blue);
+  color: #fff;
+}
+.exam-view-count {
+  display: inline-block;
+  min-width: 22px;
+  margin-left: 0.25rem;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--color-primary);
+  font-size: 0.8rem;
+}
+@media (max-width: 700px) {
+  .hw-fields {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Khung mẫu đề */

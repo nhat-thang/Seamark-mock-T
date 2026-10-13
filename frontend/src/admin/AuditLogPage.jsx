@@ -4,11 +4,12 @@ import { AUDIT_ACTION_LABELS, formatDateTime } from '../utils/format.js';
 import { useHistory } from './useHistory.js';
 import Pagination from './Pagination.jsx';
 
-const EMPTY_FILTERS = { adminId: '', from: '', to: '' };
+const EMPTY_FILTERS = { adminId: '', classId: '', from: '', to: '' };
 
 // Lịch sử chỉnh sửa (đề thi, tài liệu, tài khoản) — chỉ admin chính
 export default function AuditLogPage() {
   const [accounts, setAccounts] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
   const history = useHistory('/admin/history/audit', filters, page);
@@ -16,6 +17,7 @@ export default function AuditLogPage() {
   // Danh sách admin để chọn trong bộ lọc
   useEffect(() => {
     apiGet('/admin/accounts').then((d) => setAccounts(d.accounts)).catch(() => {});
+    apiGet('/admin/classes').then((d) => setClasses(d.classes)).catch(() => {});
   }, []);
 
   const setFilter = (name) => (e) => {
@@ -27,7 +29,7 @@ export default function AuditLogPage() {
     <>
       <h1 className="admin-title">Lịch sử chỉnh sửa</h1>
       <p className="admin-intro">
-        Mọi thay đổi trên web: ai làm, làm gì, lúc nào — tài khoản, tạo đề, sửa đề, xuất bản, giành quyền sửa đề.
+        Mọi thay đổi trên web: ai làm, làm gì, lúc nào — tài khoản, đề thi, lớp học, học sinh, xếp lịch, điểm danh, học phí.
         Các lần tự động lưu liên tiếp của cùng một người được gộp thành một dòng (mỗi 10 phút).
       </p>
 
@@ -38,6 +40,15 @@ export default function AuditLogPage() {
             <option value="">Tất cả</option>
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>{a.displayName}</option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="f-class">Lớp học</label>
+          <select id="f-class" className="input" value={filters.classId} onChange={setFilter('classId')}>
+            <option value="">Tất cả</option>
+            {classes.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
         </div>
@@ -63,7 +74,7 @@ export default function AuditLogPage() {
               <th>Thời gian</th>
               <th>Người thực hiện</th>
               <th>Thao tác</th>
-              <th>Đề thi</th>
+              <th>Đề thi / Lớp</th>
               <th>Chi tiết</th>
             </tr>
           </thead>
@@ -73,7 +84,9 @@ export default function AuditLogPage() {
                 <td className="nowrap">{formatDateTime(item.createdAt)}</td>
                 <td>{item.admin ? item.admin.displayName : <span className="muted">(không rõ)</span>}</td>
                 <td><span className="tag tag-info">{AUDIT_ACTION_LABELS[item.action] || item.action}</span></td>
-                <td>{item.exam ? `${item.exam.code} – ${item.exam.title}` : <span className="muted">—</span>}</td>
+                <td>
+                  {item.exam ? `${item.exam.code} – ${item.exam.title}` : item.class ? `Lớp ${item.class.name}` : <span className="muted">—</span>}
+                </td>
                 <td>{item.detail}</td>
               </tr>
             ))}

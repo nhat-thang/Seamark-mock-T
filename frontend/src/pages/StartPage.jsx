@@ -32,7 +32,7 @@ export default function StartPage() {
     <PageShell title={`Xin chào ${student.lastName} ${student.firstName}!`} subtitle="Chọn một đề để bắt đầu. Chúc bạn làm bài thật tốt!" step={2}>
       <div className="card">
         <div className="start-card-head">
-          <h2 className="start-card-title">Đề thi đang mở</h2>
+          <h2 className="start-card-title">Chọn bài để làm</h2>
           <button type="button" className="btn btn-link" onClick={() => setStep('form')}>
             Sửa thông tin
           </button>

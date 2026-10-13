@@ -6,12 +6,16 @@ import LineIcon from '../components/brand/LineIcon.jsx';
 import { Sparkle } from '../components/brand/SeaArt.jsx';
 import '../components/brand/brand.css';
 import './admin.css';
+// Sau admin.css: CSS của phần lớp học được phép ghi đè kiểu chung của trang admin
+import NotificationBell from './classes/NotificationBell.jsx';
 
 const LOGIN_PATH = '/admin/dang-nhap';
 
 // Menu: đổi tên mục ở đây thì sửa cả trang Hướng dẫn (GuidePage.jsx)
 const NAV = [
   { to: '/admin', end: true, icon: 'home', label: 'Trang chính' },
+  { to: '/admin/thoi-khoa-bieu', icon: 'calendar', label: 'Thời khóa biểu' },
+  { to: '/admin/lop-hoc', icon: 'board', label: 'Lớp học' },
   { to: '/admin/de-thi', icon: 'exam', label: 'Đề thi' },
   { to: '/admin/ket-qua', icon: 'chart', label: 'Kết quả' },
   { to: '/admin/doi-mat-khau', icon: 'key', label: 'Đổi mật khẩu' },
@@ -112,6 +116,7 @@ export default function AdminLayout() {
           </span>
         </Link>
         <div className="admin-user">
+          <NotificationBell />
           <span className="admin-user-hello">
             Xin chào, <strong>{admin.displayName}</strong>
             <span className="admin-role">{ROLE_LABELS[admin.role]}</span>

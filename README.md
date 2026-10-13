@@ -34,8 +34,17 @@ Website cho học viên của trung tâm tiếng Anh làm đề TOEIC thử và 
    - Nhập nhanh 200 đáp án bằng bảng bấm A/B/C/D hoặc dán chuỗi `1A 2C 3B ...`.
    - Kéo thả nhiều file ảnh/audio cùng lúc, tự khớp theo tên file.
    - Đoạn văn Part 6, 7 có thể upload bằng ảnh thay vì gõ chữ.
-4. **Kết quả:** danh sách lượt làm bài (lọc theo tên, SĐT, đề, ngày), chi tiết từng câu, xuất Excel.
+4. **Kết quả:** danh sách lượt làm bài (lọc theo tên, SĐT, đề, loại đề, giáo viên ra đề, ngày), mỗi dòng có các câu làm sai, chi tiết từng câu, xuất Excel.
+   - **Bài tập về nhà (Homework):** tạo như đề thường, tên tự có "Homework - " ở đầu, ghi giáo viên ra đề; học viên chọn mục "Bài tập về nhà" để làm.
 5. Lịch sử ai sửa đề lúc nào.
+6. **Lớp học + điểm danh:**
+   - Mọi admin tạo / xóa lớp, thêm / sửa / cho nghỉ học sinh (học sinh không cần tài khoản; dán cả danh sách từ Excel / Zalo được).
+   - **Nhập danh sách lớp từ file Excel bất kỳ** (web tự nhận cột họ tên / SĐT / ngày vào học, cột khác gộp vào ghi chú) và **tải danh sách lớp + điểm danh về Excel**.
+   - **Thời khóa biểu** Thứ 2 → Chủ nhật, xem tuần nào cũng được. Chỉ admin chính xếp lịch; mỗi buổi bắt buộc chọn giáo viên (tài khoản admin, hoặc "Khác" + tên). Có "lặp lại hằng tuần", báo trùng lịch.
+   - Admin xem lịch tất cả các lớp hoặc chỉ lịch dạy của mình, nhưng chỉ mở được buổi mình dạy. Bấm **Bắt đầu buổi học** từ 30 phút trước giờ học → điểm danh (có mặt / đi muộn / vắng có phép / vắng không phép), điểm cộng, thêm học sinh.
+   - **Nhắc học phí** mỗi N buổi, tính theo số buổi của từng học sinh từ ngày vào học (kể cả buổi vắng).
+   - Chuông thông báo trên web (buổi dạy sắp tới, buổi chưa điểm danh, lịch mới) + thông báo trình duyệt khi trang đang mở.
+   - Admin chính xem mọi thao tác thêm / sửa / xóa / điểm danh trong **Lịch sử chỉnh sửa** (lọc theo lớp).
 
 ## Công nghệ
 

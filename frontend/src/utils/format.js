@@ -24,7 +24,7 @@ export const ROLE_LABELS = {
   admin: 'Admin',
 };
 
-// Tên thao tác trong "Lịch sử chỉnh sửa". Mốc sau thêm các thao tác về đề thi, tài liệu.
+// Tên thao tác trong "Lịch sử chỉnh sửa". Thêm thao tác mới ở backend thì thêm nhãn ở đây.
 export const AUDIT_ACTION_LABELS = {
   create_admin: 'Tạo tài khoản',
   disable_admin: 'Vô hiệu hóa tài khoản',
@@ -46,6 +46,26 @@ export const AUDIT_ACTION_LABELS = {
   delete_exam: 'Xóa đề',
   save_template: 'Lưu khung mẫu',
   delete_template: 'Xóa khung mẫu',
+  // Lớp học, thời khóa biểu, điểm danh, học phí
+  create_class: 'Tạo lớp',
+  update_class: 'Sửa thông tin lớp',
+  delete_class: 'Xóa lớp',
+  restore_class: 'Khôi phục lớp',
+  add_students: 'Thêm học sinh',
+  import_students: 'Nhập học sinh từ Excel',
+  export_class: 'Tải danh sách lớp',
+  update_student: 'Sửa học sinh',
+  remove_student: 'Cho học sinh nghỉ',
+  delete_student: 'Xóa học sinh',
+  restore_student: 'Cho học sinh học lại',
+  create_sessions: 'Xếp lịch học',
+  update_session: 'Sửa lịch học',
+  delete_session: 'Xóa buổi học',
+  start_session: 'Bắt đầu buổi học',
+  save_attendance: 'Điểm danh',
+  update_attendance: 'Sửa điểm danh',
+  fee_paid: 'Đã thu học phí',
+  fee_undo: 'Hoàn tác thu học phí',
 };
 
 // Kết quả trong "Lịch sử đăng nhập"

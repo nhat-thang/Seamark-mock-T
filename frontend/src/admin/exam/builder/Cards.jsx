@@ -1,10 +1,29 @@
 // Các thẻ không phải question: tiêu đề đề, đầu Part, khối chữ / ảnh / audio.
 import PassageText from '../../../components/PassageText.jsx';
+import { HOMEWORK_PREFIX, homeworkName, homeworkTitle } from '../../../utils/homework.js';
 import Icon, { IconButton } from './icons.jsx';
 import { AutoText, DraftAudio, DraftImage, Menu } from './widgets.jsx';
 
 /** Thẻ tiêu đề trên cùng: tên đề (sửa được) + mô tả đề (hiện cho học viên trước khi làm bài) */
-export function TitleCard({ selected, title, description, onTitle, onDescription }) {
+export function TitleCard({ selected, title, description, onTitle, onDescription, homework = false }) {
+  if (homework && selected) {
+    // Bài tập về nhà: "Homework -" cố định, chỉ sửa phần tên phía sau
+    return (
+      <>
+        <div className="fb-hw-title">
+          <span className="hw-prefix" aria-hidden="true">{HOMEWORK_PREFIX.trim()}</span>
+          <input className="fb-form-title-input" value={homeworkName(title)} onChange={(e) => onTitle(homeworkTitle(e.target.value))} placeholder="Tên bài tập" aria-label="Tên bài tập" />
+        </div>
+        <AutoText
+          className="fb-form-desc-input"
+          value={description}
+          onChange={onDescription}
+          placeholder="Mô tả đề (không bắt buộc — học viên thấy trước khi làm bài)"
+          aria-label="Mô tả đề"
+        />
+      </>
+    );
+  }
   if (!selected) {
     return (
       <>

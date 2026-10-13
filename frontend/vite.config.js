@@ -41,7 +41,9 @@ export default defineConfig(({ command }) => {
       strictPort: true,
       // Khi chạy dev: mọi request /api được chuyển tiếp sang backend
       proxy: {
-        '/api': target,
+        // changeOrigin: false = giữ nguyên tên máy (localhost:5173) khi chuyển tiếp. Backend so tên máy này với Origin
+        // khi tải file lên (chống giả mạo request); viết tắt '/api': target thì Vite đổi thành 127.0.0.1 và mọi lần tải file bị từ chối.
+        '/api': { target, changeOrigin: false },
       },
     },
   };

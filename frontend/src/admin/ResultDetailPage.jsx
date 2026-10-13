@@ -39,6 +39,15 @@ export default function ResultDetailPage() {
           <div className="detail-grid">
             <Info label="Số điện thoại" value={a.student.phone} />
             <Info label="Đề" value={`${a.exam.title} (${a.exam.code}, lần xuất bản ${a.exam.versionNo})`} />
+            {a.exam.category === 'homework' && <Info label="Bài tập về nhà của" value={a.exam.author || '(không rõ)'} />}
+            {done && (
+              <Info
+                label="Câu sai / bỏ trống"
+                value={a.wrong.length || a.blank.length
+                  ? [a.wrong.length ? `Sai: ${a.wrong.join(', ')}` : '', a.blank.length ? `Bỏ trống: ${a.blank.join(', ')}` : ''].filter(Boolean).join(' · ')
+                  : 'Không có — đúng hết'}
+              />
+            )}
             <Info label="Bắt đầu" value={formatDateTime(a.startedAt)} />
             <Info
               label={done ? 'Nộp bài' : 'Hết giờ lúc'}
