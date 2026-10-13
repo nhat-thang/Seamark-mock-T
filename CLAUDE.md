@@ -60,7 +60,7 @@ Thiết kế sao cho sau này thêm được câu hỏi tự luận và ghi âm 
 ### Học viên
 - Trang chủ: hai cách làm bài **Training Test** (`/bat-dau`) và **Class Assignment** (`/lop`), cùng nút "Đăng nhập admin".
 - **Training Test (đã chốt):** chỉ nhập họ và tên, KHÔNG cần SĐT; chỉ thấy đề `category = 'exam'`. Không có SĐT nên server không tự mở lại bài dở theo tên (tránh người trùng tên vào nhầm bài) — trình duyệt nhớ bài đang làm theo từng đề (`saveOngoing` trong `utils/attemptStorage.js`). API vẫn nhận SĐT (nếu gửi) để tương thích bản cũ.
-- **Class Assignment (đã chốt):** chọn lớp → bấm tên mình → chọn bài của lớp (`pages/ClassAssignmentPage.jsx`, API công khai `routes/publicClasses.js`). Danh sách lớp và họ tên học sinh hiện **công khai** theo yêu cầu, nhưng API chỉ trả họ tên (không SĐT / ghi chú / mật khẩu đề). Người làm bài gắn với học sinh lớp qua `students.class_student_id`.
+- **Class Assignment (đã chốt):** chọn lớp → bấm tên mình → chọn bài của lớp (`pages/ClassAssignmentPage.jsx`, API công khai `routes/publicClasses.js`). Danh sách lớp và họ tên học sinh hiện **công khai** theo yêu cầu, nhưng API chỉ trả họ tên (không SĐT / ghi chú / mật khẩu đề). Người làm bài gắn với học sinh lớp qua `students.class_student_id`. **Không nhớ tên đã chọn** (đã chốt): mỗi lần vào lớp đều phải bấm tên, tránh học sinh sau dùng chung máy làm nhầm dưới tên người trước.
 - Danh sách đề `published`.
 - Làm bài:
   - Thời gian tính **ở server** (`deadline_at`). Client chỉ hiển thị đếm ngược; hết giờ thì server không nhận thêm câu trả lời và tự chốt bài.

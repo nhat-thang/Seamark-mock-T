@@ -47,7 +47,7 @@ export default function ResultView({ view }) {
           )}
 
           <div className="result-actions">
-            {/* Làm bài của lớp: quay về đúng lớp (tên học sinh vẫn được nhớ trong tab này) */}
+            {/* Làm bài của lớp: quay về đúng lớp (học sinh bấm lại tên của mình) */}
             <Link to={view.classId ? `/lop/${view.classId}` : '/bat-dau'} className="btn btn-primary">Làm bài khác</Link>
             <Link to="/" className="btn btn-secondary">Về trang chủ</Link>
           </div>
