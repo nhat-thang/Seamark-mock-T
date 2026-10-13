@@ -13,6 +13,9 @@ const filesRouter = require('./routes/files');
 const resultsRouter = require('./routes/results');
 const templatesRouter = require('./routes/templates');
 const aiRouter = require('./routes/ai');
+const classesRouter = require('./routes/classes');
+const scheduleRouter = require('./routes/schedule');
+const notificationsRouter = require('./routes/notifications');
 const { requireAdmin, requireOwner } = require('./auth/middleware');
 
 /**
@@ -47,6 +50,10 @@ function createApp({ db, config }) {
   admin.use('/results', resultsRouter(db));
   admin.use('/templates', templatesRouter(db));
   admin.use('/ai', aiRouter(db, config));
+  // Lớp học, thời khóa biểu, điểm danh. Phân quyền chi tiết (chỉ admin chính xếp lịch...) nằm trong từng router.
+  admin.use('/classes', classesRouter(db));
+  admin.use('/schedule', scheduleRouter(db));
+  admin.use('/notifications', notificationsRouter(db));
   // Tải file Excel mẫu (docs/mau-de-toeic.xlsx)
   admin.get('/excel-template', (req, res) => {
     res.download(path.join(config.rootDir, 'docs', 'mau-de-toeic.xlsx'), 'mau-de-toeic.xlsx', (err) => {

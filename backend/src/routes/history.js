@@ -1,5 +1,5 @@
 // API xem lịch sử — CHỈ admin chính (owner).
-//   GET /api/admin/history/audit   lịch sử chỉnh sửa (đề thi, tài liệu, tài khoản...)
+//   GET /api/admin/history/audit   lịch sử chỉnh sửa (đề thi, tài khoản, lớp học, điểm danh...), lọc ?adminId&classId&from&to
 //   GET /api/admin/history/logins  lịch sử đăng nhập
 // Có lọc và phân trang. (requireAdmin + requireOwner được gắn ở app.js)
 const express = require('express');
@@ -13,14 +13,17 @@ function historyRouter(db) {
     const params = [];
     const adminId = Number.parseInt(req.query.adminId, 10);
     if (adminId) { where.push('l.admin_id = ?'); params.push(adminId); }
+    const classId = Number.parseInt(req.query.classId, 10);
+    if (classId) { where.push('l.class_id = ?'); params.push(classId); }
     addDateFilter(req.query, 'l.created_at', where, params);
 
     const result = paginate(db, {
-      select: `SELECT l.id, l.action, l.detail, l.created_at, l.exam_id,
-                      a.username, a.display_name, e.code AS exam_code, e.title AS exam_title`,
+      select: `SELECT l.id, l.action, l.detail, l.created_at, l.exam_id, l.class_id,
+                      a.username, a.display_name, e.code AS exam_code, e.title AS exam_title, c.name AS class_name`,
       from: `FROM audit_log l
              LEFT JOIN admins a ON a.id = l.admin_id
-             LEFT JOIN exams e ON e.id = l.exam_id`,
+             LEFT JOIN exams e ON e.id = l.exam_id
+             LEFT JOIN classes c ON c.id = l.class_id`,
       where,
       params,
       orderBy: 'l.created_at DESC, l.id DESC',
@@ -35,6 +38,7 @@ function historyRouter(db) {
         createdAt: r.created_at,
         admin: r.username ? { username: r.username, displayName: r.display_name } : null,
         exam: r.exam_id ? { id: r.exam_id, code: r.exam_code, title: r.exam_title } : null,
+        class: r.class_id ? { id: r.class_id, name: r.class_name } : null,
       })),
       page: result.page,
       totalPages: result.totalPages,

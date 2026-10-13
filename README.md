@@ -36,6 +36,13 @@ Website cho học viên của trung tâm tiếng Anh làm đề TOEIC thử và 
    - Đoạn văn Part 6, 7 có thể upload bằng ảnh thay vì gõ chữ.
 4. **Kết quả:** danh sách lượt làm bài (lọc theo tên, SĐT, đề, ngày), chi tiết từng câu, xuất Excel.
 5. Lịch sử ai sửa đề lúc nào.
+6. **Lớp học + điểm danh:**
+   - Mọi admin tạo / xóa lớp, thêm / sửa / cho nghỉ học sinh (học sinh không cần tài khoản; dán cả danh sách từ Excel / Zalo được).
+   - **Thời khóa biểu** Thứ 2 → Chủ nhật, xem tuần nào cũng được. Chỉ admin chính xếp lịch; mỗi buổi bắt buộc chọn giáo viên (tài khoản admin, hoặc "Khác" + tên). Có "lặp lại hằng tuần", báo trùng lịch.
+   - Admin xem lịch tất cả các lớp hoặc chỉ lịch dạy của mình, nhưng chỉ mở được buổi mình dạy. Bấm **Bắt đầu buổi học** từ 30 phút trước giờ học → điểm danh (có mặt / đi muộn / vắng có phép / vắng không phép), điểm cộng, thêm học sinh.
+   - **Nhắc học phí** mỗi N buổi, tính theo số buổi của từng học sinh từ ngày vào học (kể cả buổi vắng).
+   - Chuông thông báo trên web (buổi dạy sắp tới, buổi chưa điểm danh, lịch mới) + thông báo trình duyệt khi trang đang mở.
+   - Admin chính xem mọi thao tác thêm / sửa / xóa / điểm danh trong **Lịch sử chỉnh sửa** (lọc theo lớp).
 
 ## Công nghệ
 

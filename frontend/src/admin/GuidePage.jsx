@@ -4,17 +4,22 @@ import { useAdmin } from './AdminLayout.jsx';
 // Hướng dẫn sử dụng cho giáo viên — viết ngắn, từng bước, gọi đúng tên nút trên màn hình.
 const SECTIONS = [
   { id: 'bat-dau', title: '1. Bắt đầu' },
-  { id: 'tao-de', title: '2. Tạo đề mới bằng file Excel' },
-  { id: 'anh-audio', title: '3. Thêm ảnh và audio' },
-  { id: 'dap-an', title: '4. Nhập nhanh đáp án' },
-  { id: 'sua-cau', title: '5. Sửa một câu hoặc một đoạn văn' },
-  { id: 'xuat-ban', title: '6. Xem trước và xuất bản đề' },
-  { id: 'tu-thiet-ke', title: '7. Đề tự thiết kế' },
-  { id: 'nguoi-khac-sua', title: '8. Khi người khác đang sửa cùng đề' },
-  { id: 'ket-qua', title: '9. Xem kết quả học viên' },
-  { id: 'hoc-vien', title: '10. Học viên làm bài thế nào' },
-  { id: 'admin-chinh', title: '11. Việc của admin chính' },
-  { id: 'hoi-dap', title: '12. Câu hỏi thường gặp' },
+  { id: 'lich-day', title: '2. Xem lịch dạy và thông báo' },
+  { id: 'diem-danh', title: '3. Điểm danh một buổi học' },
+  { id: 'lop-hoc', title: '4. Lớp học và học sinh' },
+  { id: 'hoc-phi', title: '5. Nhắc học phí' },
+  { id: 'xep-lich', title: '6. Xếp thời khóa biểu (admin chính)' },
+  { id: 'tao-de', title: '7. Tạo đề mới bằng file Excel' },
+  { id: 'anh-audio', title: '8. Thêm ảnh và audio' },
+  { id: 'dap-an', title: '9. Nhập nhanh đáp án' },
+  { id: 'sua-cau', title: '10. Sửa một câu hoặc một đoạn văn' },
+  { id: 'xuat-ban', title: '11. Xem trước và xuất bản đề' },
+  { id: 'tu-thiet-ke', title: '12. Đề tự thiết kế' },
+  { id: 'nguoi-khac-sua', title: '13. Khi người khác đang sửa cùng đề' },
+  { id: 'ket-qua', title: '14. Xem kết quả học viên' },
+  { id: 'hoc-vien', title: '15. Học viên làm bài thế nào' },
+  { id: 'admin-chinh', title: '16. Việc của admin chính' },
+  { id: 'hoi-dap', title: '17. Câu hỏi thường gặp' },
 ];
 
 export default function GuidePage() {
@@ -47,6 +52,124 @@ export default function GuidePage() {
           <li>Dùng xong trên máy dùng chung, bấm <B>Đăng xuất</B> ở góc phải phía trên.</li>
         </ol>
         <Tip>Nhập sai mật khẩu 5 lần liền sẽ bị chặn 15 phút. Quên mật khẩu thì nhờ admin chính đặt lại.</Tip>
+      </Section>
+
+      <Section id="lich-day">
+        <ol>
+          <li>
+            Mở <B>Trang chính</B>: khung <B>Lịch dạy của bạn</B> liệt kê các buổi bạn dạy trong 7 ngày tới. Khung đỏ{' '}
+            <B>Buổi chưa điểm danh</B> nhắc các buổi đã hết giờ mà bạn chưa điểm danh.
+          </li>
+          <li>
+            Vào <B>Thời khóa biểu</B> để xem cả tuần (Thứ 2 → Chủ nhật). Bấm mũi tên ‹ › để xem tuần trước / tuần sau, hoặc chọn ngày ở ô{' '}
+            <B>Đi tới ngày</B>.
+          </li>
+          <li>
+            Chọn <B>Lịch dạy của tôi</B> để chỉ xem buổi bạn dạy, hoặc <B>Tất cả các lớp</B> để xem lịch cả trung tâm (kể cả giáo viên
+            khác). Buổi bạn dạy có <strong>viền đậm</strong> và bấm vào được; buổi của người khác chỉ xem, không mở được.
+          </li>
+          <li>
+            Biểu tượng <B>chuông</B> ở góc trên bên phải: có số màu vàng là có việc mới — buổi dạy trong 24 giờ tới, buổi chưa điểm danh,
+            hoặc admin chính vừa xếp / đổi lịch cho bạn. Chuông rung khi sắp tới giờ vào lớp.
+          </li>
+          <li>
+            Muốn máy tính / điện thoại tự báo trước giờ dạy: bấm chuông → <B>Bật thông báo trên máy này</B> → chọn <B>Cho phép</B>. Máy sẽ
+            báo trước 1 tiếng và lúc bấm "Bắt đầu" được (chỉ khi trang web đang mở trong trình duyệt).
+          </li>
+        </ol>
+      </Section>
+
+      <Section id="diem-danh">
+        <ol>
+          <li>Tới giờ dạy, bấm vào buổi học (ở Trang chính, Thời khóa biểu hoặc chuông).</li>
+          <li>
+            Bấm nút vàng <B>Bắt đầu buổi học</B>. Nút này chỉ bấm được từ <strong>30 phút trước giờ học</strong>; trước đó màn hình
+            hiện "Chưa tới giờ học" và đếm ngược.
+          </li>
+          <li>
+            Tab <B>Điểm danh</B>: bấm <B>Cả lớp có mặt</B>, rồi chỉ cần bấm lại cho các bạn <B>Đi muộn</B>, <B>Vắng có phép</B> hoặc{' '}
+            <B>Vắng không phép</B>.
+          </li>
+          <li>Tab <B>Điểm cộng</B>: bấm <B>+</B> mỗi khi học sinh phát biểu tốt, làm bài tốt (bấm <B>−</B> nếu lỡ tay).</li>
+          <li>Tab <B>Học sinh</B>: có bạn mới vào lớp thì thêm ngay ở đây, bạn đó sẽ hiện trong danh sách điểm danh của buổi này.</li>
+          <li>
+            Cuối cùng bấm <B>Lưu điểm danh</B> (thanh màu xanh đậm ở cuối màn hình). Thấy chữ "✓ Đã lưu điểm danh" là xong. Còn bạn
+            nào chưa điểm danh thì web sẽ hỏi trước khi lưu.
+          </li>
+        </ol>
+        <Tip>
+          Lỡ tải lại trang khi chưa bấm lưu: mở lại buổi học trên cùng máy, các ô đã tích vẫn còn. Bạn sửa được điểm danh tới{' '}
+          <strong>hết ngày hôm sau</strong> ngày học; sau đó cần sửa thì nhờ admin chính. Buổi của giáo viên ngoài (không có tài khoản)
+          do admin chính điểm danh.
+        </Tip>
+      </Section>
+
+      <Section id="lop-hoc">
+        <ol>
+          <li>Vào <B>Lớp học</B> → <B>Tạo lớp mới</B> → nhập tên lớp, chọn màu, số buổi nhắc học phí → <B>Tạo lớp</B>.</li>
+          <li>
+            Trong lớp, tab <B>Học sinh</B> → <B>Thêm học sinh</B>: gõ từng bạn (<B>Từng bạn</B>), hoặc copy cả danh sách từ Excel / Zalo
+            rồi dán vào <B>Dán cả danh sách</B> (mỗi dòng một bạn, có thể kèm số điện thoại).
+          </li>
+          <li>
+            <B>Ngày vào học</B> rất quan trọng: học sinh chỉ có tên trong điểm danh các buổi từ ngày đó, và chỉ được tính các buổi đó khi
+            nhắc học phí.
+          </li>
+          <li>
+            <B>Cho nghỉ</B>: bạn đó không còn trong điểm danh các buổi sau, lịch sử cũ vẫn giữ (xem ở "Học sinh đã nghỉ", bấm{' '}
+            <B>Cho học lại</B> nếu bạn quay lại). <B>Chi tiết</B>: xem từng buổi bạn đó đi học, vắng, điểm cộng.
+          </li>
+          <li>Tab <B>Lịch học</B>: thời khóa biểu riêng của lớp. Tab <B>Các buổi học</B>: các buổi sắp tới và đã qua, số bạn có mặt.</li>
+        </ol>
+        <Tip>
+          <B>Xóa lớp</B> chỉ ẩn lớp đi (học sinh, lịch, điểm danh vẫn còn). Admin chính khôi phục được ở <B>Lớp học</B> →{' '}
+          <B>Xem lớp đã xóa</B>.
+        </Tip>
+      </Section>
+
+      <Section id="hoc-phi">
+        <ol>
+          <li>
+            Mỗi lớp đặt "Nhắc học phí sau mỗi … buổi học" (sửa ở <B>Sửa thông tin lớp</B>; ghi 0 nếu không cần nhắc).
+          </li>
+          <li>
+            Web đếm số buổi của <strong>từng học sinh</strong> từ ngày bạn đó vào học, <strong>tính cả buổi vắng</strong>. Ví dụ nhắc mỗi
+            10 buổi: bạn A học từ buổi đầu thì tới buổi thứ 10 của lớp được nhắc; bạn B vào lớp khi lớp đã học 3 buổi thì lúc lớp học xong
+            buổi 10, bạn B mới tính 7 buổi, chưa nhắc.
+          </li>
+          <li>
+            Tới hạn: tên học sinh hiện nhãn đỏ <B>Đến hạn học phí</B> trong điểm danh, trong tab <B>Học phí</B> của lớp và ở khung{' '}
+            <B>Nhắc học phí</B> ở Trang chính.
+          </li>
+          <li>
+            Thu xong, vào tab <B>Học phí</B> bấm <B>Đã thu học phí</B> (có thể ghi chú số tiền). Đợt mới bắt đầu tính, mốc tiếp theo
+            là buổi 20, 30… Bấm nhầm thì bấm <B>Hoàn tác lần thu gần nhất</B>.
+          </li>
+          <li>Đưa lớp đang học dở lên web: khi thêm học sinh, bấm "+ Thêm ghi chú / số buổi đã học trước đó" và ghi số buổi đã học.</li>
+        </ol>
+      </Section>
+
+      <Section id="xep-lich">
+        {admin.role !== 'owner' && <p className="muted">Phần này dành cho admin chính. Bạn chỉ xem được thời khóa biểu.</p>}
+        <ol>
+          <li>
+            Vào <B>Thời khóa biểu</B> → <B>Xếp lịch học</B> (hoặc <B>Thêm buổi</B> ở đúng ngày). Chọn lớp, ngày, giờ bắt đầu, giờ kết
+            thúc (bấm nhanh "1 giờ 30" để tự điền giờ kết thúc).
+          </li>
+          <li>
+            <strong>Bắt buộc chọn giáo viên</strong>: chọn tên tài khoản, hoặc <B>Khác (giáo viên không có tài khoản)</B> rồi gõ tên.
+            Giáo viên có tài khoản sẽ nhận thông báo trên web.
+          </li>
+          <li>
+            Lớp học cố định hằng tuần: tích <B>Lặp lại hằng tuần</B>, chọn các thứ (ví dụ T2, T4, T6) và ngày kết thúc (hoặc bấm "3
+            tháng"). Hết hạn thì xếp tiếp từ ngày sau đó.
+          </li>
+          <li>Web báo nếu giáo viên hoặc lớp đã có buổi khác trùng giờ. Chắc chắn đúng thì bấm <B>Vẫn xếp lịch</B>.</li>
+          <li>
+            Sửa / xóa: bấm vào buổi học → <B>Sửa lịch</B> hoặc <B>Xóa buổi</B>. Với lịch lặp lại, chọn "Chỉ buổi này" hoặc "Buổi này và
+            các buổi sau" (ví dụ đổi giáo viên từ tuần sau).
+          </li>
+        </ol>
       </Section>
 
       <Section id="tao-de">
@@ -291,7 +414,12 @@ export default function GuidePage() {
             <B>Mở lại</B> tài khoản, <B>Đặt lại mật khẩu</B> khi có người quên.
           </li>
           <li>
-            <B>Lịch sử chỉnh sửa</B>: ai đã tạo đề, sửa đề, import Excel, xuất bản, xuất kết quả… lúc nào.
+            <B>Lịch sử chỉnh sửa</B>: ai đã tạo đề, sửa đề, xuất bản, thêm / sửa / cho nghỉ học sinh, xếp lịch, điểm danh, sửa điểm danh,
+            thu học phí… lúc nào. Lọc theo <B>Lớp học</B> để xem riêng một lớp (hoặc vào lớp → tab <B>Lịch sử thay đổi</B>).
+          </li>
+          <li>
+            Trang chính có thêm khung <B>Hôm nay ở trung tâm</B> (mọi buổi học hôm nay) và <B>Buổi chưa điểm danh</B> của mọi giáo viên.
+            Admin chính sửa được điểm danh mọi buổi, không giới hạn thời gian.
           </li>
           <li>
             <B>Lịch sử đăng nhập</B>: ai đăng nhập lúc nào, từ đâu, các lần nhập sai. Thấy nhiều lần sai lạ thì đổi mật khẩu tài khoản đó.
@@ -310,6 +438,12 @@ export default function GuidePage() {
           <dd>Có người (hoặc chính bạn ở tab / máy khác) vừa sửa đề này. Bấm <B>Tải lại trang</B> để xem bản mới nhất rồi sửa tiếp.</dd>
           <dt>Học viên nhập sai số điện thoại?</dt>
           <dd>Mỗi số điện thoại là một học viên. Nhập sai số thì bài làm sẽ nằm ở số đó; tìm theo tên trong mục Kết quả.</dd>
+          <dt>Nút "Bắt đầu buổi học" bị mờ?</dt>
+          <dd>Chưa tới 30 phút trước giờ học. Đợi tới giờ, nút tự sáng lên (không cần tải lại trang).</dd>
+          <dt>Không bấm mở được một buổi học trên thời khóa biểu?</dt>
+          <dd>Đó là buổi của giáo viên khác. Bạn chỉ mở được buổi mình dạy. Nếu đúng là buổi của bạn, nhờ admin chính sửa lại giáo viên.</dd>
+          <dt>Học sinh mới không có trong danh sách điểm danh?</dt>
+          <dd>Kiểm tra <B>Ngày vào học</B> của bạn đó (tab Học sinh → <B>Sửa</B>): phải là ngày của buổi học hoặc trước đó.</dd>
           <dt>Xuất bản báo thiếu file?</dt>
           <dd>Vào tab <B>Ảnh & audio</B>, xem các dòng "Chưa tải lên" và tải đúng file đó lên (tên file phải giống tên ghi trong đề).</dd>
         </dl>

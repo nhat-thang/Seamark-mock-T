@@ -37,7 +37,8 @@ Sẽ chạy trên **Windows Server**, dưới một tài khoản Windows không 
 - `media`: id, exam_id, original_name, stored_name (ngẫu nhiên), mime, size, created_at.
 - `students`: id, last_name, first_name, phone, created_at. **Đã chốt: gộp theo SĐT** — mỗi SĐT là một học viên; nhập lại SĐT cũ thì dùng lại học viên đó và cập nhật họ tên mới nhất. (Mốc 5: thêm migration đặt `phone` UNIQUE.)
 - `attempts`: id, student_id, exam_version_id, started_at, submitted_at, deadline_at, answers_json, flagged_json, listening_correct, reading_correct, listening_score, reading_score, total_score, status (`in_progress` | `submitted`).
-- `audit_log`: id, admin_id, action, exam_id, detail, created_at.
+- `audit_log`: id, admin_id, action, exam_id, class_id, detail, created_at.
+- Lớp học / thời khóa biểu / điểm danh: xem mục "Lớp học, thời khóa biểu, điểm danh, học phí" bên dưới.
 
 Cấu trúc nội dung đề (`content_json` / `draft_json`) gồm: thông tin audio (một file cho cả Listening hoặc mỗi Part một file), danh sách nhóm câu (mã nhóm, part, loại, từ câu, đến câu, đoạn văn chữ, danh sách ảnh đoạn văn, ảnh kèm), danh sách 200 câu (số câu, part, mã nhóm, câu hỏi, lựa chọn A–D, đáp án, ảnh, giải thích). Lưu JSON trong SQLite là đủ cho quy mô này và giúp việc nháp/xuất bản đơn giản.
 
@@ -104,6 +105,15 @@ Thiết kế sao cho sau này thêm được câu hỏi tự luận và ghi âm 
 - Chi tiết lượt làm: thông tin học viên, điểm, từng câu (chọn gì, đúng/sai).
 - Xuất Excel.
 - **Đã làm (mốc 7):** `backend/src/routes/results.js`. Tìm tên không dấu nhờ hàm SQL `fold()` (đăng ký trong `db/index.js`). Danh sách/chi tiết/xuất Excel đều gọi `finalizeExpiredAttempts` trước để bài hết giờ được chấm. File Excel có 2 trang: «Kết quả» và «Đáp án từng câu» (tô xanh/đỏ), tối đa 5000 dòng; mỗi lần xuất ghi `audit_log` (`export_results`). Hàm lọc ngày + phân trang dùng chung ở `backend/src/listUtils.js`.
+
+### Lớp học, thời khóa biểu, điểm danh, học phí (đã làm)
+- **Bảng** (migration `009_classes.sql`): `classes` (xóa mềm `deleted_at`, `fee_every` = nhắc học phí mỗi N buổi, 0 = tắt, `color`), `class_students` (học sinh của lớp, KHÔNG dùng chung bảng `students` của học viên thi; `joined_on`, `prior_sessions`, nghỉ học = `removed_at`), `class_sessions` (mỗi buổi: `date` + `start_time`/`end_time` giờ VN và `starts_at`/`ends_at` UTC; `teacher_admin_id` hoặc `teacher_name` khi chọn "Khác"; `series_id` = các buổi tạo cùng lúc bằng "Lặp lại hằng tuần"; `attendance_at` có giá trị = buổi đã điểm danh), `attendance` (session × học sinh: `status` present|late|excused|absent, `bonus` 0–50), `fee_payments` (mỗi lần "Đã thu học phí" = 1 đợt `cycle_no`), `notifications` (thông báo trên web cho giáo viên). `audit_log.class_id` để lọc lịch sử theo lớp.
+- **Code:** backend `backend/src/classes/` (`time.js` giờ VN, `rules.js` quyền + mốc thời gian, `students.js` thống kê + học phí, `sessions.js`), `routes/classes.js`, `routes/schedule.js`, `routes/notifications.js`; frontend `frontend/src/admin/classes/` + `utils/schedule.js`. Test: `backend/tests/classes.test.js`.
+- **Quyền (đã chốt):** mọi admin thêm / sửa / xóa lớp và học sinh, thu học phí. **Chỉ admin chính xếp / sửa / xóa thời khóa biểu.** Mỗi buổi bắt buộc có giáo viên. Admin xem lịch mọi lớp nhưng chỉ mở được buổi mình dạy; buổi của giáo viên "Khác" chỉ admin chính mở / điểm danh. Lớp đã xóa chỉ admin chính xem và khôi phục.
+- **Mốc thời gian (đã chốt):** bấm "Bắt đầu" / điểm danh từ **30 phút trước giờ học** (áp dụng cả admin chính); giáo viên sửa điểm danh tới **hết ngày hôm sau** ngày học, admin chính sửa không giới hạn. Server kiểm tra (`sessionPermissions`), giao diện chỉ hiển thị.
+- **Học phí (đã chốt):** đếm theo số buổi của TỪNG học sinh = `prior_sessions` + số dòng `attendance` của học sinh (kể cả vắng). Danh sách điểm danh của một buổi chỉ gồm học sinh có `joined_on` ≤ ngày học và chưa nghỉ trước giờ học (+ ai đã có điểm danh buổi đó) → vào lớp muộn thì chỉ tính từ buổi vào. Nhắc ở mốc N, 2N, 3N… (`feeInfo`); "Đã thu" chỉ khi tới hạn hoặc còn 1 buổi ("Thu sớm"), có hoàn tác.
+- **Thông báo (đã chốt): chỉ trên web** — chuông ở thanh trên cùng (hỏi lại mỗi phút: buổi dạy 24 giờ tới, buổi chưa điểm danh, bảng `notifications` khi admin chính xếp / đổi / xóa lịch) + thông báo trình duyệt (Notification API) 60 phút trước và lúc bắt đầu được, chỉ khi trang đang mở. Không dùng dịch vụ ngoài.
+- Danh sách học sinh xếp **theo tên** (chữ cuối họ tên, như sổ điểm danh). Điểm danh đang tích dở được giữ trong `localStorage` của máy đến khi bấm lưu. Mọi thao tác ghi `audit_log` kèm `class_id` (lần đầu điểm danh ghi tóm tắt, các lần sửa ghi đúng phần thay đổi).
 
 ## Định dạng file Excel mẫu (`docs/mau-de-toeic.xlsx`)
 

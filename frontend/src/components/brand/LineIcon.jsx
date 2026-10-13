@@ -20,6 +20,24 @@ const ICONS = {
   login: 'M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3',
   logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
   arrow: 'M5 12h13M13 6l6 6-6 6',
+  // Lớp học, thời khóa biểu, điểm danh
+  calendar: 'M4 6h16v15H4zM4 10.5h16M8.5 3v5M15.5 3v5M8 14.5h3M8 17.5h6',
+  board: 'M3 4h18v12H3zM12 16v5M8 21h8M7 8h10M7 12h6',
+  bell: 'M6 16v-5a6 6 0 0 1 12 0v5l2 2H4l2-2zM10 21h4',
+  check: 'M5 12.5l4.5 4.5L19 7',
+  plus: 'M12 5v14M5 12h14',
+  minus: 'M5 12h14',
+  clock: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 7v5l3.5 2',
+  money: 'M3 6.5h18v11H3zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6.5 10v4M17.5 10v4',
+  star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z',
+  play: 'M7 4.5l12.5 7.5L7 19.5z',
+  edit: 'M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4',
+  trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
+  left: 'M15 5l-7 7 7 7',
+  right: 'M9 5l7 7-7 7',
+  close: 'M6 6l12 12M18 6L6 18',
+  alert: 'M12 3.5l9.5 17h-19zM12 10v4.5M12 17.5h.01',
+  undo: 'M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
 };
 
 export default function LineIcon({ name, size = 24 }) {
