@@ -20,7 +20,8 @@ const SECTIONS = [
   { id: 'ket-qua', title: '15. Xem kết quả học viên' },
   { id: 'hoc-vien', title: '16. Học viên làm bài thế nào' },
   { id: 'admin-chinh', title: '17. Việc của admin chính' },
-  { id: 'hoi-dap', title: '18. Câu hỏi thường gặp' },
+  { id: 'cskh', title: '18. Chăm sóc khách hàng (admin chính)' },
+  { id: 'hoi-dap', title: '19. Câu hỏi thường gặp' },
 ];
 
 export default function GuidePage() {
@@ -534,6 +535,9 @@ export default function GuidePage() {
             <B>Quản lý học phí</B>: học phí từng lớp theo tháng, thu tiền, lịch sử thu, tải Excel (xem mục 5).
           </li>
           <li>
+            <B>Chăm sóc khách hàng</B>: bảng CSKH giống Excel để theo dõi khách hàng tiềm năng tới lúc chốt (xem mục 18).
+          </li>
+          <li>
             <B>Tài khoản admin</B>: tạo tài khoản cho giáo viên (tên hiển thị, tên đăng nhập, mật khẩu), <B>Vô hiệu hóa</B> /{' '}
             <B>Mở lại</B> tài khoản, <B>Đặt lại mật khẩu</B> khi có người quên.
           </li>
@@ -550,6 +554,96 @@ export default function GuidePage() {
           </li>
           <li>Admin chính quên mật khẩu: nhờ người quản lý máy chủ đặt lại (có lệnh riêng trên máy chủ).</li>
         </ul>
+      </Section>
+
+      <Section id="cskh">
+        {admin.role !== 'owner' && <p className="muted">Phần này dành cho admin chính. Bạn không thấy mục này trong menu.</p>}
+        <p>
+          Menu <B>Chăm sóc khách hàng</B> là một bảng tính giống Excel để ghi khách hàng tiềm năng: học sinh, phụ huynh, SĐT, CCCD,
+          ngày chăm sóc, nhân viên CSKH, trạng thái, học phí, hẹn gọi lại, ghi chú. Sửa ô nào là <strong>tự lưu</strong> ô đó (góc phải
+          hiện chữ "Đã lưu").
+        </p>
+        <h3 className="guide-sub">Nhập và sửa</h3>
+        <ol>
+          <li>
+            Bấm <B>Thêm khách hàng</B> (hoặc gõ thẳng vào dòng có dấu <B>+</B> trên cùng của bảng) → gõ tên học sinh → bấm <kbd>Tab</kbd>{' '}
+            để sang ô bên phải. Ngày CSKH tự điền ngày hôm nay, Nhân viên CSKH tự điền tên bạn gõ lần trước trên máy này.
+          </li>
+          <li>
+            Sửa một ô: bấm vào ô rồi gõ luôn (chữ mới thay chữ cũ, như Excel). Muốn sửa tiếp chữ đang có: bấm đúp vào ô, hoặc bấm{' '}
+            <kbd>Enter</kbd> / <kbd>F2</kbd>. Gõ xong bấm <kbd>Enter</kbd>; bấm <kbd>Esc</kbd> để bỏ, không lưu.
+          </li>
+          <li>
+            Ô ngày gõ được <strong>13/10</strong>, <strong>13/10/2026</strong>, <strong>hôm nay</strong>, <strong>mai</strong>,{' '}
+            <strong>+3</strong> (3 ngày nữa), <strong>+1 tuần</strong>; hoặc bấm nút chọn nhanh / <B>Chọn trên lịch</B>. Ô học phí gõ được{' '}
+            <strong>1500000</strong>, <strong>1.500.000</strong>, <strong>1tr5</strong>, <strong>800k</strong>.
+          </li>
+          <li>
+            Ghi chú dài: bấm <kbd>Alt</kbd>+<kbd>Enter</kbd> để xuống dòng trong ô. Thanh phía trên bảng (chỗ chữ <em>fx</em>) hiện đầy đủ
+            nội dung ô đang chọn.
+          </li>
+          <li>
+            Chọn nhiều ô: kéo chuột, hoặc giữ <kbd>Shift</kbd> + phím mũi tên. Bấm số dòng bên trái để chọn cả dòng.{' '}
+            <kbd>Delete</kbd> xóa chữ trong các ô đang chọn.
+          </li>
+          <li>Lỡ tay: bấm <B>Hoàn tác</B> (<kbd>Ctrl</kbd>+<kbd>Z</kbd>); muốn làm lại thì bấm <B>Làm lại</B> (<kbd>Ctrl</kbd>+<kbd>Y</kbd>).</li>
+          <li>Bấm chuột phải vào ô để có thêm việc: sao chép, dán, xóa dòng, thêm vào lớp, xem lịch sử.</li>
+        </ol>
+        <h3 className="guide-sub">Trạng thái, lọc, sắp xếp</h3>
+        <ul>
+          <li>
+            3 trạng thái cố định: <B>Đã chốt</B> (xanh lá), <B>Đang chờ chốt</B> (vàng), <B>Fail</B> (đỏ). Bấm vào ô trạng thái để chọn
+            trong danh sách. Đổi sang <B>Đã chốt</B> là có cá heo nhảy lên ăn mừng.
+          </li>
+          <li>
+            Trạng thái khác (ví dụ "Đã cọc", "Hẹn test"): gõ tên mới vào ô trạng thái rồi bấm <kbd>Enter</kbd> — web tự thêm vào danh
+            sách. Đổi tên, đổi màu, xóa ở <B>Quản lý trạng thái</B>.
+          </li>
+          <li>
+            Lọc: bấm các nút trạng thái phía trên bảng (bấm lại để bỏ lọc), hoặc gõ vào ô tìm kiếm (tìm theo tên, SĐT, CCCD, ghi chú).
+            Nút <B>Cần gọi lại</B> lọc khách có hẹn gọi lại hôm nay hoặc đã quá hẹn (ngày hẹn hiện màu cam / đỏ).
+          </li>
+          <li>
+            Sắp xếp theo ngày CSKH: <B>Mới nhất trước</B> / <B>Cũ nhất trước</B>. Bấm tên một cột để xếp theo cột đó (bấm lần nữa để đảo
+            chiều).
+          </li>
+          <li>
+            Sửa xong mà bảng chưa xếp lại ngay (để dòng đang sửa không nhảy chỗ khác): khi web nhắc, bấm <B>Sắp xếp / lọc lại</B>.
+          </li>
+        </ul>
+        <h3 className="guide-sub">Chép từ Excel sang, tải về Excel</h3>
+        <ol>
+          <li>
+            Đã có danh sách CSKH trong Excel: mở file → chọn cả bảng (kèm dòng tên cột) → <kbd>Ctrl</kbd>+<kbd>C</kbd> → bấm vào một ô bất
+            kỳ trên bảng CSKH → <kbd>Ctrl</kbd>+<kbd>V</kbd>. Web tự nhận các cột (Họ tên, SĐT, CCCD, Ngày, Tình trạng…); kiểm tra lại rồi
+            bấm <B>Thêm … khách hàng</B>. Ngày / học phí viết lạ không đọc được thì được ghi vào Ghi chú, không mất.
+          </li>
+          <li>Chép vài ô (không kèm dòng tên cột) thì dán vào đúng chỗ đang chọn, như Excel. Dán đè lên ô đang có chữ thì web hỏi trước.</li>
+          <li>
+            <B>Tải Excel</B>: tải cả bảng, kèm trang thống kê theo trạng thái, theo nhân viên CSKH, theo tháng (số khách, số đã chốt, tỉ lệ
+            chốt, học phí).
+          </li>
+        </ol>
+        <h3 className="guide-sub">Dấu hiệu trên bảng</h3>
+        <ul>
+          <li>
+            Tam giác <strong>đỏ</strong> ở góc ô SĐT / CCCD: viết chưa đúng (SĐT 10 số, CCCD 12 số). Tam giác <strong>cam</strong>: trùng
+            với khách hàng khác. Tam giác <strong>xanh</strong>: SĐT này là phụ huynh của một học sinh đang học. Bấm vào ô để đọc chi tiết.
+          </li>
+          <li>Biểu tượng <strong>mũ tốt nghiệp</strong> cạnh tên học sinh: khách hàng đã được thêm vào lớp.</li>
+        </ul>
+        <h3 className="guide-sub">Chốt được khách: thêm vào lớp</h3>
+        <ol>
+          <li>Chọn dòng khách hàng → bấm <B>Thêm vào lớp</B> (ở thanh phía trên bảng, hoặc chuột phải).</li>
+          <li>
+            Chọn lớp, buổi bắt đầu học; thông tin học sinh / phụ huynh đã điền sẵn (cần đủ tên, SĐT, CCCD phụ huynh) → bấm{' '}
+            <B>Thêm vào lớp</B>. Khách hàng tự chuyển sang <B>Đã chốt</B>.
+          </li>
+        </ol>
+        <Tip>
+          Xóa nhầm dòng vẫn lấy lại được: bấm <B>Hoàn tác</B> ngay, hoặc vào <B>Đã xóa</B> → chọn → <B>Khôi phục</B>. Mỗi khách hàng có{' '}
+          <B>Lịch sử</B> ghi lại ai đã đổi ô nào, lúc nào.
+        </Tip>
       </Section>
 
       <Section id="hoi-dap">

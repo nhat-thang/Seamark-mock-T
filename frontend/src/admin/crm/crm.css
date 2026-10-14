@@ -1,0 +1,1892 @@
+/* Trang Chăm sóc khách hàng (CSKH): bảng tính kiểu Excel + chủ đề biển xanh, cá heo bơi tung tăng */
+
+/* Trang CSKH dùng gần hết bề ngang màn hình (bảng nhiều cột) */
+.admin-main:has(> .crm-page) {
+  max-width: 1760px;
+}
+
+.crm-page {
+  --crm-grid: #dde6f2; /* đường kẻ ô */
+  --crm-head: #eef4fc; /* nền chữ cái cột, số dòng */
+  --crm-sel: #e4edfd; /* nền vùng đang chọn (màu đặc để dùng được cho cột cố định) */
+  --crm-sel-head: #cddff9;
+  --crm-active: var(--brand-blue);
+  /* Màu nhãn trạng thái: chữ / nền / chấm */
+  --won: #17744a;
+  --won-bg: #dff5e8;
+  --won-dot: #22a55f;
+  --pending: #8a5a00;
+  --pending-bg: #fff1d1;
+  --pending-dot: #f0a91e;
+  --fail: #b23a2c;
+  --fail-bg: #fde3df;
+  --fail-dot: #e5533f;
+}
+
+/* ---------- Đầu trang: biển xanh + cá heo ---------- */
+.crm-hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  margin-bottom: 1.1rem;
+  padding: 1.5rem 1.8rem 4.4rem;
+  border-radius: 26px;
+  color: #fff;
+  background:
+    radial-gradient(ellipse at 12% -20%, rgba(150, 225, 255, 0.5), transparent 55%),
+    radial-gradient(circle at 88% 15%, rgba(255, 255, 255, 0.16), transparent 32%),
+    linear-gradient(165deg, #0a2f7a 0%, #1546b0 38%, #1f6fd1 72%, #2aa7da 100%);
+  box-shadow: 0 18px 44px rgba(20, 70, 170, 0.28);
+}
+/* Tia nắng xuyên xuống nước */
+.crm-hero-rays {
+  position: absolute;
+  inset: -30% -10% 20%;
+  z-index: -1;
+  background: repeating-linear-gradient(100deg, rgba(255, 255, 255, 0.07) 0 28px, transparent 28px 96px);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 80%);
+  mask-image: linear-gradient(180deg, #000 0%, transparent 80%);
+  animation: crm-rays 11s ease-in-out infinite alternate;
+}
+@keyframes crm-rays {
+  from {
+    transform: skewX(-7deg) translateX(-2%);
+    opacity: 0.65;
+  }
+  to {
+    transform: skewX(7deg) translateX(2%);
+    opacity: 1;
+  }
+}
+.crm-hero-bubbles {
+  z-index: -1;
+}
+/* Khối đầu trang đã khuất khỏi màn hình: tạm dừng mọi hiệu ứng */
+.crm-hero.is-paused *,
+.crm-hero.is-paused *::before,
+.crm-hero.is-paused *::after {
+  animation-play-state: paused !important;
+}
+
+/*
+  Cá heo bơi ngang (hình cá heo quay đầu sang trái nên bơi từ phải sang trái).
+  .crm-swim là một "làn bơi" rộng bằng cả khối; cá heo nằm ở mép trái làn. Dịch cả làn bằng transform
+  (100% = đúng bề rộng khối) để trình duyệt không phải tính lại bố cục trang mỗi khung hình.
+*/
+.crm-swim {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  z-index: -1;
+  pointer-events: none;
+  animation: crm-swim 28s linear infinite;
+}
+.crm-swim .sea-dolphin {
+  width: var(--w);
+  animation: crm-bob 2.6s ease-in-out infinite;
+}
+.crm-swim-1 {
+  top: 56%;
+  --w: 78px;
+  color: rgba(255, 255, 255, 0.55);
+  --dolphin-eye: #1546b0;
+}
+.crm-swim-2 {
+  top: 24%;
+  --w: 44px;
+  color: rgba(185, 230, 255, 0.5);
+  --dolphin-eye: #1f6fd1;
+  animation-duration: 36s;
+  animation-delay: -14s;
+}
+.crm-swim-2 .sea-dolphin {
+  animation-duration: 2.1s;
+}
+.crm-swim-3 {
+  top: 70%;
+  --w: 56px;
+  color: rgba(255, 255, 255, 0.4);
+  --dolphin-eye: #2a8fd8;
+  animation-duration: 31s;
+  animation-delay: -24s;
+}
+@keyframes crm-swim {
+  from {
+    transform: translateX(102%);
+  }
+  to {
+    transform: translateX(-120px);
+  }
+}
+@keyframes crm-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-9px) rotate(4deg);
+  }
+}
+
+/* Một con thỉnh thoảng nhảy vọt lên khỏi mặt sóng */
+.crm-leap {
+  position: absolute;
+  right: 16%;
+  bottom: 30px;
+  z-index: 0;
+  width: 66px;
+  color: #fff;
+  --dolphin-eye: #1f6fd1;
+  pointer-events: none;
+}
+.crm-leap .sea-dolphin {
+  width: 100%;
+  opacity: 0;
+  transform-origin: 50% 60%;
+  animation: crm-leap 7.5s ease-in-out infinite;
+}
+@keyframes crm-leap {
+  0%,
+  55% {
+    transform: translate(64px, 52px) rotate(42deg);
+    opacity: 0;
+  }
+  60% {
+    transform: translate(50px, 24px) rotate(30deg);
+    opacity: 1;
+  }
+  72% {
+    transform: translate(0, -42px) rotate(-3deg);
+    opacity: 1;
+  }
+  84% {
+    transform: translate(-48px, 8px) rotate(-36deg);
+    opacity: 1;
+  }
+  90%,
+  100% {
+    transform: translate(-64px, 52px) rotate(-50deg);
+    opacity: 0;
+  }
+}
+.crm-leap-splash {
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 90px;
+  height: 16px;
+  margin-left: -45px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255, 255, 255, 0.85), transparent 70%);
+  opacity: 0;
+  animation: crm-splash 7.5s ease-out infinite;
+}
+@keyframes crm-splash {
+  0%,
+  57% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  61% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  68%,
+  86% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+  90% {
+    opacity: 0.9;
+    transform: scale(0.9);
+  }
+  97%,
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+.crm-hero-spark {
+  position: absolute;
+  z-index: 0;
+  color: rgba(255, 255, 255, 0.75);
+}
+.crm-hero-spark-1 {
+  top: 16px;
+  right: 34%;
+}
+.crm-hero-spark-2 {
+  top: 54px;
+  right: 30%;
+  color: var(--brand-yellow);
+  animation-delay: 1.3s;
+}
+
+.crm-hero-top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.2rem 2rem;
+}
+.crm-hero-text {
+  flex: 1 1 320px;
+  max-width: 540px;
+}
+.crm-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.55rem;
+  padding: 0.22rem 0.85rem;
+  border-radius: 999px;
+  background: var(--brand-yellow);
+  color: var(--brand-navy);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.crm-hero h1 {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.7rem, 3vw, 2.35rem);
+  font-weight: 800;
+  text-shadow: 0 2px 14px rgba(5, 20, 70, 0.35);
+}
+.crm-hero-intro {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.97rem;
+}
+.crm-hero-intro b {
+  color: var(--brand-yellow);
+}
+
+.crm-stats {
+  flex: 2 1 640px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.7rem;
+  max-width: 980px;
+}
+.crm-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  padding: 0.75rem 0.95rem 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 18px;
+  background: rgba(16, 50, 140, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font: inherit;
+  text-align: left;
+}
+button.crm-stat {
+  cursor: pointer;
+  transition: transform 0.15s, background-color 0.15s;
+}
+button.crm-stat:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.2);
+}
+button.crm-stat:focus-visible {
+  outline: 3px solid var(--brand-yellow);
+  outline-offset: 2px;
+}
+.crm-stat-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  opacity: 0.92;
+}
+.crm-stat-value {
+  overflow: hidden;
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.crm-stat-sub {
+  overflow: hidden;
+  font-size: 0.74rem;
+  opacity: 0.85;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crm-stat.is-won .crm-stat-value {
+  color: #9af2c0;
+}
+.crm-stat.is-pending .crm-stat-value {
+  color: #ffe08a;
+}
+.crm-stat.is-call {
+  border-color: rgba(255, 198, 46, 0.6);
+}
+.crm-stat.is-call .crm-stat-value {
+  color: var(--brand-yellow);
+}
+.crm-stat.is-money .crm-stat-value {
+  font-size: 1.3rem;
+}
+.crm-stat.is-on {
+  background: #fff;
+  color: var(--brand-navy);
+}
+.crm-stat.is-on .crm-stat-value {
+  color: var(--brand-blue);
+}
+
+/* Thanh tỉ lệ trạng thái */
+.crm-pipe {
+  position: relative;
+  z-index: 1;
+  margin-top: 1.1rem;
+}
+.crm-pipe-bar {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+.crm-pipe-seg {
+  min-width: 5px;
+  transition: flex-grow 0.4s ease;
+}
+.crm-pipe-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.1rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.8rem;
+}
+.crm-pipe-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.crm-pipe-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+.crm-hero-waves {
+  height: 54px;
+}
+
+/* Màu chấm theo trạng thái (thanh tỉ lệ, bộ lọc, nhãn) */
+.is-won.crm-pipe-seg,
+.is-won.crm-pipe-dot,
+.is-won.crm-dot,
+.is-won.crm-swatch {
+  background: var(--won-dot);
+}
+.is-pending.crm-pipe-seg,
+.is-pending.crm-pipe-dot,
+.is-pending.crm-dot {
+  background: var(--pending-dot);
+}
+.is-fail.crm-pipe-seg,
+.is-fail.crm-pipe-dot,
+.is-fail.crm-dot {
+  background: var(--fail-dot);
+}
+.is-blue.crm-pipe-seg,
+.is-blue.crm-pipe-dot,
+.is-blue.crm-dot,
+.is-blue.crm-swatch {
+  background: #3b7bea;
+}
+.is-purple.crm-pipe-seg,
+.is-purple.crm-pipe-dot,
+.is-purple.crm-dot,
+.is-purple.crm-swatch {
+  background: #8b5cf6;
+}
+.is-teal.crm-pipe-seg,
+.is-teal.crm-pipe-dot,
+.is-teal.crm-dot,
+.is-teal.crm-swatch {
+  background: #14b8a6;
+}
+.is-pink.crm-pipe-seg,
+.is-pink.crm-pipe-dot,
+.is-pink.crm-dot,
+.is-pink.crm-swatch {
+  background: #ec4899;
+}
+.is-orange.crm-pipe-seg,
+.is-orange.crm-pipe-dot,
+.is-orange.crm-dot,
+.is-orange.crm-swatch {
+  background: #f2683a;
+}
+.is-sky.crm-pipe-seg,
+.is-sky.crm-pipe-dot,
+.is-sky.crm-dot,
+.is-sky.crm-swatch {
+  background: #38bdf8;
+}
+.is-gray.crm-pipe-seg,
+.is-gray.crm-pipe-dot,
+.is-gray.crm-dot,
+.is-gray.crm-swatch {
+  background: #94a3b8;
+}
+.is-none.crm-pipe-seg,
+.is-none.crm-pipe-dot,
+.is-none.crm-dot {
+  background: #cbd5e1;
+}
+
+/* Nhãn trạng thái trong ô */
+.crm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 22px;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.crm-chip i {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.crm-chip.is-dot {
+  padding: 0 0.45rem;
+}
+.crm-chip.is-won {
+  background: var(--won-bg);
+  color: var(--won);
+}
+.crm-chip.is-won i {
+  background: var(--won-dot);
+}
+.crm-chip.is-pending {
+  background: var(--pending-bg);
+  color: var(--pending);
+}
+.crm-chip.is-pending i {
+  background: var(--pending-dot);
+}
+.crm-chip.is-fail {
+  background: var(--fail-bg);
+  color: var(--fail);
+}
+.crm-chip.is-fail i {
+  background: var(--fail-dot);
+}
+.crm-chip.is-blue {
+  background: #e3edff;
+  color: #1f4fa8;
+}
+.crm-chip.is-purple {
+  background: #efe6fd;
+  color: #6a3fb5;
+}
+.crm-chip.is-teal {
+  background: #daf4f0;
+  color: #136f63;
+}
+.crm-chip.is-pink {
+  background: #fde6f1;
+  color: #a8326e;
+}
+.crm-chip.is-orange {
+  background: #ffe8db;
+  color: #b4501d;
+}
+.crm-chip.is-sky {
+  background: #ddf2fc;
+  color: #1f6f99;
+}
+.crm-chip.is-gray {
+  background: #edf0f4;
+  color: #4b5567;
+}
+
+/* ---------- Thanh công cụ + bộ lọc ---------- */
+.crm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+  margin-bottom: 0.7rem;
+}
+.crm-add {
+  min-height: 46px;
+  padding: 0 1.3rem;
+  border-radius: 999px;
+  gap: 0.45rem;
+  font-size: 0.98rem;
+}
+.crm-add:hover svg {
+  transform: rotate(90deg);
+}
+.crm-tools {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+.crm-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 42px;
+  padding: 0 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--brand-navy);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.crm-tool svg {
+  color: var(--brand-sky);
+}
+.crm-tool:hover:not(:disabled) {
+  background: var(--color-primary-soft);
+}
+.crm-tool:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.crm-tool:focus-visible,
+.crm-fchip:focus-visible,
+.crm-link-btn:focus-visible,
+.crm-sortbox button:focus-visible,
+.crm-mini-btn:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.crm-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 240px;
+  max-width: 420px;
+}
+.crm-search > svg {
+  position: absolute;
+  left: 0.9rem;
+  color: var(--brand-sky);
+  pointer-events: none;
+}
+.crm-search .input {
+  min-height: 44px;
+  padding-left: 2.6rem;
+  border-radius: 999px;
+  font-size: 0.95rem;
+}
+.crm-sortbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.22rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.86rem;
+}
+.crm-sortbox > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0 0.45rem 0 0.6rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.crm-sortbox > span svg {
+  color: var(--brand-sky);
+}
+.crm-sortbox button {
+  height: 34px;
+  padding: 0 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.crm-sortbox button:hover {
+  background: var(--color-primary-soft);
+}
+.crm-sortbox button.is-on {
+  background: var(--brand-blue);
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(31, 88, 204, 0.28);
+}
+.crm-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+  color: var(--color-success);
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.crm-save.is-busy {
+  color: var(--brand-blue);
+}
+.crm-save-dolphin {
+  width: 30px;
+  color: var(--brand-sky);
+  animation: crm-bob 0.9s ease-in-out infinite;
+}
+
+.crm-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.8rem;
+}
+.crm-fchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 36px;
+  padding: 0 0.6rem 0 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.87rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+.crm-fchip:hover {
+  border-color: var(--brand-sky);
+  background: #f6faff;
+}
+.crm-fchip.is-on {
+  border-color: var(--brand-navy);
+  background: var(--brand-navy);
+  color: #fff;
+}
+.crm-fchip-n {
+  min-width: 1.7em;
+  padding: 0 0.45em;
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+  color: var(--brand-navy);
+  font-size: 0.76rem;
+  line-height: 1.6;
+  text-align: center;
+}
+.crm-fchip.is-on .crm-fchip-n {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+.crm-fchip.is-call {
+  border-color: #f3d27e;
+  background: #fff8e6;
+  color: #8a5a00;
+}
+.crm-fchip.is-call.is-on {
+  border-color: var(--brand-yellow);
+  background: var(--brand-yellow);
+  color: var(--brand-navy);
+}
+.crm-fchip.is-call.is-on .crm-fchip-n {
+  background: rgba(22, 35, 95, 0.12);
+  color: var(--brand-navy);
+}
+.crm-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.crm-filters-sep {
+  width: 1px;
+  height: 24px;
+  margin: 0 0.2rem;
+  background: var(--color-border);
+}
+.crm-filters-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+.crm-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 40px;
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--brand-blue);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.crm-link-btn:hover {
+  background: var(--color-primary-soft);
+}
+
+/* Bảng chưa xếp lại theo chỗ vừa sửa */
+.crm-stale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.8rem;
+  margin-bottom: 0.7rem;
+  padding: 0.5rem 0.6rem 0.5rem 0.9rem;
+  border: 1px dashed #9fc0ef;
+  border-radius: 14px;
+  background: #f1f7ff;
+  color: var(--brand-navy);
+  font-size: 0.88rem;
+}
+.crm-stale > svg {
+  color: var(--brand-blue);
+}
+.crm-stale span {
+  flex: 1 1 260px;
+}
+
+.crm-tip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.8rem;
+  padding: 0.55rem 0.6rem 0.55rem 0.95rem;
+  border: 1px solid #f3d27e;
+  border-radius: 14px;
+  background: linear-gradient(90deg, #fff9e8, #fffdf6);
+  font-size: 0.88rem;
+}
+.crm-tip p {
+  flex: 1;
+  margin: 0;
+}
+.crm-tip-spark {
+  flex: 0 0 auto;
+  color: #f0a91e;
+}
+/* Phím trong mẹo / hướng dẫn: Ctrl, Tab, Enter… */
+.crm-page kbd,
+.guide kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 0.35em;
+  border: 1px solid #cdd8ea;
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 0.8em;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.crm-empty {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  margin-bottom: 0.8rem;
+  padding: 1rem 1.3rem;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: linear-gradient(120deg, #f2f8ff, #ffffff);
+}
+.crm-empty h2 {
+  margin: 0 0 0.2rem;
+  color: var(--brand-navy);
+  font-size: 1.15rem;
+}
+.crm-empty p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+.crm-empty.is-small {
+  justify-content: space-between;
+  padding: 0.6rem 0.9rem;
+}
+.crm-empty-dolphin {
+  flex: 0 0 auto;
+  width: 96px;
+  color: var(--brand-sky);
+}
+.crm-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 3rem 1rem;
+  color: var(--color-text-muted);
+}
+.crm-loading-dolphin {
+  width: 110px;
+  color: var(--brand-sky);
+}
+
+/* ---------- Bảng tính ---------- */
+.crm-sheet {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--shadow-card);
+}
+
+/* Thanh nội dung ô (như thanh công thức của Excel) */
+.crm-fbar {
+  display: flex;
+  align-items: stretch;
+  min-height: 44px;
+  border-bottom: 1px solid var(--crm-grid);
+  background: linear-gradient(180deg, #fbfdff, #f3f7fd);
+}
+.crm-fbar-addr {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+  padding: 0 0.8rem;
+  border-right: 1px solid var(--crm-grid);
+  background: #fff;
+  color: var(--brand-navy);
+  font-size: 0.84rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.crm-fbar-fx {
+  display: flex;
+  align-items: center;
+  padding: 0 0.7rem;
+  color: var(--brand-sky);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-weight: 700;
+}
+.crm-fbar-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-height: 4.6em;
+  overflow: auto;
+  padding: 0.55rem 0.4rem;
+  font-size: 0.92rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.crm-fbar-text.is-empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+.crm-fbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem;
+}
+.crm-mini-btn,
+.crm-fbar-class {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 32px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--brand-navy);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.crm-mini-btn svg,
+.crm-fbar-class svg {
+  color: var(--brand-sky);
+}
+.crm-mini-btn:hover {
+  background: var(--color-primary-soft);
+}
+.crm-mini-btn.is-danger,
+.crm-mini-btn.is-danger svg {
+  border-color: #f1c9c3;
+  color: var(--color-error);
+}
+.crm-mini-btn.is-danger:hover {
+  background: var(--color-error-bg);
+}
+.crm-fbar-class {
+  border-color: #b9dcc8;
+  background: var(--won-bg);
+  color: var(--won);
+}
+.crm-fbar-class svg {
+  color: var(--won);
+}
+.crm-fbar-warn {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.4rem 0.9rem;
+  border-bottom: 1px solid var(--crm-grid);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.crm-fbar-warn.is-error {
+  background: #fff1ef;
+  color: #b23a2c;
+}
+.crm-fbar-warn.is-dup {
+  background: #fff6e6;
+  color: #8a5a00;
+}
+.crm-fbar-warn.is-known {
+  background: #eaf3ff;
+  color: #1f4fa8;
+}
+
+.crm-scroll {
+  position: relative;
+  overflow: auto;
+  height: calc(100vh - 150px);
+  min-height: 380px;
+  max-height: 1500px;
+  overscroll-behavior: contain;
+}
+.crm-grid {
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  font-size: 0.9rem;
+}
+.crm-grid th,
+.crm-grid td {
+  padding: 0;
+  border-right: 1px solid var(--crm-grid);
+  border-bottom: 1px solid var(--crm-grid);
+}
+
+/* Dòng chữ cái + dòng tên cột: luôn nằm trên cùng khi cuộn */
+.crm-grid thead th {
+  position: sticky;
+  z-index: 4;
+  background: var(--crm-head);
+}
+.crm-letters th {
+  top: 0;
+  height: 24px;
+  color: #7b8aa8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+}
+.crm-letters th.is-sel {
+  background: var(--crm-sel-head);
+  color: var(--brand-navy);
+}
+.crm-grid .crm-heads th {
+  top: 24px;
+  height: 40px;
+  background: linear-gradient(180deg, #e9f1fd, #dbe7f9);
+  box-shadow: inset 0 -2px 0 #c4d6f1;
+  color: var(--brand-navy);
+  text-align: left;
+}
+.crm-grid thead th.is-frozen {
+  left: 52px;
+  z-index: 5;
+}
+.crm-grid thead .crm-corner {
+  left: 0;
+  z-index: 6;
+  cursor: pointer;
+}
+.crm-corner-2 {
+  color: #7b8aa8;
+  font-size: 0.75rem;
+  text-align: center !important;
+}
+.crm-sort {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+  height: 100%;
+  padding: 0 0.6rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+.crm-sort span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crm-sort svg {
+  flex: 0 0 auto;
+  color: var(--brand-blue);
+}
+.crm-sort:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+.crm-sort:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+.crm-heads th.is-money .crm-sort {
+  justify-content: flex-end;
+}
+.crm-resize {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  z-index: 2;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+}
+.crm-resize:hover,
+.crm-resize:active {
+  background: linear-gradient(90deg, transparent 3px, var(--brand-blue) 3px 5px, transparent 5px);
+}
+
+/* Số thứ tự dòng (cột cố định bên trái) */
+.crm-num {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--crm-head);
+  color: #7b8aa8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  user-select: none;
+}
+.crm-num.is-sel {
+  background: var(--crm-sel-head);
+  color: var(--brand-navy);
+}
+
+/* Ô dữ liệu */
+.crm-td {
+  position: relative;
+  background: #fff;
+  cursor: cell;
+}
+.crm-cell {
+  height: 33px;
+  overflow: hidden;
+  padding: 0 0.6rem;
+  line-height: 33px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crm-td.is-money .crm-cell {
+  text-align: right;
+}
+.crm-td.is-money .crm-cell,
+.crm-td.is-date .crm-cell,
+.crm-td.is-phone .crm-cell,
+.crm-td.is-idNumber .crm-cell {
+  font-variant-numeric: tabular-nums;
+}
+.crm-td.is-note .crm-cell {
+  color: #3d4b66;
+}
+.crm-td.is-frozen {
+  position: sticky;
+  left: 52px;
+  z-index: 1;
+  box-shadow: 3px 0 0 rgba(31, 79, 168, 0.05);
+  font-weight: 600;
+}
+.crm-row:hover .crm-td {
+  background: #f7faff;
+}
+.crm-grid .crm-td.is-sel {
+  background: var(--crm-sel);
+}
+.crm-td.is-active {
+  z-index: 3;
+}
+.crm-grid .crm-td.is-active.is-sel {
+  background: #fff;
+}
+/* Viền đậm + chấm vuông ở góc như ô đang chọn trong Excel */
+.crm-td.is-active::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: 2;
+  border: 2px solid var(--crm-active);
+  pointer-events: none;
+}
+.crm-td.is-active::before {
+  content: '';
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  z-index: 3;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid #fff;
+  background: var(--crm-active);
+  pointer-events: none;
+}
+
+/* "Dòng mới" ở trên cùng: gõ vào để thêm khách hàng */
+.crm-row.is-ghost .crm-td {
+  border-bottom: 1px dashed #e7c665;
+  background: #fffdf2;
+}
+.crm-row.is-ghost:hover .crm-td {
+  background: #fff8dc;
+}
+.crm-row.is-ghost .crm-num {
+  border-bottom: 1px dashed #e7c665;
+  background: var(--brand-yellow);
+  color: var(--brand-navy);
+}
+.crm-ghost-hint {
+  color: #a07a1a;
+  font-style: italic;
+  font-weight: 600;
+}
+/* Khách hàng vừa thêm, đang chờ server lưu */
+.crm-row.is-saving .crm-td {
+  color: #7686a4;
+}
+.crm-spacer td {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+/* Tam giác cảnh báo ở góc ô (SĐT / CCCD sai mẫu, trùng, đã là phụ huynh học sinh) */
+.crm-tri {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 9px 9px 0;
+  border-color: transparent #e5533f transparent transparent;
+  pointer-events: none;
+}
+.crm-tri.is-dup {
+  border-right-color: #f0a91e;
+}
+.crm-tri.is-known {
+  border-right-color: #3b7bea;
+}
+.crm-due {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 22px;
+  vertical-align: middle;
+}
+.crm-due.is-late {
+  background: var(--fail-bg);
+  color: var(--fail);
+}
+.crm-due.is-today {
+  background: #fff0c7;
+  color: #8a5a00;
+}
+.crm-cap {
+  display: inline-flex;
+  margin-left: 0.35rem;
+  color: var(--won-dot);
+  vertical-align: -2px;
+}
+
+/* ---------- Ô đang sửa ---------- */
+.crm-editor {
+  position: absolute;
+  inset: -1px;
+  z-index: 4;
+}
+/* Chưa sửa: ô nhập trong suốt, chỉ để nhận phím gõ / chép / dán */
+.crm-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0 0.6rem;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font: inherit;
+  resize: none;
+  opacity: 0;
+  cursor: cell;
+}
+.crm-editor.is-open .crm-input {
+  padding: 0 calc(0.6rem - 1px);
+  border: 2px solid var(--crm-active);
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(31, 88, 204, 0.24);
+  color: var(--color-text);
+  caret-color: auto;
+  opacity: 1;
+  cursor: text;
+}
+.crm-editor.is-open .crm-input::placeholder {
+  color: #9aa7bf;
+  font-style: italic;
+}
+.crm-editor.is-open.is-money .crm-input {
+  text-align: right;
+}
+/* Ghi chú: ô sửa mở rộng (nhiều dòng) */
+.crm-editor.is-open.is-note .crm-input {
+  inset: 0 0 auto auto;
+  width: max(100%, 440px);
+  height: auto;
+  min-height: 130px;
+  padding: 0.5rem 0.65rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.crm-pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: -1px;
+  z-index: 5;
+  min-width: max(100%, 240px);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 16px 36px rgba(15, 40, 100, 0.22);
+  font-size: 0.88rem;
+  font-weight: 400;
+  animation: cl-pop 0.14s ease-out;
+  cursor: default;
+}
+.crm-editor.is-note .crm-pop {
+  top: calc(100% + 100px);
+}
+/* Không đủ chỗ phía dưới: hiện phía trên ô */
+.crm-pop.is-up,
+.crm-editor.is-note .crm-pop.is-up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+.crm-pop-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  min-width: 300px;
+  padding: 0.55rem 0.75rem;
+  border-color: #f3c1bb;
+  background: #fff6f5;
+  color: var(--color-error);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: normal;
+}
+.crm-pop-error svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+.crm-listpop ul {
+  max-height: 252px;
+  margin: 0;
+  padding: 0.35rem;
+  overflow: auto;
+  list-style: none;
+}
+.crm-listpop li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.38rem 0.55rem;
+  border-radius: 9px;
+  cursor: pointer;
+}
+.crm-listpop li svg {
+  flex: 0 0 auto;
+  color: var(--brand-blue);
+}
+.crm-listpop li.is-hi {
+  background: var(--color-primary-soft);
+}
+.crm-list-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--brand-blue);
+  font-weight: 700;
+}
+.crm-list-muted {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+.crm-list-hint {
+  margin: 0;
+  padding: 0.45rem 0.8rem 0.6rem;
+  border-top: 1px solid var(--crm-grid);
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  white-space: normal;
+}
+.crm-datepop {
+  min-width: 290px;
+  padding: 0.55rem;
+}
+.crm-datepop-row {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.crm-datepop-row + .crm-datepop-row {
+  margin-top: 0.4rem;
+}
+.crm-datepop button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 32px;
+  padding: 0 0.7rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--brand-navy);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.crm-datepop button svg {
+  color: var(--brand-sky);
+}
+.crm-datepop button:hover {
+  background: var(--color-primary-soft);
+}
+.crm-datepop button.is-muted {
+  color: var(--color-text-muted);
+}
+.crm-datepick {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Thanh trạng thái dưới bảng */
+.crm-statusbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 1.2rem;
+  padding: 0.45rem 0.9rem;
+  border-top: 1px solid var(--crm-grid);
+  background: #f6f9fe;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+.crm-statusbar strong {
+  color: var(--brand-navy);
+}
+.crm-statusbar-hint {
+  margin-left: auto;
+}
+
+/* Menu chuột phải */
+.crm-menu {
+  position: fixed;
+  z-index: 300;
+  min-width: 250px;
+  padding: 0.35rem;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(15, 40, 100, 0.25);
+  animation: cl-pop 0.12s ease-out;
+}
+.crm-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+.crm-menu button:hover {
+  background: var(--color-primary-soft);
+}
+.crm-menu button svg {
+  color: var(--brand-sky);
+}
+.crm-menu button span {
+  flex: 1;
+}
+.crm-menu kbd {
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+.crm-menu hr {
+  margin: 0.3rem 0.4rem;
+  border: 0;
+  border-top: 1px solid var(--crm-grid);
+}
+.crm-menu .is-danger,
+.crm-menu .is-danger svg {
+  color: var(--color-error);
+}
+.crm-menu .is-danger:hover {
+  background: var(--color-error-bg);
+}
+
+/* ---------- Thông báo nhỏ, ăn mừng ---------- */
+.crm-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 250;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  max-width: min(680px, calc(100vw - 32px));
+  padding: 0.65rem 0.6rem 0.65rem 1rem;
+  border-radius: 14px;
+  background: var(--brand-navy);
+  box-shadow: 0 16px 40px rgba(10, 25, 70, 0.35);
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 600;
+  transform: translateX(-50%);
+  animation: crm-toast-in 0.22s ease-out;
+}
+.crm-toast > svg {
+  flex: 0 0 auto;
+}
+.crm-toast.is-error {
+  background: #b23a2c;
+}
+.crm-toast.is-success {
+  background: #17744a;
+}
+.crm-toast.is-warn {
+  background: #8a5a00;
+}
+.crm-toast-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  cursor: pointer;
+}
+.crm-toast-close:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+@keyframes crm-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 14px);
+  }
+}
+
+/* Chốt được khách: cá heo nhảy vọt qua màn hình + sao lấp lánh tỏa ra */
+.crm-party {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  overflow: hidden;
+  pointer-events: none;
+}
+.crm-party-dolphin {
+  position: absolute;
+  right: -190px;
+  bottom: 6%;
+  width: 180px;
+  color: var(--brand-sky);
+  filter: drop-shadow(0 12px 20px rgba(31, 88, 204, 0.35));
+  --dolphin-eye: #fff;
+  animation: crm-party-leap 2.5s cubic-bezier(0.45, 0.05, 0.55, 0.95) forwards;
+}
+.crm-party-dolphin .sea-dolphin {
+  width: 100%;
+}
+@keyframes crm-party-leap {
+  0% {
+    transform: translate(0, 0) rotate(28deg);
+  }
+  50% {
+    transform: translate(calc(-50vw - 90px), -50vh) rotate(-2deg);
+  }
+  100% {
+    transform: translate(calc(-100vw - 260px), 0) rotate(-36deg);
+  }
+}
+.crm-party .crm-party-spark {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  color: var(--brand-yellow);
+  opacity: 0;
+  animation: crm-burst 1.5s ease-out forwards;
+  animation-delay: calc(0.55s + var(--i) * 0.035s);
+}
+.crm-party .crm-party-spark.is-1 {
+  color: #fff;
+}
+.crm-party .crm-party-spark.is-2 {
+  color: var(--brand-sky);
+}
+.crm-party .crm-party-spark.is-3 {
+  color: var(--brand-orange);
+}
+@keyframes crm-burst {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.3);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(1.1) rotate(120deg);
+  }
+}
+.crm-party-text {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  padding: 0.8rem 1.5rem;
+  border: 3px solid var(--brand-yellow);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 18px 44px rgba(10, 30, 90, 0.3);
+  color: var(--brand-navy);
+  font-size: 1.2rem;
+  font-weight: 800;
+  white-space: nowrap;
+  animation: crm-party-pop 2.7s ease-in-out forwards;
+}
+@keyframes crm-party-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -30%) scale(0.7);
+  }
+  14%,
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -75%) scale(0.95);
+  }
+}
+
+/* ---------- Hộp thoại ---------- */
+/* Hộp thoại dài (ví dụ ghép 10 cột khi dán từ Excel): hàng nút ở cuối luôn bám đáy màn hình */
+.crm-modal .cl-modal-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  border-radius: 0 0 22px 22px;
+  background: #fff;
+  box-shadow: 0 -10px 18px rgba(15, 40, 100, 0.06);
+}
+.crm-map-table th,
+.crm-map-table td {
+  padding: 0.45rem 0.9rem;
+}
+.crm-dialog-intro {
+  margin-top: 0;
+}
+.crm-status-list {
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+.crm-status-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--crm-grid);
+}
+.crm-status-fixed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+.crm-status-count {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.crm-status-name {
+  flex: 1 1 180px;
+  max-width: 260px;
+  min-height: 40px;
+  font-size: 0.95rem;
+}
+.crm-status-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+.crm-status-add .input {
+  flex: 1 1 220px;
+  min-height: 44px;
+}
+.crm-status-add .btn {
+  gap: 0.35rem;
+  min-height: 44px;
+}
+.crm-colors {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+.crm-swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--color-border);
+  cursor: pointer;
+}
+.crm-swatch.is-on {
+  box-shadow: 0 0 0 2px var(--brand-navy);
+}
+.crm-swatch:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.crm-enroll-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 1rem;
+}
+.crm-enroll-grid .field {
+  margin-bottom: 0.9rem;
+}
+.crm-timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.crm-timeline li {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 0.8rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--crm-grid);
+}
+.crm-timeline li.is-status {
+  background: linear-gradient(90deg, #f1f7ff, transparent);
+}
+.crm-timeline-at {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.crm-timeline-what {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.crm-timeline-what svg {
+  vertical-align: -2px;
+  color: var(--won-dot);
+}
+.crm-map-table select.input {
+  min-height: 38px;
+  font-size: 0.92rem;
+}
+.crm-map-table td {
+  vertical-align: middle;
+}
+.crm-fill-today {
+  margin-top: 0.9rem;
+}
+.crm-warn-list {
+  margin-top: 0.8rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  background: var(--color-warn-bg);
+  color: var(--color-warn);
+  font-size: 0.88rem;
+}
+.crm-warn-list summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+.crm-deleted-wrap {
+  max-height: 55vh;
+  overflow: auto;
+}
+
+/* ---------- Màn hình nhỏ ---------- */
+@media (max-width: 1250px) {
+  .crm-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .crm-hero {
+    padding: 1.2rem 1rem 3.8rem;
+    border-radius: 20px;
+  }
+  .crm-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .crm-stat-value {
+    font-size: 1.3rem;
+  }
+  .crm-search {
+    max-width: none;
+  }
+  .crm-save {
+    margin-left: 0;
+  }
+  /* Cụm sắp xếp: chỉ còn biểu tượng lịch + 2 nút cho vừa màn hình điện thoại */
+  .crm-sortbox-label {
+    display: none;
+  }
+  .crm-sortbox button {
+    padding: 0 0.7rem;
+  }
+  .crm-filters-end {
+    margin-left: 0;
+  }
+  .crm-statusbar-hint {
+    display: none;
+  }
+  .crm-enroll-grid {
+    grid-template-columns: 1fr;
+  }
+  .crm-timeline li {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+  .crm-fbar {
+    flex-wrap: wrap;
+  }
+  .crm-fbar-actions {
+    width: 100%;
+    border-top: 1px solid var(--crm-grid);
+  }
+}
+
+/* Người dùng tắt chuyển động trong hệ điều hành: cá heo đứng yên, không nhảy */
+@media (prefers-reduced-motion: reduce) {
+  .crm-hero-rays,
+  .crm-swim,
+  .crm-swim .sea-dolphin,
+  .crm-leap .sea-dolphin,
+  .crm-leap-splash,
+  .crm-save-dolphin,
+  .crm-party-dolphin,
+  .crm-party .crm-party-spark {
+    animation: none !important;
+  }
+  .crm-swim-1 {
+    transform: translateX(62%);
+  }
+  .crm-swim-2 {
+    transform: translateX(74%);
+  }
+  .crm-swim-3 {
+    transform: translateX(86%);
+  }
+  .crm-party-dolphin,
+  .crm-party .crm-party-spark {
+    display: none;
+  }
+}

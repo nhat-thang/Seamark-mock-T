@@ -75,6 +75,14 @@ export const AUDIT_ACTION_LABELS = {
   export_session: 'Tải Excel buổi học',
   export_activity: 'Tải Excel hoạt động của đề',
   update_assignment: 'Sửa lớp được giao đề',
+  // Chăm sóc khách hàng
+  crm_add: 'Thêm khách hàng CSKH',
+  crm_update: 'Sửa bảng CSKH',
+  crm_delete: 'Xóa khách hàng CSKH',
+  crm_restore: 'Khôi phục khách hàng CSKH',
+  crm_status: 'Sửa trạng thái CSKH',
+  crm_enroll: 'CSKH: thêm vào lớp',
+  export_crm: 'Tải Excel CSKH',
 };
 
 // Kết quả trong "Lịch sử đăng nhập"

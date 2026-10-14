@@ -3,9 +3,9 @@ import LineIcon from '../../components/brand/LineIcon.jsx';
 
 /**
  * Hộp thoại nổi giữa màn hình. Đóng khi bấm nút ×, phím Esc hoặc bấm ra ngoài.
- * footer: các nút ở cuối hộp thoại.
+ * footer: các nút ở cuối hộp thoại. className: thêm lớp CSS riêng cho từng trang.
  */
-export default function Modal({ title, onClose, children, footer, wide = false, xl = false }) {
+export default function Modal({ title, onClose, children, footer, wide = false, xl = false, className = '' }) {
   const ref = useRef(null);
   // Giữ hàm đóng mới nhất trong ref: trang phía sau vẽ lại (ví dụ đồng hồ mỗi 30 giây) không làm
   // hộp thoại chạy lại đoạn dưới -> con trỏ không bị nhảy về ô đầu tiên khi đang gõ
@@ -28,7 +28,7 @@ export default function Modal({ title, onClose, children, footer, wide = false, 
 
   return (
     <div className="cl-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && closeRef.current()}>
-      <div className={`cl-modal ${wide ? 'is-wide' : ''} ${xl ? 'is-xl' : ''}`} role="dialog" aria-modal="true" aria-label={title} ref={ref}>
+      <div className={`cl-modal ${wide ? 'is-wide' : ''} ${xl ? 'is-xl' : ''} ${className}`} role="dialog" aria-modal="true" aria-label={title} ref={ref}>
         <div className="cl-modal-head">
           <h2>{title}</h2>
           <button type="button" className="cl-icon-btn" onClick={onClose} aria-label="Đóng">
