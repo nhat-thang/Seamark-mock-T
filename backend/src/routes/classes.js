@@ -30,6 +30,8 @@ const { readRosterWorkbook, RosterFileError } = require('../classes/rosterExcel'
 const { accessOf, addClassTeachers } = require('../classes/access');
 const { classTuition, loadTimeline } = require('../classes/tuitionData');
 const { styleHeader, sendWorkbook } = require('../utils/excel');
+// SĐT phụ huynh: di động 10 số / máy bàn 11 số; CCCD 12 số (CMND cũ 9 số)
+const { cleanPhone, cleanIdNumber } = require('../utils/contactInfo');
 
 const COLORS = ['blue', 'sky', 'teal', 'green', 'yellow', 'orange', 'pink', 'purple'];
 const MAX_BATCH = 300; // nhập từ Excel tối đa 300 học sinh / lần
@@ -39,27 +41,6 @@ const ALERT_LABELS = { red: 'Đỏ', orange: 'Cam', yellow: 'Vàng' };
 const cleanText = (v, max) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 const nowIso = () => new Date().toISOString();
 const toInt = (v) => Number.parseInt(v, 10);
-
-/**
- * SĐT phụ huynh: di động 10 số bắt đầu bằng 0 (đã chốt); nhận thêm số máy bàn 11 số (02x…).
- * Chấp nhận dấu cách / chấm / gạch, đầu +84 hoặc 84, và số bị Excel làm mất số 0 ở đầu. '' nếu trống, null nếu sai.
- */
-function cleanPhone(v) {
-  const raw = String(v ?? '').trim();
-  if (!raw) return '';
-  let d = raw.replace(/[\s.()-]/g, '');
-  if (/^\+?84\d{9,10}$/.test(d)) d = `0${d.replace(/^\+?84/, '')}`;
-  if (/^[1-9]\d{8}$/.test(d) || /^2\d{9}$/.test(d)) d = `0${d}`;
-  return /^0\d{9}$/.test(d) || /^02\d{9}$/.test(d) ? d : null;
-}
-
-/** CCCD (12 số) hoặc CMND cũ (9 số); 11 số = CCCD bị Excel làm mất số 0 ở đầu. '' nếu trống, null nếu sai. */
-function cleanIdNumber(v) {
-  let raw = String(v ?? '').replace(/[\s.-]/g, '');
-  if (!raw) return '';
-  if (/^\d{11}$/.test(raw)) raw = `0${raw}`;
-  return /^(\d{9}|\d{12})$/.test(raw) ? raw : null;
-}
 
 /** "150.000" / "150000" / 150000 -> 150000. '' / null -> null (chưa cài). NaN nếu sai. */
 function parseMoney(v) {

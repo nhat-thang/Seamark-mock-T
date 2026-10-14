@@ -18,6 +18,7 @@ const scheduleRouter = require('./routes/schedule');
 const notificationsRouter = require('./routes/notifications');
 const publicClassesRouter = require('./routes/publicClasses');
 const tuitionRouter = require('./routes/tuition');
+const crmRouter = require('./routes/crm');
 const { requireAdmin, requireOwner } = require('./auth/middleware');
 
 /**
@@ -69,6 +70,8 @@ function createApp({ db, config }) {
   admin.use('/history', requireOwner, historyRouter(db));
   // Quản lý học phí: số tiền, thu tiền, tắt cảnh báo — giáo viên gọi vào bị chặn (403)
   admin.use('/tuition', requireOwner, tuitionRouter(db));
+  // Chăm sóc khách hàng (bảng tính CSKH)
+  admin.use('/crm', requireOwner, crmRouter(db));
   api.use('/admin', admin);
 
   // Đường dẫn /api không tồn tại

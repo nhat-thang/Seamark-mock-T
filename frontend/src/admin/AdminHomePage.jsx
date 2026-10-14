@@ -15,6 +15,7 @@ const WORK = [
 ];
 const OWNER = [
   { to: '/admin/hoc-phi', icon: 'money', tone: 'navy', title: 'Quản lý học phí', text: 'Học phí từng lớp theo tháng: cần thu, đã thu, còn thiếu; thu tiền, xem lịch sử thu, tải Excel.' },
+  { to: '/admin/cham-soc-khach-hang', icon: 'chat', tone: 'navy', title: 'Chăm sóc khách hàng', text: 'Bảng CSKH như Excel: học sinh, phụ huynh, SĐT, ngày chăm sóc, trạng thái chốt, học phí, hẹn gọi lại, ghi chú.' },
   { to: '/admin/tai-khoan', icon: 'users', tone: 'navy', title: 'Tài khoản admin', text: 'Tạo tài khoản cho giáo viên, vô hiệu hóa tài khoản, đặt lại mật khẩu khi ai đó quên.' },
   { to: '/admin/lich-su-chinh-sua', icon: 'history', tone: 'navy', title: 'Lịch sử chỉnh sửa', text: 'Xem ai đã thay đổi gì trên web (đề thi, tài liệu, tài khoản) và vào lúc nào.' },
   { to: '/admin/lich-su-dang-nhap', icon: 'login', tone: 'navy', title: 'Lịch sử đăng nhập', text: 'Xem ai đã đăng nhập, lúc nào, từ đâu, và các lần đăng nhập sai.' },

@@ -42,6 +42,15 @@ const ICONS = {
   undo: 'M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
   upload: 'M12 16V4M7 9l5-5 5 5M4 20h16',
   download: 'M12 4v12M7 11l5 5 5-5M4 20h16',
+  // Chăm sóc khách hàng (bảng tính CSKH)
+  chat: 'M4 4.5h16v11.5H10l-6 4.5V4.5zM8 9h8M8 12.5h5',
+  redo: 'M15 14l5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13',
+  search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20.5 20.5 16 16',
+  copy: 'M9 9h11v11H9zM15 9V4H4v11h5',
+  paste: 'M9 3.5h6V7H9zM15 5h4v16H5V5h4M8.5 12h7M8.5 16h5',
+  cap: 'M2 9.5 12 4.5l10 5-10 5zM6 11.5v4.5c0 1.6 2.7 3.5 6 3.5s6-1.9 6-3.5v-4.5M22 9.5v5.5',
+  refresh: 'M20 12a8 8 0 1 1-2.4-5.7M20 4v5h-5',
+  tag: 'M3 12.5V3.5h9l9 9-9 9zM7.5 8h.01',
 };
 
 export default function LineIcon({ name, size = 24 }) {

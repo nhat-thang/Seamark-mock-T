@@ -23,6 +23,7 @@ const NAV = [
 ];
 const OWNER_NAV = [
   { to: '/admin/hoc-phi', icon: 'money', label: 'Quản lý học phí' },
+  { to: '/admin/cham-soc-khach-hang', icon: 'chat', label: 'Chăm sóc khách hàng' },
   { to: '/admin/tai-khoan', icon: 'users', label: 'Tài khoản admin' },
   { to: '/admin/lich-su-chinh-sua', icon: 'history', label: 'Lịch sử chỉnh sửa' },
   { to: '/admin/lich-su-dang-nhap', icon: 'login', label: 'Lịch sử đăng nhập' },

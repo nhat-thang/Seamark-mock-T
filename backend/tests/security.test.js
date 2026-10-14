@@ -80,6 +80,18 @@ const ADMIN_ROUTES = [
   ['POST', '/api/admin/tuition/students/1/unpay'],
   ['POST', '/api/admin/tuition/students/1/snooze'],
   ['POST', '/api/admin/tuition/students/1/unsnooze'],
+  ['GET', '/api/admin/crm'],
+  ['POST', '/api/admin/crm'],
+  ['POST', '/api/admin/crm/cells'],
+  ['POST', '/api/admin/crm/delete'],
+  ['POST', '/api/admin/crm/restore'],
+  ['GET', '/api/admin/crm/deleted'],
+  ['GET', '/api/admin/crm/export'],
+  ['GET', '/api/admin/crm/1/history'],
+  ['POST', '/api/admin/crm/1/enroll'],
+  ['POST', '/api/admin/crm/statuses'],
+  ['POST', '/api/admin/crm/statuses/1/update'],
+  ['POST', '/api/admin/crm/statuses/1/delete'],
 ];
 
 test('Mọi API admin đều từ chối khi chưa đăng nhập (401)', async () => {
