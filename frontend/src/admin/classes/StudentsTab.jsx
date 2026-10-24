@@ -283,6 +283,15 @@ const PHONE_RE = /^0\d{9}$/;
 const ID_RE = /^(\d{9}|\d{12})$/;
 const digits = (v) => String(v || '').replace(/[\s.-]/g, '');
 
+/** Lỗi của ô CCCD ('' = hợp lệ hoặc đang trống). Dữ liệu cũ có thể còn chữ / dấu nên vẫn kiểm tra ký tự. */
+function idNumberProblem(v) {
+  const d = digits(v);
+  if (!d) return '';
+  if (!/^\d+$/.test(d)) return 'Số CCCD chỉ gồm chữ số (0–9).';
+  if (!ID_RE.test(d)) return `Số CCCD gồm 12 số (CMND cũ 9 số) — đang có ${d.length} số.`;
+  return '';
+}
+
 /** Kiểm tra trước ở trình duyệt (server kiểm tra lại). requireAll: thêm tay thì bắt buộc đủ 4 trường. */
 function checkStudent(f, requireAll) {
   if (!f.fullName.trim()) return 'Vui lòng nhập họ tên học sinh.';
@@ -293,7 +302,8 @@ function checkStudent(f, requireAll) {
   if (f.parentPhone.trim() && !PHONE_RE.test(digits(f.parentPhone)) && !/^02\d{9}$/.test(digits(f.parentPhone))) {
     return 'SĐT phụ huynh gồm 10 số, ví dụ 0901234567.';
   }
-  if (f.parentIdNumber.trim() && !ID_RE.test(digits(f.parentIdNumber))) return 'Số CCCD gồm 12 số (CMND cũ 9 số).';
+  const idProblem = idNumberProblem(f.parentIdNumber);
+  if (idProblem) return idProblem;
   const d = f.discountPercent === '' ? 0 : Number(f.discountPercent);
   if (!Number.isInteger(d) || d < 0 || d > 100) return 'Giảm giá phải từ 0 đến 100 (%).';
   return '';
@@ -302,6 +312,9 @@ function checkStudent(f, requireAll) {
 /** Các ô nhập thông tin học sinh (dùng chung cho thêm và sửa) */
 function StudentFields({ prefix, form, set, sessions, required, startLabel }) {
   const req = required ? <span className="cl-required"> (bắt buộc)</span> : null;
+  // Báo lỗi CCCD khi rời ô (đang gõ dở thì chưa báo, tránh đỏ liên tục)
+  const [idTouched, setIdTouched] = useState(false);
+  const idError = idTouched ? idNumberProblem(form.parentIdNumber) : '';
   return (
     <>
       <div className="cl-add-row cl-add-grid">
@@ -319,7 +332,21 @@ function StudentFields({ prefix, form, set, sessions, required, startLabel }) {
         </div>
         <div className="field">
           <label htmlFor={`${prefix}-id`}>CCCD phụ huynh{req}</label>
-          <input id={`${prefix}-id`} className="input" value={form.parentIdNumber} onChange={set('parentIdNumber')} placeholder="12 số" inputMode="numeric" />
+          {/* Chỉ nhận chữ số, tối đa 12: gõ / dán chữ, dấu cách, dấu chấm thì tự bỏ */}
+          <input
+            id={`${prefix}-id`}
+            className="input"
+            value={form.parentIdNumber}
+            onChange={(e) => set('parentIdNumber')({ target: { value: e.target.value.replace(/\D/g, '').slice(0, 12) } })}
+            placeholder="12 số"
+            inputMode="numeric"
+            maxLength={12}
+            onBlur={() => setIdTouched(true)}
+            aria-required={required}
+            aria-invalid={Boolean(idError)}
+            aria-describedby={idError ? `${prefix}-id-error` : undefined}
+          />
+          {idError && <p id={`${prefix}-id-error`} className="field-error">{idError}</p>}
         </div>
       </div>
       <div className="cl-add-row cl-add-grid">
