@@ -163,14 +163,12 @@ function ClassStudents({ c, onChanged }) {
           <thead>
             <tr>
               <th>Học sinh</th>
-              <th>Buổi bắt đầu</th>
+              <th>Bắt đầu</th>
               <th>Đã học<br /><span className="muted small-text">tháng / tổng</span></th>
-              <th>Nghỉ trong tháng</th>
               <th>Học phí / buổi</th>
               <th>Cần thu</th>
               <th>Đã thu</th>
-              <th>Trạng thái</th>
-              <th></th>
+              <th>Trạng thái · Thu tiền</th>
             </tr>
           </thead>
           <tbody>
@@ -187,12 +185,13 @@ function ClassStudents({ c, onChanged }) {
                       {s.missingInfo && <span className="cl-pill is-soon">Thiếu thông tin</span>}
                     </td>
                     <td className="nowrap">{s.startNo ? <>Buổi {s.startNo}<div className="muted small-text">{formatDate(s.startDate)}</div></> : '—'}</td>
-                    <td className="nowrap"><strong>{s.sessionsDoneInMonth}</strong> / {s.sessionsDone}</td>
-                    <td>
-                      {s.absences.length ? (
-                        <button type="button" className="cl-absent-btn" onClick={() => togglePanel(s.id, 'absent')}>{s.absences.length} buổi</button>
-                      ) : (
-                        <span className="muted">0</span>
+                    <td className="nowrap">
+                      <strong>{s.sessionsDoneInMonth}</strong> / {s.sessionsDone}
+                      {/* Buổi nghỉ trong tháng: bấm để xem ngày */}
+                      {s.absences.length > 0 && (
+                        <div>
+                          <button type="button" className="cl-absent-btn" onClick={() => togglePanel(s.id, 'absent')}>nghỉ {s.absences.length} buổi</button>
+                        </div>
                       )}
                     </td>
                     <td className="nowrap">
@@ -234,9 +233,7 @@ function ClassStudents({ c, onChanged }) {
                       {s.olderUnpaid.map((cy) => (
                         <div key={cy.cycleNo} className="text-error small-text">Còn nợ kì {cy.cycleNo}: {formatMoney(cy.amount)} (hạn {formatDate(cy.dueDate)})</div>
                       ))}
-                    </td>
-                    <td>
-                      <div className="table-actions">
+                      <div className="table-actions tu-row-actions">
                         {unpaid.map((cy) => (
                           <button key={cy.cycleNo} type="button" className="btn btn-primary btn-small" onClick={() => setPay({ student: s, cycle: cy })}>
                             Thu kì {cy.cycleNo}
@@ -250,7 +247,7 @@ function ClassStudents({ c, onChanged }) {
                   </tr>
                   {panel?.id === s.id && (
                     <tr className="row-panel">
-                      <td colSpan={9}>
+                      <td colSpan={7}>
                         {panel.type === 'absent' ? (
                           <ul className="cl-absence-list">
                             {s.absences.map((a) => (
@@ -271,10 +268,10 @@ function ClassStudents({ c, onChanged }) {
           </tbody>
           <tfoot>
             <tr className="tu-total-row">
-              <td colSpan={5}><strong>Tổng lớp {c.name}</strong> ({c.students.length} học sinh)</td>
+              <td colSpan={4}><strong>Tổng lớp {c.name}</strong> ({c.students.length} học sinh)</td>
               <td className="nowrap"><strong>{formatMoney(c.due)}</strong></td>
               <td className="nowrap"><strong>{formatMoney(c.paid)}</strong></td>
-              <td colSpan={2}>{c.missing > 0 ? <strong className="text-error">Còn thiếu {formatMoney(c.missing)}</strong> : c.due > 0 ? <span className="tu-status is-paid">Đã thu đủ</span> : ''}</td>
+              <td>{c.missing > 0 ? <strong className="text-error">Còn thiếu {formatMoney(c.missing)}</strong> : c.due > 0 ? <span className="tu-status is-paid">Đã thu đủ</span> : ''}</td>
             </tr>
           </tfoot>
         </table>

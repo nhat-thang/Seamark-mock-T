@@ -79,6 +79,35 @@ export default function ClassDetailPage() {
     }
   }
 
+  // Khóa lớp = lớp kết thúc: dừng lịch hằng tuần, xóa các buổi chưa học (buổi đã học, điểm danh, học phí giữ nguyên)
+  async function closeClass(force = false) {
+    if (!force) {
+      const ok = window.confirm(
+        `Khóa lớp "${cls.name}" (lớp đã kết thúc)?\n\n` +
+          '• Lịch học hằng tuần sẽ dừng, các buổi chưa học bị xóa khỏi thời khóa biểu.\n' +
+          '• Học sinh, các buổi đã học, điểm danh và học phí vẫn được giữ lại.\n' +
+          '• Mở lại lớp được bất cứ lúc nào (khi đó xếp lại lịch học).'
+      );
+      if (!ok) return;
+    }
+    try {
+      await apiPost(`/admin/classes/${cls.id}/close`, { force });
+      load();
+    } catch (err) {
+      if (err.data?.reason === 'confirm' && window.confirm(`${err.message}\n\nVẫn khóa lớp?`)) return closeClass(true);
+      if (err.data?.reason !== 'confirm') setError(err.message);
+    }
+  }
+
+  async function reopen() {
+    try {
+      await apiPost(`/admin/classes/${cls.id}/reopen`);
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function restore() {
     try {
       await apiPost(`/admin/classes/${cls.id}/restore`);
@@ -113,12 +142,22 @@ export default function ClassDetailPage() {
           <p className="cl-hero-note">
             <LineIcon name="user" size={16} /> Giáo viên phụ trách: {cls.teachers.length ? cls.teachers.map((t) => t.name).join(', ') : 'chưa có'}
           </p>
+          {cls.weekly.length > 0 && (
+            <p className="cl-hero-note">
+              <LineIcon name="calendar" size={16} /> Lịch hằng tuần: {cls.weekly.map((w) => w.text).join(' · ')} (tự lặp lại cho tới khi khóa lớp)
+            </p>
+          )}
         </div>
         {isOwner && !cls.deletedAt && (
           <div className="cl-hero-actions">
             <button type="button" className="btn btn-ghost-light btn-small" onClick={() => setEditing(true)}>
               <LineIcon name="edit" size={18} /> Sửa thông tin lớp
             </button>
+            {!cls.closedAt && (
+              <button type="button" className="btn btn-ghost-light btn-small" onClick={() => closeClass(false)}>
+                <LineIcon name="lock" size={18} /> Khóa lớp
+              </button>
+            )}
             <button type="button" className="btn btn-ghost-light btn-small" onClick={removeClass}>
               <LineIcon name="trash" size={18} /> Xóa lớp
             </button>
@@ -128,6 +167,16 @@ export default function ClassDetailPage() {
 
       {navMessage && <p className="alert-success admin-message" role="status">{navMessage}</p>}
       {error && <p className="alert-error admin-message">{error}</p>}
+
+      {cls.closedAt && !cls.deletedAt && (
+        <div className="cl-deleted-banner">
+          <p>
+            <LineIcon name="lock" size={18} /> Lớp đã khóa (đã kết thúc) lúc {formatDateTime(cls.closedAt)}. Lịch học hằng tuần đã dừng;
+            vẫn xem được học sinh, các buổi đã học và học phí.
+          </p>
+          {isOwner && <button type="button" className="btn btn-primary" onClick={reopen}>Mở lại lớp</button>}
+        </div>
+      )}
 
       {cls.deletedAt ? (
         <div className="cl-deleted-banner">

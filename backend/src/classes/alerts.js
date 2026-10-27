@@ -37,7 +37,8 @@ function collectAlerts(db, access, now = Date.now()) {
       continue;
     }
     const gap = scheduleGap(tl);
-    if (gap) gaps.push({ classId: cls.id, className: cls.name, ...gap });
+    // Lớp đã khóa (kết thúc) thì không nhắc xếp lịch nữa
+    if (gap && !cls.closed_at) gaps.push({ classId: cls.id, className: cls.name, ...gap });
     for (const s of students) {
       const t = map.get(s.id);
       if (!t.alert) continue;

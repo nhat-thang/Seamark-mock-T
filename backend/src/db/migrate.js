@@ -20,19 +20,21 @@ function runMigrations(db, { log = console.log } = {}) {
   );
 
   // Sắp xếp theo tên để chạy đúng thứ tự 001, 002, ...
+  // File .js dùng khi cần chuyển dữ liệu bằng code (không viết được bằng SQL): module.exports = (db) => { ... }
   const files = fs
     .readdirSync(MIGRATIONS_DIR)
-    .filter((f) => /^\d+_.+\.sql$/.test(f))
+    .filter((f) => /^\d+_.+\.(sql|js)$/.test(f))
     .sort();
 
   const insert = db.prepare('INSERT INTO schema_migrations (name) VALUES (?)');
 
   for (const file of files) {
     if (applied.has(file)) continue;
-    const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8');
+    const full = path.join(MIGRATIONS_DIR, file);
     // Chạy trong transaction: lỗi giữa chừng thì không để database ở trạng thái dở dang
     db.transaction(() => {
-      db.exec(sql);
+      if (file.endsWith('.js')) require(full)(db, { log });
+      else db.exec(fs.readFileSync(full, 'utf8'));
       insert.run(file);
     })();
     log(`[migration] Đã chạy ${file}`);

@@ -579,7 +579,7 @@ function DeleteSessionDialog({ s, onClose, onDeleted }) {
         <>
           <button type="button" className="btn btn-secondary" onClick={onClose}>Hủy</button>
           <button type="button" className="btn btn-danger" disabled={busy} onClick={() => remove(false)}>
-            {busy ? 'Đang xóa…' : scope === 'following' ? `Xóa ${following} buổi` : 'Xóa buổi này'}
+            {busy ? 'Đang xóa…' : scope === 'following' ? (s.weekly ? 'Xóa và dừng lịch' : `Xóa ${following} buổi`) : 'Xóa buổi này'}
           </button>
         </>
       }
@@ -597,14 +597,16 @@ function DeleteSessionDialog({ s, onClose, onDeleted }) {
           <label className={`type-row ${scope === 'following' ? 'is-on' : ''}`}>
             <input type="radio" name="del-scope" checked={scope === 'following'} onChange={() => { setScope('following'); setConfirm(null); }} />
             <span className="type-row-text">
-              <strong>Buổi này và {following - 1} buổi sau</strong>
-              <span className="type-row-desc">ví dụ lớp kết thúc sớm, hoặc đổi hẳn lịch học</span>
+              <strong>{s.weekly ? 'Buổi này và mọi buổi sau (dừng lịch hằng tuần)' : `Buổi này và ${following - 1} buổi sau`}</strong>
+              <span className="type-row-desc">
+                {s.weekly ? 'ví dụ đổi hẳn lịch học. Lớp kết thúc thì nên dùng "Khóa lớp" ở trang lớp' : 'ví dụ lớp kết thúc sớm, hoặc đổi hẳn lịch học'}
+              </span>
             </span>
           </label>
         </fieldset>
       )}
       <p className="muted small-text">
-        Xóa thì các buổi sau được đánh số lại. Giáo viên của các buổi chưa diễn ra sẽ nhận được thông báo.
+        Xóa lẻ một buổi (ví dụ nghỉ lễ) thì lịch hằng tuần vẫn chạy bình thường. Xóa thì các buổi sau được đánh số lại. Giáo viên của các buổi chưa diễn ra sẽ nhận được thông báo.
       </p>
       {confirm && <ConfirmBox data={confirm} saving={busy} onConfirm={() => remove(true)} label="Vẫn xóa" />}
       {error && <p className="alert-error admin-message" role="alert">{error}</p>}

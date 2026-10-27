@@ -220,7 +220,11 @@ export default function WeekSchedule({ admin, classId = null, initialDate = null
           onClose={() => setDialog(null)}
           onSaved={(r) => {
             setDialog(null);
-            setMessage(r.count > 1 ? `Đã xếp ${r.count} buổi học.` : 'Đã xếp buổi học.');
+            setMessage(
+              r.weekly
+                ? `Đã xếp lịch học hằng tuần, bắt đầu từ ${formatDate(r.firstDate)}. Lịch tự lặp lại cho tới khi khóa lớp.`
+                : 'Đã xếp buổi học.'
+            );
             setRefresh((n) => n + 1);
           }}
         />

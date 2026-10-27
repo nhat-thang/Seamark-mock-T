@@ -51,6 +51,8 @@ export const AUDIT_ACTION_LABELS = {
   update_class: 'Sửa thông tin lớp',
   delete_class: 'Xóa lớp',
   restore_class: 'Khôi phục lớp',
+  close_class: 'Khóa lớp',
+  reopen_class: 'Mở lại lớp',
   add_students: 'Thêm học sinh',
   import_students: 'Nhập học sinh từ Excel',
   export_class: 'Tải danh sách lớp',

@@ -183,7 +183,7 @@ export default function GuidePage() {
         <h3 className="guide-sub">Thu tiền (admin chính)</h3>
         <ol>
           <li>
-            Vào <B>Quản lý học phí</B> (menu admin chính) → bấm vào lớp → bấm <B>Thu kì …</B> ở dòng học sinh. Hoặc vào lớp → tab{' '}
+            Vào <B>Quản lý học phí</B> (menu admin chính) → bấm vào lớp → bấm <B>Thu kì …</B> ở cột "Trạng thái · Thu tiền" của học sinh. Hoặc vào lớp → tab{' '}
             <B>Học phí</B> → <B>Thu / xem</B>.
           </li>
           <li>
@@ -216,16 +216,21 @@ export default function GuidePage() {
         {admin.role !== 'owner' && <p className="muted">Phần này dành cho admin chính. Bạn chỉ xem được thời khóa biểu.</p>}
         <ol>
           <li>
-            Vào <B>Thời khóa biểu</B> → <B>Xếp lịch học</B> (hoặc <B>Thêm buổi</B> ở đúng ngày). Chọn lớp, ngày, giờ bắt đầu, giờ kết
-            thúc (bấm nhanh "1 giờ 30" để tự điền giờ kết thúc).
+            Vào <B>Thời khóa biểu</B> → <B>Xếp lịch học</B> (hoặc <B>Thêm buổi</B> ở một ngày). Chọn lớp, rồi chọn kiểu{' '}
+            <B>Lịch học hằng tuần</B> (lớp học đều mỗi tuần) hoặc <B>Một buổi</B> (học bù, học thêm vào một ngày).
+          </li>
+          <li>
+            <B>Lịch học hằng tuần</B>: bấm chọn các thứ (ví dụ T3, T6). <strong>Mỗi thứ có giờ riêng</strong>, ví dụ Thứ 3 17:00–18:30,
+            Thứ 6 18:00–19:30 (bấm nhanh "1 giờ 30" để tự điền giờ kết thúc). Không cần chọn ngày bắt đầu hay ngày kết thúc: lịch bắt
+            đầu từ buổi sắp tới gần nhất và <strong>tự lặp lại mãi</strong>.
+          </li>
+          <li>
+            Lớp kết thúc: vào lớp → bấm <B>Khóa lớp</B>. Lịch hằng tuần dừng, các buổi chưa học bị xóa khỏi thời khóa biểu; học sinh,
+            điểm danh, học phí vẫn giữ. Bấm <B>Mở lại lớp</B> nếu cần học tiếp (rồi xếp lại lịch).
           </li>
           <li>
             <strong>Bắt buộc có giáo viên</strong>: tích một hoặc nhiều giáo viên (dạy cùng buổi), và / hoặc gõ tên giáo viên ngoài
             (không có tài khoản). Giáo viên được xếp dạy tự thành giáo viên phụ trách lớp và nhận thông báo trên web.
-          </li>
-          <li>
-            Lớp học cố định hằng tuần: tích <B>Lặp lại hằng tuần</B>, chọn các thứ (ví dụ T2, T4, T6) và ngày kết thúc (hoặc bấm "3
-            tháng"). Hết hạn thì xếp tiếp từ ngày sau đó.
           </li>
           <li>
             Web hỏi lại trước khi lưu nếu: trùng giờ với buổi khác; thêm buổi vào ngày <strong>đã qua</strong> (buổi đó sẽ được tính
@@ -233,8 +238,8 @@ export default function GuidePage() {
             số tiền đã thu giữ nguyên). Chắc chắn thì bấm <B>Vẫn xếp lịch</B> / <B>Vẫn xóa</B>.
           </li>
           <li>
-            Sửa / xóa: bấm vào buổi học → <B>Sửa lịch</B> hoặc <B>Xóa buổi</B>. Với lịch lặp lại, chọn "Chỉ buổi này" hoặc "Buổi này và
-            các buổi sau".
+            Sửa / xóa: bấm vào buổi học → <B>Sửa lịch</B> hoặc <B>Xóa buổi</B>. Với lịch hằng tuần, chọn "Chỉ buổi này" (ví dụ nghỉ lễ,
+            lịch vẫn chạy tiếp) hoặc "Buổi này và các buổi sau" (đổi giờ thì chỉ đổi các buổi cùng thứ; xóa thì lịch hằng tuần dừng).
           </li>
           <li>
             Buổi <strong>đã điểm danh</strong>: không xóa được, không đổi được ngày giờ (để giữ đúng số buổi và học phí). Vẫn đổi được

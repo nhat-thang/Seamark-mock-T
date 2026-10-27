@@ -128,6 +128,7 @@ export default function ClassListPage() {
                   {c.alerts?.orange > 0 && <span className="tu-alert is-orange"><span className="tu-dot" aria-hidden="true" />{c.alerts.orange} cam (còn 1 buổi)</span>}
                   {c.alerts?.yellow > 0 && <span className="tu-alert is-yellow"><span className="tu-dot" aria-hidden="true" />{c.alerts.yellow} vàng (sắp tới hạn)</span>}
                   {isOwner && !c.tuitionConfigured && <span className="cl-pill">Chưa cài học phí</span>}
+                  {c.closedAt && <span className="cl-pill">Đã khóa (kết thúc)</span>}
                 </div>
                 {showDeleted && (
                   <div className="cl-class-deleted">

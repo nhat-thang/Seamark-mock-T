@@ -10,6 +10,8 @@
 //   POST /api/admin/classes/:id/update             sửa lớp (owner)
 //   POST /api/admin/classes/:id/delete             xóa lớp (owner, xóa mềm)
 //   POST /api/admin/classes/:id/restore            khôi phục lớp (owner)
+//   POST /api/admin/classes/:id/close              khóa lớp = lớp kết thúc (owner): dừng lịch hằng tuần, xóa buổi chưa học
+//   POST /api/admin/classes/:id/reopen             mở lại lớp đã khóa (owner)
 //   GET  /api/admin/classes/:id/sessions           mọi buổi học của lớp (đánh số theo thời khóa biểu)
 //   POST /api/admin/classes/:id/students           thêm học sinh (owner; thêm tay bắt buộc đủ thông tin, nhập Excel có fileName)
 //   GET  /api/admin/classes/:id/students/:sid      lịch sử đi học / bài làm của một học sinh
@@ -28,7 +30,8 @@ const { loadStudents, loadStudent, studentView } = require('../classes/students'
 const { SESSION_SELECT, toSession, teachersOf } = require('../classes/sessions');
 const { readRosterWorkbook, RosterFileError } = require('../classes/rosterExcel');
 const { accessOf, addClassTeachers } = require('../classes/access');
-const { classTuition, loadTimeline } = require('../classes/tuitionData');
+const { classTuition, loadTimeline, paidCyclesAffected } = require('../classes/tuitionData');
+const { activeWeekly, describeSlots } = require('../classes/weekly');
 const { styleHeader, sendWorkbook } = require('../utils/excel');
 // SĐT phụ huynh: di động 10 số / máy bàn 11 số; CCCD 12 số (CMND cũ 9 số)
 const { cleanPhone, cleanIdNumber } = require('../utils/contactInfo');
@@ -204,6 +207,9 @@ function classesRouter(db, config) {
       color: cls.color,
       note: cls.note,
       deletedAt: cls.deleted_at,
+      closedAt: cls.closed_at, // lớp đã khóa (đã kết thúc)
+      // Lịch học hằng tuần đang chạy: "T3 17:00–18:30, T6 18:00–19:30"
+      weekly: activeWeekly(db, cls.id).map((w) => ({ id: w.id, text: describeSlots(w.slots) })),
       createdAt: cls.created_at,
       teachers: teachersOfClass(cls.id),
       studentCount: counts.students,
@@ -379,6 +385,47 @@ function classesRouter(db, config) {
     }
     db.prepare('UPDATE classes SET deleted_at = NULL, deleted_by = NULL, updated_at = ? WHERE id = ?').run(nowIso(), cls.id);
     audit(req, cls, 'restore_class', `Khôi phục lớp "${cls.name}"`);
+    res.json({ class: toClass(db.prepare('SELECT * FROM classes WHERE id = ?').get(cls.id), req.access) });
+  });
+
+  // Khóa lớp (lớp kết thúc): dừng mọi lịch hằng tuần + xóa các buổi chưa diễn ra và chưa điểm danh.
+  // Xóa buổi làm lệch kì học phí đã thu (đóng trước) thì hỏi lại (reason 'confirm'), gửi lại force: true mới khóa.
+  router.post('/:id/close', (req, res) => {
+    if (!ownerOnly(req, res)) return;
+    const cls = loadClass(req, res);
+    if (!cls) return;
+    if (cls.closed_at) return res.json({ class: toClass(cls, req.access) });
+    const now = nowIso();
+    const future = db.prepare('SELECT id FROM class_sessions WHERE class_id = ? AND starts_at > ? AND attendance_at IS NULL').all(cls.id, now).map((r) => r.id);
+    const removing = new Set(future);
+    const cycles = paidCyclesAffected(db, cls, (rows) => rows.filter((r) => !removing.has(r.id)));
+    if (cycles.length && !req.body?.force) {
+      return res.status(409).json({
+        reason: 'confirm',
+        error: `Khóa lớp sẽ xóa ${future.length} buổi chưa học, làm lệch ${cycles.length} kì học phí đã thu trước: ` +
+          cycles.slice(0, 5).map((c) => `${c.fullName} kì ${c.cycleNo}`).join(', ') + (cycles.length > 5 ? '…' : '') +
+          '. Số tiền đã thu giữ nguyên.',
+      });
+    }
+    db.transaction(() => {
+      db.prepare('UPDATE class_weekly SET stopped_at = ?, updated_at = ? WHERE class_id = ? AND stopped_at IS NULL').run(now, now, cls.id);
+      const del = db.prepare('DELETE FROM class_sessions WHERE id = ?');
+      for (const id of future) del.run(id);
+      db.prepare('UPDATE classes SET closed_at = ?, closed_by = ?, updated_at = ? WHERE id = ?').run(now, req.admin.id, now, cls.id);
+    })();
+    audit(req, cls, 'close_class', `Khóa lớp "${cls.name}" (lớp kết thúc): dừng lịch hằng tuần, xóa ${future.length} buổi chưa học`);
+    res.json({ class: toClass(db.prepare('SELECT * FROM classes WHERE id = ?').get(cls.id), req.access), deletedSessions: future.length });
+  });
+
+  // Mở lại lớp đã khóa. Lịch hằng tuần cũ không tự chạy lại: admin chính xếp lịch mới.
+  router.post('/:id/reopen', (req, res) => {
+    if (!ownerOnly(req, res)) return;
+    const cls = loadClass(req, res);
+    if (!cls) return;
+    if (cls.closed_at) {
+      db.prepare('UPDATE classes SET closed_at = NULL, closed_by = NULL, updated_at = ? WHERE id = ?').run(nowIso(), cls.id);
+      audit(req, cls, 'reopen_class', `Mở lại lớp "${cls.name}"`);
+    }
     res.json({ class: toClass(db.prepare('SELECT * FROM classes WHERE id = ?').get(cls.id), req.access) });
   });
 

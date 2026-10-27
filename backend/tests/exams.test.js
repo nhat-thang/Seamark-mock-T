@@ -13,7 +13,7 @@ test('migration chạy lại lần 2 không lỗi và không chạy trùng', () 
   runMigrations(db, { log: () => {} });
   runMigrations(db, { log: () => {} });
   const count = db.prepare('SELECT COUNT(*) AS n FROM schema_migrations').get().n;
-  const files = fs.readdirSync(path.join(__dirname, '..', 'src', 'db', 'migrations')).filter((f) => f.endsWith('.sql'));
+  const files = fs.readdirSync(path.join(__dirname, '..', 'src', 'db', 'migrations')).filter((f) => /^\d+_.+\.(sql|js)$/.test(f));
   assert.equal(count, files.length);
   db.close();
 });

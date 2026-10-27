@@ -4,6 +4,7 @@ const { openDb } = require('./db');
 const { runMigrations } = require('./db/migrate');
 const { createApp } = require('./app');
 const { finalizeExpiredAttempts } = require('./exam/attempts');
+const { fillWeekly } = require('./classes/weekly');
 
 const db = openDb(config.dbFile);
 runMigrations(db);
@@ -19,6 +20,18 @@ function autoSubmit() {
 }
 autoSubmit();
 setInterval(autoSubmit, 60 * 1000).unref();
+
+// Lịch học hằng tuần lặp lại mãi: xếp nối thêm buổi học sắp tới. Chạy lúc khởi động và mỗi giờ.
+function fillSchedule() {
+  try {
+    const n = fillWeekly(db);
+    if (n > 0) console.log(`[lịch hằng tuần] Đã xếp thêm ${n} buổi học.`);
+  } catch (err) {
+    console.error('[lịch hằng tuần] Lỗi:', err);
+  }
+}
+fillSchedule();
+setInterval(fillSchedule, 60 * 60 * 1000).unref();
 
 const app = createApp({ db, config });
 

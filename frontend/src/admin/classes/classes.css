@@ -1054,6 +1054,21 @@ a.cl-class-card:focus-visible {
   background: var(--color-primary-soft);
   color: var(--brand-navy);
 }
+/* Lịch hằng tuần: mỗi thứ một dòng giờ học */
+.cl-weekly-day {
+  margin: 0 0 0.6rem;
+  padding: 0.6rem 0.8rem 0;
+  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+.cl-weekly-name {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-weight: 800;
+  color: var(--brand-navy);
+}
+
 .cl-conflict {
   margin-top: 0.4rem;
   padding: 1rem 1.2rem;
@@ -2223,6 +2238,18 @@ a.hs-fee:hover {
 .tu-table th {
   vertical-align: top;
 }
+/* Bảng học phí gọn để vừa màn hình: nút "Thu kì" nằm ngay dưới trạng thái, không phải kéo ngang */
+.tu-table th,
+.tu-table td {
+  padding: 0.65rem 0.7rem;
+}
+.tu-table .tu-alert {
+  white-space: normal;
+}
+.tu-row-actions {
+  margin-top: 0.5rem;
+}
+
 .tu-table tr.is-off td {
   background: #fafbfd;
   color: var(--color-text-muted);

@@ -4,7 +4,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const ExcelJS = require('exceljs');
 const { setup, createClient, testConfig } = require('./helpers');
-const { vnDate, vnTime, addDays, weekdayOf } = require('../src/classes/time');
+const { vnDate, vnTime, addDays, weekdayOf, toInstant, DAY_MS } = require('../src/classes/time');
+const { fillWeekly } = require('../src/classes/weekly');
+const convertOldSeries = require('../src/db/migrations/015_weekly_from_old_series');
 
 const TODAY = vnDate();
 
@@ -205,7 +207,7 @@ test('Danh sách học sinh xếp theo tên (như sổ điểm danh), trùng tê
   await close();
 });
 
-test('Thời khóa biểu: chỉ admin chính xếp, nhiều giáo viên một buổi, lặp lại hằng tuần, báo trùng lịch', async () => {
+test('Thời khóa biểu: chỉ admin chính xếp, nhiều giáo viên một buổi, lịch hằng tuần mỗi thứ một giờ, báo trùng lịch', async () => {
   const { owner, lan, minh, lanId, minhId, cls, close } = await setupCenter();
   const base = { classId: cls.id, date: addDays(TODAY, 1), startTime: '18:00', endTime: '19:30' };
 
@@ -215,27 +217,34 @@ test('Thời khóa biểu: chỉ admin chính xếp, nhiều giáo viên một b
   assert.match(noTeacher.body.error, /giáo viên/);
   assert.equal((await owner.post('/api/admin/schedule', { ...base, teacherIds: [lanId], endTime: '17:00' })).status, 400);
 
-  // Lặp lại vào thứ của ngày bắt đầu + thứ sau đó, trong 4 tuần; 2 giáo viên dạy cùng
+  // Lịch hằng tuần: thứ của ngày mai 18:00–19:30 + thứ sau đó 17:00–18:30 (giờ khác nhau), không có ngày bắt đầu / kết thúc
   const wd = weekdayOf(base.date);
-  const weekdays = [wd, (wd % 7) + 1];
-  const until = addDays(base.date, 27);
-  const r = await owner.post('/api/admin/schedule', { ...base, teacherIds: [lanId, minhId], room: 'P.2', repeat: { weekdays, until } });
+  const wd2 = (wd % 7) + 1;
+  const weekly = { slots: [{ weekday: wd, startTime: '18:00', endTime: '19:30' }, { weekday: wd2, startTime: '17:00', endTime: '18:30' }] };
+  const bad = await owner.post('/api/admin/schedule', { classId: cls.id, teacherIds: [lanId], weekly: { slots: [{ weekday: wd, startTime: '18:00', endTime: '17:00' }] } });
+  assert.equal(bad.status, 400);
+  assert.equal((await owner.post('/api/admin/schedule', { classId: cls.id, teacherIds: [lanId], weekly: { slots: [] } })).status, 400);
+  const r = await owner.post('/api/admin/schedule', { classId: cls.id, teacherIds: [lanId, minhId], room: 'P.2', weekly });
   assert.equal(r.status, 201);
-  assert.equal(r.body.count, 8);
+  assert.ok(r.body.count >= 50, 'xếp sẵn khoảng 6 tháng');
+  assert.equal(r.body.firstDate, base.date);
+  const until = addDays(base.date, 27);
   const list = (await lan.get(`/api/admin/schedule?from=${base.date}&to=${until}`)).body.sessions;
   assert.equal(list.length, 8);
   assert.ok(list.every((s) => s.teacher.name === 'Cô Lan, Thầy Minh' && s.room === 'P.2' && s.canOpen && s.teacher.isMine));
+  assert.ok(list.every((s) => (weekdayOf(s.date) === wd ? s.startTime === '18:00' : s.startTime === '17:00' && s.endTime === '18:30')));
   assert.equal(new Set(list.map((s) => s.seriesId)).size, 1);
+  assert.equal((await owner.get(`/api/admin/classes/${cls.id}`)).body.class.weekly.length, 1);
   // Được xếp dạy -> Thầy Minh tự thành giáo viên phụ trách lớp
   assert.equal((await minh.get('/api/admin/classes')).body.classes.length, 1);
   assert.deepEqual((await owner.get(`/api/admin/classes/${cls.id}`)).body.class.teachers.map((t) => t.name), ['Cô Lan', 'Thầy Minh']);
   assert.equal((await minh.get(`/api/admin/schedule?from=${base.date}&to=${until}&mine=1`)).body.sessions.length, 8);
 
-  // Mỗi giáo viên nhận thông báo trên web
+  // Mỗi giáo viên nhận MỘT thông báo trên web
   for (const client of [lan, minh]) {
     const n = (await client.get('/api/admin/notifications')).body;
     assert.equal(n.unread, 1);
-    assert.match(n.items[0].text, /8 buổi học lớp "TOEIC 550 K1"/);
+    assert.match(n.items[0].text, /lịch học hằng tuần lớp "TOEIC 550 K1"/);
   }
   await lan.post('/api/admin/notifications/read');
   assert.equal((await lan.get('/api/admin/notifications')).body.unread, 0);
@@ -251,29 +260,140 @@ test('Thời khóa biểu: chỉ admin chính xếp, nhiều giáo viên một b
   await close();
 });
 
-test('Sửa / xóa "buổi này và các buổi sau" trong lịch lặp lại', async () => {
-  const { owner, lanId, cls, close } = await setupCenter();
+test('Lịch hằng tuần lặp lại mãi: server tự xếp nối, buổi đã xóa lẻ không bị xếp lại', async () => {
+  const { db, owner, lanId, cls, close } = await setupCenter();
+  const wd = weekdayOf(addDays(TODAY, 1));
+  await owner.post('/api/admin/schedule', { classId: cls.id, teacherIds: [lanId], weekly: { slots: [{ weekday: wd, startTime: '18:00', endTime: '19:30' }] } });
+  const count = () => db.prepare('SELECT COUNT(*) AS n FROM class_sessions WHERE class_id = ?').get(cls.id).n;
+  const first = count();
+  assert.ok(first >= 26);
+
+  // Nghỉ lễ: xóa lẻ buổi đầu tiên -> chạy xếp nối không tạo lại buổi đó, không tạo trùng
+  const s1 = db.prepare('SELECT id, date FROM class_sessions WHERE class_id = ? ORDER BY starts_at LIMIT 1').get(cls.id);
+  assert.equal((await owner.post(`/api/admin/schedule/${s1.id}/delete`, { scope: 'one' })).body.deleted, 1);
+  assert.equal(fillWeekly(db), 0);
+  assert.equal(count(), first - 1);
+
+  // 5 tuần sau: xếp nối thêm đúng 5 buổi (mỗi tuần một buổi)
+  assert.equal(fillWeekly(db, Date.now() + 35 * DAY_MS), 5);
+  assert.equal(count(), first + 4);
+  const dates = db.prepare('SELECT date FROM class_sessions WHERE class_id = ? ORDER BY date').all(cls.id).map((r) => r.date);
+  assert.equal(new Set(dates).size, dates.length);
+  assert.ok(!dates.includes(s1.date));
+  await close();
+});
+
+test('Sửa / xóa "buổi này và các buổi sau" trong lịch hằng tuần', async () => {
+  const { db, owner, lanId, cls, close } = await setupCenter();
   const date = addDays(TODAY, 1);
-  await owner.post('/api/admin/schedule', {
-    classId: cls.id, date, startTime: '08:00', endTime: '09:00', teacherIds: [lanId], repeat: { weekdays: [1, 2, 3, 4, 5, 6, 7], until: addDays(date, 5) },
-  });
+  const slots = [1, 2, 3, 4, 5, 6, 7].map((weekday) => ({ weekday, startTime: '08:00', endTime: '09:00' }));
+  await owner.post('/api/admin/schedule', { classId: cls.id, teacherIds: [lanId], weekly: { slots } });
   const all = (await owner.get(`/api/admin/schedule?from=${date}&to=${addDays(date, 5)}`)).body.sessions;
   assert.equal(all.length, 6);
 
+  // Đổi giờ "buổi này và các buổi sau": chỉ các buổi CÙNG THỨ đổi giờ, giáo viên thì đổi hết
   const third = all[2];
   const upd = await owner.post(`/api/admin/schedule/${third.id}/update`, { scope: 'following', startTime: '09:00', endTime: '10:30', teacherName: 'Thầy Tom' });
   assert.equal(upd.status, 200);
-  const after = (await owner.get(`/api/admin/schedule?from=${date}&to=${addDays(date, 5)}`)).body.sessions;
-  assert.deepEqual(after.map((s) => `${s.startTime} ${s.teacher.name}`), [
-    '08:00 Cô Lan', '08:00 Cô Lan', '09:00 Thầy Tom', '09:00 Thầy Tom', '09:00 Thầy Tom', '09:00 Thầy Tom',
+  const after = (await owner.get(`/api/admin/schedule?from=${date}&to=${addDays(date, 7 + 2)}`)).body.sessions;
+  assert.deepEqual(after.slice(0, 6).map((s) => `${s.startTime} ${s.teacher.name}`), [
+    '08:00 Cô Lan', '08:00 Cô Lan', '09:00 Thầy Tom', '08:00 Thầy Tom', '08:00 Thầy Tom', '08:00 Thầy Tom',
   ]);
   assert.ok(after[2].teacher.isOther);
-  assert.equal((await owner.get(`/api/admin/classes/${cls.id}/sessions`)).body.sessions.map((s) => s.no).join(','), '1,2,3,4,5,6');
+  assert.equal(after.find((s) => s.date === addDays(third.date, 7)).startTime, '09:00');
+  // Lịch hằng tuần cũng đổi theo: các buổi xếp nối về sau dùng giờ + giáo viên mới
+  const rule = db.prepare('SELECT * FROM class_weekly WHERE class_id = ?').get(cls.id);
+  assert.equal(JSON.parse(rule.slots).find((x) => x.weekday === weekdayOf(third.date)).startTime, '09:00');
+  assert.equal(rule.teacher_name, 'Thầy Tom');
+  const nos = (await owner.get(`/api/admin/classes/${cls.id}/sessions`)).body.sessions.map((s) => s.no);
+  assert.deepEqual(nos, nos.map((_, i) => i + 1));
 
+  // Xóa "buổi này và các buổi sau" = dừng lịch hằng tuần
   const del = await owner.post(`/api/admin/schedule/${after[4].id}/delete`, { scope: 'following' });
-  assert.equal(del.body.deleted, 2);
+  assert.ok(del.body.deleted > 2);
+  assert.equal((await owner.get(`/api/admin/classes/${cls.id}`)).body.class.weekly.length, 0);
+  assert.equal(fillWeekly(db, Date.now() + 60 * DAY_MS), 0);
   assert.equal((await owner.post(`/api/admin/schedule/${after[0].id}/delete`, { scope: 'one' })).body.deleted, 1);
   assert.equal((await owner.get(`/api/admin/schedule?from=${date}&to=${addDays(date, 5)}`)).body.sessions.length, 3);
+  await close();
+});
+
+test('Cập nhật web: lịch "lặp lại đến ngày" cũ đang chạy tự thành lịch hằng tuần lặp lại mãi', async () => {
+  const { db, owner, lanId, cls, close } = await setupCenter();
+  const cls2 = (await owner.post('/api/admin/classes', { name: 'Lớp đã hết lịch' })).body.class;
+  // Ghi thẳng các buổi như cách cũ (một series_id cho cả lịch, có ngày kết thúc)
+  const addOld = (classId, seriesId, from, to, slots, teacherId, room = '') => {
+    for (let d = from; d <= to; d = addDays(d, 1)) {
+      for (const x of slots.filter((s) => s.weekday === weekdayOf(d))) {
+        const id = db.prepare(
+          `INSERT INTO class_sessions (class_id, date, start_time, end_time, starts_at, ends_at, teacher_admin_id, room, series_id, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(classId, d, x.startTime, x.endTime, toInstant(d, x.startTime), toInstant(d, x.endTime), teacherId, room, seriesId, TODAY, TODAY).lastInsertRowid;
+        db.prepare('INSERT INTO session_teachers (session_id, admin_id) VALUES (?, ?)').run(id, teacherId);
+      }
+    }
+  };
+  const wd = weekdayOf(addDays(TODAY, 1));
+  const wd2 = (wd % 7) + 1;
+  const slots = [{ weekday: wd, startTime: '18:00', endTime: '19:30' }, { weekday: wd2, startTime: '17:00', endTime: '18:30' }];
+  // Lớp 1: lịch đầu (đã hết) + lịch xếp tiếp cùng giờ (đang chạy, hết sau 3 tuần) -> chỉ chuyển lịch mới
+  addOld(cls.id, 'old-a', addDays(TODAY, -40), addDays(TODAY, -1), slots, lanId, 'P.2');
+  addOld(cls.id, 'old-b', TODAY, addDays(TODAY, 20), slots, lanId, 'P.2');
+  // Lớp 2: lịch đã hết từ tuần trước -> coi như lớp đã kết thúc, không chuyển
+  addOld(cls2.id, 'old-c', addDays(TODAY, -30), addDays(TODAY, -7), slots, lanId);
+  // Lớp 3: xếp từng buổi (không có lịch lặp) T(wd) 08:00–09:30 trong 4 tuần + 1 buổi học bù lẻ -> chỉ lấy lịch cố định
+  const cls3 = (await owner.post('/api/admin/classes', { name: 'Lớp xếp từng buổi' })).body.class;
+  addOld(cls3.id, null, addDays(TODAY, -14), addDays(TODAY, 13), [{ weekday: wd, startTime: '08:00', endTime: '09:30' }], lanId);
+  addOld(cls3.id, null, addDays(TODAY, 2), addDays(TODAY, 2), [{ weekday: weekdayOf(addDays(TODAY, 2)), startTime: '14:00', endTime: '15:00' }], lanId);
+
+  convertOldSeries(db);
+  const loose = db.prepare('SELECT * FROM class_weekly WHERE class_id = ?').get(cls3.id);
+  assert.deepEqual(JSON.parse(loose.slots), [{ weekday: wd, startTime: '08:00', endTime: '09:30' }]);
+  const upcoming3 = db.prepare('SELECT start_time, series_id FROM class_sessions WHERE class_id = ? AND date >= ?').all(cls3.id, TODAY);
+  assert.ok(upcoming3.every((r) => (r.start_time === '08:00' ? r.series_id === loose.series_id : r.series_id === null)));
+  const rules = db.prepare('SELECT * FROM class_weekly WHERE class_id IN (?, ?)').all(cls.id, cls2.id);
+  assert.equal(rules.length, 1);
+  assert.equal(rules[0].series_id, 'old-b');
+  assert.deepEqual(JSON.parse(rules[0].slots), [...slots].sort((a, b) => a.weekday - b.weekday));
+  assert.deepEqual(JSON.parse(rules[0].teacher_ids), [lanId]);
+  assert.equal(rules[0].room, 'P.2');
+  convertOldSeries(db); // chạy lại không tạo trùng
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM class_weekly').get().n, 2);
+
+  // Server xếp nối tiếp từ sau ngày cuối của lịch cũ: đúng thứ, đúng giờ, không trùng ngày
+  assert.ok(fillWeekly(db) >= 40);
+  const rows = db.prepare('SELECT date, start_time, series_id FROM class_sessions WHERE class_id = ? AND date > ? ORDER BY date').all(cls.id, addDays(TODAY, 20));
+  assert.ok(rows.length >= 40);
+  assert.ok(rows.every((r) => r.series_id === 'old-b' && r.start_time === (weekdayOf(r.date) === wd ? '18:00' : '17:00')));
+  const all = db.prepare('SELECT date FROM class_sessions WHERE class_id = ? AND date >= ?').all(cls.id, TODAY).map((r) => r.date);
+  assert.equal(new Set(all).size, all.length);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM class_sessions WHERE class_id = ? AND date > ?').get(cls2.id, TODAY).n, 0);
+  // Trang lớp hiện lịch hằng tuần
+  assert.equal((await owner.get(`/api/admin/classes/${cls.id}`)).body.class.weekly.length, 1);
+  await close();
+});
+
+test('Khóa lớp: dừng lịch hằng tuần, xóa buổi chưa học, không xếp lịch được; mở lại được', async () => {
+  const { db, owner, lan, lanId, cls, close } = await setupCenter();
+  const past = (await owner.post('/api/admin/schedule', { classId: cls.id, date: addDays(TODAY, -2), startTime: '08:00', endTime: '09:00', teacherIds: [lanId], force: true })).body.ids[0];
+  await owner.post('/api/admin/schedule', { classId: cls.id, teacherIds: [lanId], weekly: { slots: [{ weekday: 3, startTime: '18:00', endTime: '19:30' }] } });
+
+  assert.equal((await lan.post(`/api/admin/classes/${cls.id}/close`)).status, 403);
+  const r = await owner.post(`/api/admin/classes/${cls.id}/close`);
+  assert.equal(r.status, 200);
+  assert.ok(r.body.class.closedAt);
+  assert.equal(r.body.class.weekly.length, 0);
+  assert.ok(r.body.deletedSessions >= 26);
+  // Buổi đã qua giữ nguyên; không còn buổi sắp tới; không tự xếp nối nữa
+  assert.deepEqual(db.prepare('SELECT id FROM class_sessions WHERE class_id = ?').all(cls.id).map((x) => x.id), [past]);
+  assert.equal(fillWeekly(db, Date.now() + 30 * DAY_MS), 0);
+  const blocked = await owner.post('/api/admin/schedule', { classId: cls.id, teacherIds: [lanId], weekly: { slots: [{ weekday: 3, startTime: '18:00', endTime: '19:30' }] } });
+  assert.equal(blocked.status, 400);
+  assert.match(blocked.body.error, /đã khóa/);
+
+  const re = await owner.post(`/api/admin/classes/${cls.id}/reopen`);
+  assert.equal(re.body.class.closedAt, null);
+  assert.equal((await owner.post('/api/admin/schedule', { classId: cls.id, teacherIds: [lanId], weekly: { slots: [{ weekday: 3, startTime: '18:00', endTime: '19:30' }] } })).status, 201);
   await close();
 });
 
